@@ -149,7 +149,10 @@ jobs:
           TEST_BANK_BASE_URL: http://127.0.0.1:8080
           TEST_BANK_API_KEY: ci-bank-key
           TEST_BANK_API_KEY_ID: legacy
-          TEST_SHOP_MERCHANT_ACCOUNT: 00000000000000000000000000
+          # Keep the CI merchant account as a quoted string so YAML does not
+          # coerce the leading-zero account number to a numeric value.
+          TEST_SHOP_MERCHANT_ACCOUNT: "00000000000000000000000000"
+          SHOP_MERCHANT_ACCOUNT_NUMBER: "00000000000000000000000000"
         run: |
           nohup java -jar shop-app/target/shop-app-0.0.1-SNAPSHOT.jar \
             --spring.profiles.active=test \
