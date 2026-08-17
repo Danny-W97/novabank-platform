@@ -1,0 +1,15 @@
+.git
+.github
+.idea
+.idea.backup-*
+.env
+.env.*
+target
+shop-app/target
+tmp
+*.log
+*.dump
+*.sha256
+docs
+regulamin
+scripts

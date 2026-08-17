@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Produkt — NovaTech Shop</title>
+<meta name="description" content="Szczegóły produktu w NovaTech Shop.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  :root {
+    --navy: #0f172a;
+    --blue: #2563eb;
+    --blue-dark: #1d4ed8;
+    --yellow: #fbbf24;
+    --surface: #f1f5f9;
+    --border: #e2e8f0;
+    --text: #0f172a;
+    --muted: #64748b;
+    --green: #059669;
+    --red: #dc2626;
+  }
+  body { margin: 0; color: var(--text); background: #fff; font-family: Inter, sans-serif; }
+  button, a { font: inherit; }
+  .topbar {
+    min-height: 64px; padding: 0 5vw; display: flex; align-items: center;
+    justify-content: space-between; gap: 18px; background: var(--navy); color: #fff;
+  }
+  .brand { color: #fff; text-decoration: none; font-weight: 800; font-size: 18px; }
+  .brand span { color: var(--yellow); }
+  .topbar-actions { display: flex; align-items: center; gap: 10px; }
+  .top-link {
+    color: rgba(255,255,255,.82); text-decoration: none; border: 1px solid rgba(255,255,255,.18);
+    border-radius: 8px; padding: 8px 12px; font-size: 13px; font-weight: 600;
+  }
+  .top-link:hover { color: #fff; border-color: rgba(255,255,255,.5); }
+  .page { width: min(1160px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 56px; }
+  .breadcrumbs { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+  .breadcrumbs a { color: var(--blue); text-decoration: none; }
+  .product-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, .9fr); gap: 48px; align-items: start; }
+  .product-visual {
+    min-height: 430px; display: flex; align-items: center; justify-content: center;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px; position: relative;
+  }
+  .product-visual::after { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, transparent, rgba(37,99,235,.06)); pointer-events: none; }
+  .product-emoji { display: none; font-size: clamp(110px, 18vw, 190px); line-height: 1; filter: drop-shadow(0 18px 22px rgba(15,23,42,.16)); }
+  .product-gallery { width: 100%; padding: 18px; }
+  .gallery-frame {
+    position: relative; width: 100%; aspect-ratio: 1.45; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 10px; background: #fff;
+    box-shadow: 0 12px 28px rgba(15,23,42,.12);
+  }
+  .gallery-frame img { display: block; width: 100%; height: 100%; object-fit: contain; }
+  .gallery-frame::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(135deg, transparent 55%, rgba(37,99,235,.06)); }
+  .gallery-nav {
+    position: absolute; left: 0; right: 0; top: 50%; z-index: 2;
+    display: flex; justify-content: space-between; padding: 0 6px; transform: translateY(-50%); pointer-events: none;
+  }
+  .gallery-nav button {
+    width: 36px; height: 36px; border: 1px solid var(--border); border-radius: 50%;
+    background: rgba(255,255,255,.94); color: var(--text); font-size: 25px; line-height: 1;
+    cursor: pointer; box-shadow: 0 4px 12px rgba(15,23,42,.14); pointer-events: auto;
+  }
+  .gallery-nav button:hover { color: var(--blue); border-color: var(--blue); }
+  .gallery-thumbs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+  .gallery-thumb {
+    position: relative; aspect-ratio: 1.45; border: 2px solid transparent; border-radius: 8px;
+    background-color: #fff;
+    cursor: pointer; padding: 0; overflow: hidden;
+  }
+  .gallery-thumb img { display: block; width: 100%; height: 100%; object-fit: contain; }
+  .gallery-thumb:hover { border-color: rgba(37,99,235,.5); }
+  .gallery-thumb.active { border-color: var(--blue); box-shadow: 0 0 0 2px rgba(37,99,235,.12); }
+  .gallery-thumb span { position: absolute; left: 6px; bottom: 5px; padding: 2px 5px; border-radius: 4px; background: rgba(15,23,42,.72); color: #fff; font-size: 10px; }
+  .product-tag { position: absolute; top: 18px; left: 18px; z-index: 1; padding: 6px 10px; border-radius: 6px; color: #fff; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+  .tag-sale { background: var(--red); }
+  .tag-new { background: var(--green); }
+  .tag-hit { background: var(--yellow); color: var(--navy); }
+  .eyebrow { color: var(--blue); font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 8px; }
+  h1 { margin: 0 0 12px; font-size: clamp(28px, 4vw, 44px); line-height: 1.12; letter-spacing: 0; }
+  .product-sku { color: var(--muted); font-size: 12px; margin-bottom: 18px; }
+  .rating { display: flex; align-items: center; gap: 8px; color: var(--yellow); font-size: 15px; margin-bottom: 20px; }
+  .rating span { color: var(--muted); font-size: 13px; }
+  .price-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+  .price { font-size: 34px; font-weight: 800; }
+  .old-price { color: var(--muted); font-size: 15px; text-decoration: line-through; }
+  .description { color: #475569; font-size: 15px; line-height: 1.7; margin-bottom: 22px; }
+  .availability { display: flex; align-items: center; gap: 8px; color: var(--green); font-size: 13px; font-weight: 700; margin-bottom: 22px; }
+  .availability::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: currentColor; }
+  .main-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 28px; }
+  .primary-btn, .secondary-btn { min-height: 46px; border-radius: 8px; padding: 0 18px; border: 1px solid transparent; cursor: pointer; font-weight: 700; }
+  .primary-btn { color: #fff; background: var(--blue); flex: 1 1 210px; }
+  .primary-btn:hover { background: var(--blue-dark); }
+  .secondary-btn { color: var(--text); background: #fff; border-color: var(--border); }
+  .secondary-btn:hover { border-color: var(--blue); color: var(--blue); }
+  .primary-btn:disabled { opacity: .6; cursor: wait; }
+  .info-strip { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); margin-bottom: 32px; }
+  .info-item { padding: 14px 10px; text-align: center; color: var(--muted); font-size: 12px; line-height: 1.45; }
+  .info-item + .info-item { border-left: 1px solid var(--border); }
+  .info-item strong { display: block; color: var(--text); font-size: 13px; margin-bottom: 3px; }
+  .details-section { border-top: 1px solid var(--border); padding-top: 28px; }
+  .details-section h2 { margin: 0 0 18px; font-size: 22px; }
+  .highlights { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 28px; margin: 0; padding: 0; list-style: none; }
+  .highlights li { position: relative; padding-left: 20px; color: #475569; font-size: 14px; line-height: 1.55; }
+  .highlights li::before { content: '✓'; position: absolute; left: 0; color: var(--green); font-weight: 800; }
+  .spec-table { width: 100%; border-collapse: collapse; margin-top: 18px; font-size: 14px; }
+  .spec-table th, .spec-table td { padding: 12px 0; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+  .spec-table th { width: 38%; color: var(--muted); font-weight: 500; }
+  .spec-table td { color: var(--text); font-weight: 600; }
+  .state { min-height: 420px; display: grid; place-items: center; text-align: center; color: var(--muted); }
+  .state h1 { font-size: 26px; margin-bottom: 8px; }
+  .toast { position: fixed; right: 22px; bottom: 22px; z-index: 10; max-width: 360px; padding: 14px 16px; color: #fff; background: var(--navy); border-radius: 8px; box-shadow: 0 12px 28px rgba(15,23,42,.2); transform: translateY(20px); opacity: 0; pointer-events: none; transition: .2s ease; }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.error { background: var(--red); }
+  @media (max-width: 800px) {
+    .product-layout { grid-template-columns: 1fr; gap: 28px; }
+    .product-visual { min-height: 300px; }
+    .product-emoji { font-size: 130px; }
+  }
+  @media (max-width: 520px) {
+    .topbar { padding: 0 18px; }
+    .top-link { padding: 7px 9px; }
+    .page { width: min(100% - 28px, 1160px); padding-top: 20px; }
+    .info-strip { grid-template-columns: 1fr; }
+    .info-item + .info-item { border-left: 0; border-top: 1px solid var(--border); }
+    .highlights { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/novatech_shop.html">Nova<span>Tech</span> Shop</a>
+  <div class="topbar-actions">
+    <a class="top-link" href="/novatech_shop.html">Wróć do sklepu</a>
+    <a class="top-link" href="/novatech_shop.html#cartBtn">Koszyk</a>
+  </div>
+</header>
+
+<main class="page">
+  <div class="breadcrumbs"><a href="/novatech_shop.html">Sklep</a> <span aria-hidden="true">/</span> <span id="breadcrumbName">Produkt</span></div>
+  <div id="content" class="state" aria-live="polite">
+    <div><h1>Ładuję produkt...</h1><p>Chwilę cierpliwości.</p></div>
+  </div>
+</main>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script>
+  'use strict';
+
+  let csrfBootstrap = null;
+  let toastTimer = null;
+
+  function csrfToken() {
+    const item = document.cookie.split('; ').find(value => value.startsWith('SHOP-XSRF-TOKEN='));
+    return item ? decodeURIComponent(item.substring('SHOP-XSRF-TOKEN='.length)) : '';
+  }
+
+  async function ensureCsrfToken() {
+    if (csrfToken()) return;
+    csrfBootstrap ||= fetch('/api/auth/csrf', { credentials: 'same-origin' });
+    const response = await csrfBootstrap;
+    if (!response.ok) throw new Error('Nie można pobrać tokenu bezpieczeństwa.');
+  }
+
+  async function apiFetch(url, options = {}) {
+    const request = { ...options, credentials: 'same-origin' };
+    const headers = new Headers(options.headers || {});
+    const method = (options.method || 'GET').toUpperCase();
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+      await ensureCsrfToken();
+      headers.set('X-XSRF-TOKEN', csrfToken());
+    }
+    request.headers = headers;
+    return fetch(url, request);
+  }
+
+  function money(value, currency = 'PLN') {
+    return Number(value).toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + currency;
+  }
+
+  function ratingStars(value) {
+    return '★'.repeat(Math.max(0, Math.min(5, Number(value) || 0)));
+  }
+
+  function tagLabel(tag) {
+    return tag === 'new' ? 'Nowość' : tag === 'sale' ? 'Okazja' : tag === 'hit' ? 'Bestseller' : '';
+  }
+
+  function categoryLabel(category) {
+    return ({ laptop: 'Laptopy', phone: 'Smartfony', audio: 'Audio', gaming: 'Gaming', smart: 'Smart home', photo: 'Fotografia', tablet: 'Tablety', mice: 'Myszki', keyboard: 'Klawiatury', monitor: 'Monitory', cable: 'Kable', coffee: 'Ekspresy do kawy' })[category] || 'Elektronika';
+  }
+
+  function productImageUrls(product) {
+    const sku = String(product.sku || '').toLowerCase();
+    const extension = sku.startsWith('novatech-1') ? 'png' : 'jpg';
+    return sku ? [1, 2, 3].map(index => '/images/products/' + encodeURIComponent(sku) + '-' + index + '.' + extension) : [];
+  }
+
+  function createGallery(product) {
+    const gallery = document.createElement('div');
+    gallery.className = 'product-gallery';
+    const imageUrls = productImageUrls(product);
+    const frame = document.createElement('div');
+    frame.className = 'gallery-frame';
+    const image = document.createElement('img');
+    image.alt = 'Zdjęcie produktu: ' + product.name;
+    frame.appendChild(image);
+    frame.setAttribute('role', 'img');
+    frame.setAttribute('aria-label', 'Zdjęcie produktu: ' + product.name);
+
+    const views = ['Widok główny', 'Profil', 'Szczegóły'];
+    let activeIndex = 0;
+    const thumbs = [];
+    const setView = index => {
+      activeIndex = (index + views.length) % views.length;
+      image.src = imageUrls[activeIndex] || '';
+      thumbs.forEach((thumb, thumbIndex) => thumb.classList.toggle('active', thumbIndex === activeIndex));
+    };
+
+    const nav = document.createElement('div');
+    nav.className = 'gallery-nav';
+    const previous = document.createElement('button');
+    previous.type = 'button'; previous.textContent = '‹'; previous.title = 'Poprzednie zdjęcie'; previous.setAttribute('aria-label', 'Poprzednie zdjęcie');
+    previous.addEventListener('click', () => setView(activeIndex - 1));
+    const next = document.createElement('button');
+    next.type = 'button'; next.textContent = '›'; next.title = 'Następne zdjęcie'; next.setAttribute('aria-label', 'Następne zdjęcie');
+    next.addEventListener('click', () => setView(activeIndex + 1));
+    nav.append(previous, next);
+    frame.appendChild(nav);
+
+    const thumbRow = document.createElement('div');
+    thumbRow.className = 'gallery-thumbs';
+    views.forEach((label, index) => {
+      const thumb = document.createElement('button');
+      thumb.type = 'button'; thumb.className = 'gallery-thumb';
+      thumb.setAttribute('aria-label', label);
+      const thumbImage = document.createElement('img');
+      thumbImage.src = imageUrls[index] || '';
+      thumbImage.alt = '';
+      const caption = document.createElement('span'); caption.textContent = label;
+      thumb.append(thumbImage, caption);
+      thumb.addEventListener('click', () => setView(index));
+      thumbs.push(thumb); thumbRow.appendChild(thumb);
+    });
+    gallery.append(frame, thumbRow);
+    setView(0);
+    return gallery;
+  }
+
+  function highlights(product) {
+    const common = [
+      'Oryginalny produkt z oficjalnej dystrybucji',
+      'Bezpieczna płatność przez NovaBank',
+      '14 dni na zwrot produktu'
+    ];
+    const category = {
+      laptop: ['Wydajność do pracy, nauki i rozrywki', 'Szybki dysk SSD i nowoczesna łączność'],
+      phone: ['Nowoczesny aparat i ekran wysokiej jakości', 'Gotowy do codziennego użytkowania'],
+      audio: ['Komfortowe użytkowanie przez wiele godzin', 'Bezprzewodowa łączność Bluetooth'],
+      gaming: ['Płynna rozgrywka i szybki start', 'Sprzęt przygotowany do grania w wysokiej jakości'],
+      smart: ['Prosta integracja z inteligentnym domem', 'Sterowanie z aplikacji mobilnej'],
+      photo: ['Wysoka jakość zdjęć i materiałów wideo', 'Łączność bezprzewodowa do szybkiego udostępniania'],
+      tablet: ['Lekka konstrukcja do pracy i rozrywki', 'Wyświetlacz dopasowany do multimediów'],
+      mice: ['Precyzyjny sensor do pracy i rozrywki', 'Ergonomiczny kształt i wygodna kontrola kursora'],
+      keyboard: ['Wygodne przełączniki do codziennego pisania', 'Stabilna konstrukcja i szybka reakcja'],
+      monitor: ['Czytelny obraz do pracy, nauki i gier', 'Tryb ochrony wzroku i nowoczesne złącza'],
+      cable: ['Solidne złącza do stabilnego przesyłu', 'Wzmocniony przewód do codziennego użytku'],
+      coffee: ['Równy smak kawy z powtarzalnym parzeniem', 'Programy dopasowane do espresso i kaw mlecznych']
+    }[product.category] || ['Uniwersalne zastosowanie w domu i pracy', 'Sprawdzona jakość NovaTech Shop'];
+    return [...category, ...common];
+  }
+
+  function productSpecs(product) {
+    return [
+      ['Marka', product.brand || 'NovaTech'],
+      ['Kategoria', categoryLabel(product.category)],
+      ['SKU', product.sku],
+      ['Waluta', product.currency || 'PLN'],
+      ['Dostępność', product.active ? 'Dostępny' : 'Niedostępny']
+    ];
+  }
+
+  function render(product) {
+    document.title = product.name + ' — NovaTech Shop';
+    document.getElementById('breadcrumbName').textContent = product.name;
+    const content = document.getElementById('content');
+    content.className = '';
+    content.innerHTML = '';
+
+    const layout = document.createElement('div');
+    layout.className = 'product-layout';
+
+    const visual = document.createElement('section');
+    visual.className = 'product-visual';
+    if (product.tag) {
+      const tag = document.createElement('span');
+      tag.className = 'product-tag tag-' + product.tag;
+      tag.textContent = tagLabel(product.tag);
+      visual.appendChild(tag);
+    }
+    const emoji = document.createElement('span');
+    emoji.className = 'product-emoji';
+    emoji.textContent = product.emoji || '📦';
+    visual.appendChild(emoji);
+    visual.appendChild(createGallery(product));
+
+    const summary = document.createElement('section');
+    const eyebrow = document.createElement('div');
+    eyebrow.className = 'eyebrow';
+    eyebrow.textContent = product.brand || categoryLabel(product.category);
+    const title = document.createElement('h1');
+    title.textContent = product.name;
+    const sku = document.createElement('div');
+    sku.className = 'product-sku';
+    sku.textContent = 'SKU: ' + product.sku;
+    const rating = document.createElement('div');
+    rating.className = 'rating';
+    rating.append(document.createTextNode(ratingStars(product.stars)));
+    const ratingText = document.createElement('span');
+    ratingText.textContent = (product.stars || 0) + '/5 · ' + Number(product.reviews || 0).toLocaleString('pl-PL') + ' opinii';
+    rating.appendChild(ratingText);
+    const priceRow = document.createElement('div');
+    priceRow.className = 'price-row';
+    const price = document.createElement('div');
+    price.className = 'price';
+    price.textContent = money(product.price, product.currency);
+    priceRow.appendChild(price);
+    if (product.oldPrice) {
+      const oldPrice = document.createElement('div');
+      oldPrice.className = 'old-price';
+      oldPrice.textContent = money(product.oldPrice, product.currency);
+      priceRow.appendChild(oldPrice);
+    }
+    const description = document.createElement('p');
+    description.className = 'description';
+    description.textContent = product.description || 'Szczegółowy opis produktu jest obecnie przygotowywany.';
+    const availability = document.createElement('div');
+    availability.className = 'availability';
+    availability.textContent = product.active ? 'Produkt dostępny' : 'Produkt niedostępny';
+    const actions = document.createElement('div');
+    actions.className = 'main-actions';
+    const addButton = document.createElement('button');
+    addButton.className = 'primary-btn';
+    addButton.type = 'button';
+    addButton.textContent = '🛒 Dodaj do koszyka';
+    addButton.disabled = !product.active;
+    addButton.addEventListener('click', () => addToCart(product, addButton));
+    const backButton = document.createElement('a');
+    backButton.className = 'secondary-btn';
+    backButton.href = '/novatech_shop.html';
+    backButton.textContent = 'Wróć do produktów';
+    backButton.style.display = 'inline-flex';
+    backButton.style.alignItems = 'center';
+    backButton.style.textDecoration = 'none';
+    actions.append(addButton, backButton);
+    const infoStrip = document.createElement('div');
+    infoStrip.className = 'info-strip';
+    [['Dostawa', 'Szybka wysyłka'], ['Płatność', 'Bezpiecznie przez bank'], ['Zwrot', '14 dni na zwrot']].forEach(([label, value]) => {
+      const item = document.createElement('div');
+      item.className = 'info-item';
+      const strong = document.createElement('strong');
+      strong.textContent = label;
+      item.append(strong, document.createTextNode(value));
+      infoStrip.appendChild(item);
+    });
+    summary.append(eyebrow, title, sku, rating, priceRow, description, availability, actions, infoStrip);
+    layout.append(visual, summary);
+
+    const details = document.createElement('section');
+    details.className = 'details-section';
+    const heading = document.createElement('h2');
+    heading.textContent = 'Opis i informacje o produkcie';
+    const list = document.createElement('ul');
+    list.className = 'highlights';
+    highlights(product).forEach(text => {
+      const li = document.createElement('li');
+      li.textContent = text;
+      list.appendChild(li);
+    });
+    const table = document.createElement('table');
+    table.className = 'spec-table';
+    const tbody = document.createElement('tbody');
+    productSpecs(product).forEach(([label, value]) => {
+      const row = document.createElement('tr');
+      const th = document.createElement('th');
+      th.textContent = label;
+      const td = document.createElement('td');
+      td.textContent = value;
+      row.append(th, td);
+      tbody.appendChild(row);
+    });
+    table.appendChild(tbody);
+    details.append(heading, list, table);
+    content.append(layout, details);
+  }
+
+  function showToast(message, error = false) {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.className = 'toast show' + (error ? ' error' : '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { toast.className = 'toast'; }, 3200);
+  }
+
+  async function addToCart(product, button) {
+    button.disabled = true;
+    button.textContent = 'Dodaję...';
+    try {
+      const response = await apiFetch('/api/cart/items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId: product.id, quantity: 1 })
+      });
+      if (response.status === 401) {
+        window.location.href = '/shop-login.html?return=' + encodeURIComponent('/product.html?id=' + product.id);
+        return;
+      }
+      if (!response.ok) throw new Error('Nie udało się dodać produktu do koszyka.');
+      button.textContent = '✓ Dodano do koszyka';
+      showToast('Produkt dodano do koszyka.');
+      setTimeout(() => { button.disabled = false; button.textContent = '🛒 Dodaj do koszyka'; }, 1800);
+    } catch (error) {
+      button.disabled = false;
+      button.textContent = '🛒 Dodaj do koszyka';
+      showToast(error.message, true);
+    }
+  }
+
+  async function loadProduct() {
+    const id = new URLSearchParams(window.location.search).get('id');
+    if (!id || !/^\d+$/.test(id)) throw new Error('Nieprawidłowy identyfikator produktu.');
+    const response = await fetch('/api/products/' + encodeURIComponent(id), { credentials: 'same-origin' });
+    if (!response.ok) throw new Error(response.status === 404 ? 'Nie znaleziono produktu.' : 'Nie udało się pobrać danych produktu.');
+    render(await response.json());
+  }
+
+  loadProduct().catch(error => {
+    const content = document.getElementById('content');
+    content.className = 'state';
+    content.innerHTML = '<div><h1>Nie można otworzyć produktu</h1><p>' + error.message + '</p><p><a class="top-link" href="/novatech_shop.html">Wróć do sklepu</a></p></div>';
+  });
+</script>
+</body>
+</html>

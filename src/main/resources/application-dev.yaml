@@ -1,0 +1,33 @@
+spring:
+  config:
+    import: "optional:file:.novabank/env/project.env[.properties],optional:file:.novabank/env/dev.env[.properties]"
+  datasource:
+    url: "jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5300}/${POSTGRES_DB:bankdb}"
+    username: "${POSTGRES_USER:bankuser}"
+    password: "${POSTGRES_PASSWORD:}"
+  data:
+    redis:
+      host: "${REDIS_HOST:localhost}"
+      port: "${REDIS_PORT:6379}"
+
+server:
+  port: "${BANK_APP_PORT:8080}"
+  forward-headers-strategy: framework
+  servlet:
+    session:
+      cookie:
+        secure: false
+        http-only: true
+        same-site: lax
+
+management:
+  metrics:
+    tags:
+      environment: dev
+
+app:
+  certificate-monitor:
+    enabled: false
+  payment-authorization:
+    bank-base-url: "${BANK_API_URL:http://localhost:8080}"
+    shop-callback-url: "${SHOP_PAYMENT_CALLBACK_URL:http://localhost:8081/payment/callback}"

@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/app-layout :: layout('Panel administratora', 'admin', ~{::main})}">
+<main>
+    <div class="page-heading">
+        <div>
+            <span class="page-eyebrow">Rola ADMIN</span>
+            <h1>Panel administratora</h1>
+            <p>Statystyki systemu i osobny audyt odrzuconych operacji.</p>
+        </div>
+        <a class="btn app-btn-secondary" th:href="@{/admin/data-retention}"><i class="bi bi-database-check"></i> Retencja danych</a>
+    </div>
+    <div class="profile-alert" th:if="${adminSuccess}" role="status">
+        <i class="bi bi-check-circle-fill"></i>
+        <span th:text="${adminSuccess}">Operacja wykonana.</span>
+    </div>
+    <div class="profile-alert admin-alert-error" th:if="${adminError}" role="alert">
+        <i class="bi bi-exclamation-circle-fill"></i>
+        <span th:text="${adminError}">Nie udało się zmienić statusu.</span>
+    </div>
+    <section class="admin-stats">
+        <article class="stat-card"><div class="stat-label">Użytkownicy</div><strong th:text="${admin.users}">0</strong></article>
+        <article class="stat-card"><div class="stat-label">Rachunki</div><strong th:text="${admin.accounts}">0</strong></article>
+        <article class="stat-card"><div class="stat-label">Transakcje</div><strong th:text="${admin.transactions}">0</strong></article>
+        <article class="stat-card"><div class="stat-label">Błędy audytowe</div><strong th:text="${#lists.size(admin.audits)}">0</strong></article>
+    </section>
+    <section class="app-card extension-card">
+        <div class="card-heading"><div><h2>Kursy walut</h2><p>Administrator może zmienić kurs symulowany przez bank. Kursy historycznych wymian pozostają bez zmian.</p></div></div>
+        <div class="audit-table-wrap">
+            <table class="audit-table">
+                <thead><tr><th>Waluta</th><th>Kurs do PLN</th><th>Akcja</th></tr></thead>
+                <tbody>
+                <tr th:each="rate : ${exchangeRates}">
+                    <td><strong th:text="${rate.currency}">EUR</strong></td>
+                    <td th:text="${rate.rateToPln}">4.350000</td>
+                    <td>
+                        <form class="admin-rate-form" th:action="@{/admin/rates/{currency}(currency=${rate.currency})}" method="post">
+                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                            <input name="rateToPln" type="number" min="0.000001" step="0.000001" th:value="${rate.rateToPln}" th:readonly="${rate.currency.name() == 'PLN'}">
+                            <button class="btn app-btn-secondary btn-sm" type="submit" th:disabled="${rate.currency.name() == 'PLN'}">Zapisz kurs</button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <section class="app-card extension-card">
+        <div class="card-heading">
+            <div>
+                <h2>Rachunki i dostęp użytkowników</h2>
+                <p>Zmiana statusu rachunku blokuje również logowanie właściciela. Zamknięcie nie usuwa danych ani historii.</p>
+            </div>
+        </div>
+        <form class="history-filters" th:action="@{/admin}" method="get">
+            <div class="history-filter-main">
+                <div class="search-input">
+                    <i class="bi bi-search"></i>
+                    <input name="q" type="search" maxlength="100" th:value="${adminQuery}"
+                           placeholder="Szukaj po e-mailu, nazwie lub numerze rachunku"
+                           aria-label="Szukaj uzytkownikow">
+                </div>
+                <button class="btn filter-button" type="submit"><i class="bi bi-search"></i> Szukaj</button>
+                <a class="btn filter-clear" th:href="@{/admin}" aria-label="Wyczysc wyszukiwanie"><i class="bi bi-x-lg"></i></a>
+            </div>
+        </form>
+        <div class="audit-table-wrap" th:if="${not #lists.isEmpty(admin.managedAccounts)}">
+            <table class="audit-table admin-account-table">
+                <thead>
+                <tr>
+                    <th>Właściciel</th>
+                    <th>Rachunek</th>
+                    <th>Saldo</th>
+                    <th>Status rachunku</th>
+                    <th>Status użytkownika</th>
+                    <th>Sesje</th>
+                    <th>Akcja</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="account : ${admin.managedAccounts}">
+                    <td>
+                        <strong th:text="${account.fullName}">Jan Kowalski</strong>
+                        <small th:text="${account.email}">jan@example.pl</small>
+                    </td>
+                    <td><code th:text="${account.accountNumber}">00 0000 0000 0000 0000 0000 0000</code></td>
+                    <td th:text="${account.balance}">10 000,00 zł</td>
+                    <td><span class="admin-status" th:classappend="${account.active} ? ' admin-status-active' : ' admin-status-blocked'"
+                               th:text="${account.accountStatus}">Aktywne</span></td>
+                    <td th:text="${account.userStatus}">Aktywny</td>
+                    <td><span class="badge rounded-pill text-bg-secondary" th:text="${account.activeSessions}">0</span></td>
+                    <td>
+                        <div class="dropdown admin-action-menu" th:if="${account.email != adminEmail}">
+                            <button class="btn app-btn-secondary btn-sm dropdown-toggle" type="button"
+                                    data-bs-toggle="dropdown" aria-expanded="false">
+                                Akcja
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li th:if="${account.active}">
+                                    <form th:action="@{/admin/accounts/{id}/block(id=${account.id})}" method="post">
+                                        <button class="dropdown-item admin-dropdown-danger" type="submit">
+                                            <i class="bi bi-lock"></i> Zablokuj
+                                        </button>
+                                    </form>
+                                </li>
+                                <li th:if="${account.blocked}">
+                                    <form th:action="@{/admin/accounts/{id}/activate(id=${account.id})}" method="post">
+                                        <button class="dropdown-item" type="submit">
+                                            <i class="bi bi-unlock"></i> Aktywuj
+                                        </button>
+                                    </form>
+                                </li>
+                                <li th:if="${account.active or account.blocked}">
+                                    <form th:action="@{/admin/accounts/{id}/close(id=${account.id})}" method="post"
+                                          data-confirm="Czy na pewno chcesz zamknąć konto? Tej operacji nie można cofnąć. Dane użytkownika, rachunku i historii zostaną zachowane.">
+                                        <button class="dropdown-item admin-dropdown-danger" type="submit">
+                                            <i class="bi bi-x-circle"></i> Zamknij konto
+                                        </button>
+                                    </form>
+                                </li>
+                                <li th:if="${account.active or account.blocked}">
+                                    <form th:action="@{/admin/accounts/{id}/logout-sessions(id=${account.id})}" method="post"
+                                          data-confirm="Czy na pewno wylogować wszystkie sesje tego użytkownika?">
+                                        <button class="dropdown-item" type="submit">
+                                            <i class="bi bi-box-arrow-right"></i> Wyloguj wszystkie sesje
+                                        </button>
+                                    </form>
+                                </li>
+                                <li th:if="${not account.active and not account.blocked}">
+                                    <span class="dropdown-item-text text-muted">Konto zamknięte</span>
+                                </li>
+                            </ul>
+                        </div>
+                        <span class="text-muted" th:if="${account.email == adminEmail}">Bieżący administrator</span>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="empty-state" th:if="${#lists.isEmpty(admin.managedAccounts)}">
+            <span><i class="bi bi-wallet2"></i></span><strong>Brak rachunków</strong>
+        </div>
+    </section>
+    <section class="app-card extension-card">
+        <div class="card-heading"><div><h2>Nieudane operacje</h2><p>Ostatnie 100 wpisów audytu</p></div></div>
+        <div class="audit-table-wrap" th:if="${not #lists.isEmpty(admin.audits)}">
+            <table class="audit-table">
+                <thead><tr><th>Data</th><th>Użytkownik</th><th>Operacja</th><th>Powód</th></tr></thead>
+                <tbody>
+                <tr th:each="audit : ${admin.audits}">
+                    <td th:text="${audit.createdAt}">Data</td>
+                    <td th:text="${audit.userEmail ?: '—'}">email</td>
+                    <td><code th:text="${audit.operation}">TRANSFER</code></td>
+                    <td th:text="${audit.reason}">Powód</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="empty-state" th:if="${#lists.isEmpty(admin.audits)}">
+            <span><i class="bi bi-shield-check"></i></span><strong>Brak nieudanych operacji</strong>
+        </div>
+    </section>
+    <section class="app-card extension-card">
+        <div class="card-heading"><div><h2>Historia zmian statusow</h2><p>Zmiany statusu rachunku i konta uzytkownika wykonane przez administratorow.</p></div></div>
+        <div class="audit-table-wrap" th:if="${not #lists.isEmpty(admin.statusChanges)}">
+            <table class="audit-table">
+                <thead><tr><th>Data</th><th>Administrator</th><th>Uzytkownik</th><th>Rachunek</th><th>Zmiana</th><th>Powod</th><th>IP</th></tr></thead>
+                <tbody>
+                <tr th:each="change : ${admin.statusChanges}">
+                    <td th:text="${change.createdAt}">Data</td>
+                    <td th:text="${change.changedBy}">admin@example.pl</td>
+                    <td th:text="${change.userEmail}">user@example.pl</td>
+                    <td><code th:text="${change.accountNumber}">00 0000</code></td>
+                    <td><span th:text="${change.previousAccountStatus + ' -> ' + change.newAccountStatus}">BLOCKED -> ACTIVE</span><small th:text="${change.previousUserStatus + ' -> ' + change.newUserStatus}">BLOCKED -> ACTIVE</small></td>
+                    <td th:text="${change.reason}">Zmiana statusu</td>
+                    <td th:text="${change.ipAddress ?: '-'}">127.0.0.1</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="empty-state" th:if="${#lists.isEmpty(admin.statusChanges)}"><span><i class="bi bi-clock-history"></i></span><strong>Brak zmian statusow</strong></div>
+    </section>
+    <section class="app-card extension-card">
+        <div class="card-heading"><div><h2>Audyt dzialan administratorow</h2><p>Do 100 ostatnich prob wraz z celem, wynikiem i adresem IP.</p></div></div>
+        <div class="audit-table-wrap" th:if="${not #lists.isEmpty(admin.adminAudits)}">
+            <table class="audit-table">
+                <thead><tr><th>Data</th><th>Administrator</th><th>Operacja</th><th>Cel</th><th>Szczegoly</th><th>Wynik</th><th>IP</th></tr></thead>
+                <tbody>
+                <tr th:each="audit : ${admin.adminAudits}">
+                    <td th:text="${audit.createdAt}">Data</td>
+                    <td th:text="${audit.adminEmail}">admin@example.pl</td>
+                    <td><code th:text="${audit.operation}">ADMIN_ACCOUNT_BLOCK</code></td>
+                    <td><span th:text="${audit.targetUserEmail ?: '-'}">user@example.pl</span><small th:if="${audit.targetAccountId != null}" th:text="${'Rachunek #' + audit.targetAccountId}">Rachunek #1</small></td>
+                    <td th:text="${audit.details}">Szczegoly</td>
+                    <td><span class="admin-status" th:classappend="${audit.success} ? ' admin-status-active' : ' admin-status-blocked'" th:text="${audit.success ? 'Sukces' : 'Odrzucono'}">Sukces</span></td>
+                    <td th:text="${audit.ipAddress ?: '-'}">127.0.0.1</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="empty-state" th:if="${#lists.isEmpty(admin.adminAudits)}"><span><i class="bi bi-shield-check"></i></span><strong>Brak dzialan administratorow</strong></div>
+    </section>
+</main>
+</html>

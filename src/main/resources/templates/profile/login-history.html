@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/app-layout :: layout('Historia logowań', 'profile', ~{::main})}">
+<main>
+    <div class="page-heading">
+        <div>
+            <span class="page-eyebrow">Bezpieczeństwo</span>
+            <h1>Historia logowań</h1>
+            <p>Ostatnie próby logowania do Twojego konta.</p>
+        </div>
+        <a class="btn app-btn-secondary" th:href="@{/profile}">
+            <i class="bi bi-arrow-left"></i> Profil
+        </a>
+    </div>
+
+    <section class="app-card">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Status</th>
+                    <th>Adres IP</th>
+                    <th>Urządzenie / przeglądarka</th>
+                    <th>Powód</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="entry : ${loginHistory}">
+                    <td th:text="${entry.createdAt}">3 sierpnia 2026, 12:00:00</td>
+                    <td>
+                        <span class="badge rounded-pill text-bg-success" th:if="${entry.successful}">Udane</span>
+                        <span class="badge rounded-pill text-bg-danger" th:unless="${entry.successful}">Nieudane</span>
+                    </td>
+                    <td><code th:text="${entry.ipAddress}">127.0.0.1</code></td>
+                    <td class="text-break" th:text="${entry.userAgent}">Przeglądarka</td>
+                    <td th:text="${entry.failureReason ?: '-'}">-</td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(loginHistory)}">
+                    <td colspan="5" class="text-muted py-4">Brak zapisanych prób logowania.</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+</html>

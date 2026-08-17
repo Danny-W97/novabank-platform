@@ -1,0 +1,110 @@
+spring:
+  application:
+    name: shop-app
+  cloud:
+    vault:
+      enabled: false
+  datasource:
+    url: "jdbc:postgresql://${SHOP_POSTGRES_HOST:localhost}:${SHOP_POSTGRES_PORT:5400}/${SHOP_POSTGRES_DB:shopdb}"
+    username: "${SHOP_POSTGRES_USER:shopuser}"
+    password: "${SHOP_POSTGRES_PASSWORD:}"
+  data:
+    redis:
+      host: "${REDIS_HOST:localhost}"
+      port: "${REDIS_PORT:6379}"
+      repositories:
+        enabled: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: 2
+  session:
+    jdbc:
+      initialize-schema: always
+
+server:
+  port: "${SHOP_APP_PORT:8081}"
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+    session:
+      cookie:
+        name: SHOP_SESSION
+
+shop:
+  bank:
+    base-url: "${BANK_API_URL:http://localhost:8080}"
+    api-key: "${BANK_API_KEY:}"
+    api-key-id: "${BANK_API_KEY_ID:legacy}"
+  orders:
+    merchant-account-number: "${SHOP_MERCHANT_ACCOUNT_NUMBER:}"
+    reconciliation-enabled: "${SHOP_PAYMENT_RECONCILIATION_ENABLED:true}"
+    reconciliation-interval-ms: "${SHOP_PAYMENT_RECONCILIATION_INTERVAL_MS:30000}"
+    reconciliation-initial-delay-ms: "${SHOP_PAYMENT_RECONCILIATION_INITIAL_DELAY_MS:10000}"
+    reconciliation-batch-size: "${SHOP_PAYMENT_RECONCILIATION_BATCH_SIZE:50}"
+  payment-provider:
+    provider: "${SHOP_PAYMENT_PROVIDER:bank-demo}"
+    api-base-url: "${SHOP_PAYMENT_API_BASE_URL:https://api.stripe.com}"
+    api-key: "${SHOP_PAYMENT_API_KEY:}"
+    webhook-secret: "${SHOP_PAYMENT_WEBHOOK_SECRET:}"
+    success-url: "${SHOP_PAYMENT_SUCCESS_URL:http://localhost:8081/api/payments/stripe/success?order={ORDER_NUMBER}&session_id={CHECKOUT_SESSION_ID}}"
+    cancel-url: "${SHOP_PAYMENT_CANCEL_URL:http://localhost:8081/api/payments/stripe/cancel?order={ORDER_NUMBER}}"
+  rate-limit:
+    enabled: "${SHOP_RATE_LIMIT_ENABLED:true}"
+    window-seconds: "${SHOP_RATE_LIMIT_WINDOW_SECONDS:60}"
+    login-ip-per-window: "${SHOP_LOGIN_RATE_LIMIT_IP_PER_WINDOW:20}"
+    login-account-per-window: "${SHOP_LOGIN_RATE_LIMIT_ACCOUNT_PER_WINDOW:5}"
+    checkout-ip-per-window: "${SHOP_CHECKOUT_RATE_LIMIT_IP_PER_WINDOW:30}"
+    checkout-user-per-window: "${SHOP_CHECKOUT_RATE_LIMIT_USER_PER_WINDOW:15}"
+    payment-ip-per-window: "${SHOP_PAYMENT_RATE_LIMIT_IP_PER_WINDOW:20}"
+    payment-user-per-window: "${SHOP_PAYMENT_RATE_LIMIT_USER_PER_WINDOW:10}"
+    webhook-ip-per-window: "${SHOP_WEBHOOK_RATE_LIMIT_IP_PER_WINDOW:60}"
+
+app:
+  metrics-access:
+    username: "${METRICS_USERNAME:}"
+    password: "${METRICS_PASSWORD:}"
+  certificate-monitor:
+    enabled: false
+    schedule: "${CERTIFICATE_MONITOR_SCHEDULE:0 0 3 * * *}"
+    vault-certificate-path: "${VAULT_TLS_CERTIFICATE_PATH:}"
+    truststore-path: "${VAULT_SSL_TRUST_STORE:}"
+    truststore-password: "${VAULT_SSL_TRUST_STORE_PASSWORD:}"
+    truststore-type: "${VAULT_SSL_TRUST_STORE_TYPE:PKCS12}"
+    keystore-path: "${SERVER_SSL_KEY_STORE:}"
+    keystore-password: "${SERVER_SSL_KEY_STORE_PASSWORD:}"
+    keystore-type: "${SERVER_SSL_KEY_STORE_TYPE:PKCS12}"
+
+management:
+  server:
+    port: "${SHOP_MANAGEMENT_PORT:8083}"
+    address: "${MANAGEMENT_SERVER_ADDRESS:127.0.0.1}"
+  info:
+    env:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: "health,info,metrics,prometheus"
+  endpoint:
+    health:
+      show-details: when_authorized
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: "${spring.application.name}"
+      environment: "${APP_ENVIRONMENT:default}"
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+info:
+  app:
+    name: "${spring.application.name}"
+    description: "NovaTech Shop - edukacyjna usługa sklepowa"
+    version: "0.0.1-SNAPSHOT"

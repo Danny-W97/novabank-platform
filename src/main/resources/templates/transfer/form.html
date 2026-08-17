@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/app-layout :: layout('Nowy przelew', 'transfer', ~{::main})}">
+<main>
+    <div class="page-heading">
+        <div>
+            <span class="page-eyebrow">Płatności</span>
+            <h1>Nowy przelew</h1>
+            <p>Uzupełnij dane odbiorcy i sprawdź je przed zatwierdzeniem.</p>
+        </div>
+    </div>
+
+    <div class="form-page-grid">
+        <section class="app-card transfer-form-card">
+            <div class="form-section-heading">
+                <span>1</span>
+                <div><h2>Dane przelewu</h2><p>Podaj odbiorcę, rachunek, kwotę i tytuł operacji.</p></div>
+            </div>
+
+            <div class="form-alert form-alert-error" th:if="${transferError}">
+                <i class="bi bi-exclamation-circle"></i>
+                <span th:text="${transferError}">Nie udało się wykonać przelewu.</span>
+            </div>
+
+            <form th:action="@{/transfer/confirm}" th:object="${transferForm}" method="post"
+                  novalidate data-client-validation>
+                <input type="hidden" th:field="*{idempotencyKey}">
+
+                <div class="form-alert form-alert-error" th:if="${#fields.hasGlobalErrors()}">
+                    <i class="bi bi-exclamation-circle"></i>
+                    <span th:each="error : ${#fields.globalErrors()}" th:text="${error}">Sprawdź dane przelewu.</span>
+                </div>
+
+                <div class="app-form-field">
+                    <label for="recipientName">Nazwa odbiorcy</label>
+                    <input id="recipientName" type="text" th:field="*{recipientName}"
+                           th:classappend="${#fields.hasErrors('recipientName')} ? 'is-invalid'"
+                           maxlength="201" autocomplete="name" placeholder="Np. Anna Nowak" required
+                           th:attr="aria-invalid=${#fields.hasErrors('recipientName')},aria-describedby=${#fields.hasErrors('recipientName') ? 'recipientNameError' : null}">
+                    <p id="recipientNameError" class="field-error" th:if="${#fields.hasErrors('recipientName')}"
+                       th:errors="*{recipientName}">Błąd nazwy odbiorcy</p>
+                </div>
+
+                <div class="app-form-field">
+                    <label for="destinationAccountNumber">Numer rachunku odbiorcy</label>
+                    <input id="destinationAccountNumber" type="text" inputmode="numeric"
+                           th:field="*{destinationAccountNumber}"
+                           th:classappend="${#fields.hasErrors('destinationAccountNumber')} ? 'is-invalid'"
+                           autocomplete="off" placeholder="00 0000 0000 0000 0000 0000 0000" required
+                           th:attr="aria-invalid=${#fields.hasErrors('destinationAccountNumber')},aria-describedby=${#fields.hasErrors('destinationAccountNumber') ? 'destinationAccountNumberError' : null}">
+                    <small>Wpisz 26 cyfr. Spacje i prefiks PL są dozwolone.</small>
+                    <p id="destinationAccountNumberError" class="field-error" th:if="${#fields.hasErrors('destinationAccountNumber')}"
+                       th:errors="*{destinationAccountNumber}">Błąd numeru rachunku</p>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-5 app-form-field">
+                        <label for="amount">Kwota</label>
+                        <div class="amount-input">
+                            <input id="amount" type="text" inputmode="decimal" th:field="*{amount}"
+                                   th:classappend="${#fields.hasErrors('amount')} ? 'is-invalid'"
+                                   autocomplete="off" placeholder="0,00" required
+                                   th:attr="aria-invalid=${#fields.hasErrors('amount')},aria-describedby=${#fields.hasErrors('amount') ? 'amountError' : null}">
+                            <span>PLN</span>
+                        </div>
+                        <p id="amountError" class="field-error" th:if="${#fields.hasErrors('amount')}"
+                           th:errors="*{amount}">Błąd kwoty</p>
+                    </div>
+                    <div class="col-md-7 app-form-field">
+                        <label>Data realizacji</label>
+                        <div class="transfer-execution-date">
+                            <i class="bi bi-lightning-charge"></i>
+                            <span>Natychmiast</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="app-form-field">
+                    <label for="title">Tytuł przelewu</label>
+                    <input id="title" type="text" th:field="*{title}"
+                           th:classappend="${#fields.hasErrors('title')} ? 'is-invalid'"
+                           maxlength="140" autocomplete="off" placeholder="Wpisz tytuł przelewu" required>
+                    <small>Maksymalnie 140 znaków.</small>
+                    <p class="field-error" th:if="${#fields.hasErrors('title')}"
+                       th:errors="*{title}">Błąd tytułu przelewu</p>
+                </div>
+
+                <div class="form-actions">
+                    <a class="btn app-btn-secondary" th:href="@{/dashboard}">Anuluj</a>
+                    <button class="btn app-btn-primary" type="submit">
+                        Dalej <i class="bi bi-arrow-right"></i>
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <aside>
+            <section class="app-card transfer-summary">
+                <span class="section-icon"><i class="bi bi-wallet2"></i></span>
+                <h2>Rachunek źródłowy</h2>
+                <p>Konto osobiste w PLN</p>
+                <code th:text="${accountNumber}">48 1234 5678 9012 3456 7890 1234</code>
+                <div class="summary-balance">
+                    <span>Dostępne środki</span>
+                    <strong th:text="${balance}">10 000,00 zł</strong>
+                </div>
+            </section>
+            <div class="security-tip">
+                <i class="bi bi-shield-check"></i>
+                <div><strong>Sprawdź dane</strong><span>Bank nigdy nie prosi o hasło w tytule przelewu.</span></div>
+            </div>
+        </aside>
+    </div>
+</main>
+</html>

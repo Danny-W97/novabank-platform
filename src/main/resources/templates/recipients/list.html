@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/app-layout :: layout('Odbiorcy', 'recipients', ~{::main})}">
+<main>
+    <div class="page-heading">
+        <div>
+            <span class="page-eyebrow">Przelewy</span>
+            <h1>Zapisani odbiorcy</h1>
+            <p>Zarządzaj odbiorcami i rozpocznij przelew z uzupełnionymi danymi.</p>
+        </div>
+        <a class="btn app-btn-primary" th:href="@{/recipients/new}">
+            <i class="bi bi-person-plus"></i> Dodaj odbiorcę
+        </a>
+    </div>
+
+    <div class="profile-alert" th:if="${recipientSuccess}" role="status">
+        <i class="bi bi-check-circle-fill"></i>
+        <span th:text="${recipientSuccess}">Zapisano odbiorcę.</span>
+    </div>
+
+    <section class="app-card extension-card">
+        <div class="recipient-list" th:if="${not #lists.isEmpty(recipients)}">
+            <article class="recipient-row" th:each="recipient : ${recipients}">
+                <span class="recipient-avatar" th:text="${#strings.substring(recipient.alias, 0, 1)}">A</span>
+                <div>
+                    <strong th:text="${recipient.alias}">Dom</strong>
+                    <span th:text="${recipient.recipientName}">Anna Nowak</span>
+                    <code th:text="${recipient.accountNumber}">00 0000 0000 0000 0000 0000 0000</code>
+                </div>
+                <div class="recipient-actions">
+                    <a class="btn app-btn-primary btn-sm"
+                       th:href="@{/transfer(recipientId=${recipient.id})}">
+                        <i class="bi bi-send"></i> Przelew
+                    </a>
+                    <a class="btn app-btn-secondary btn-sm"
+                       th:href="@{/recipients/{id}/edit(id=${recipient.id})}">
+                        <i class="bi bi-pencil"></i>
+                    </a>
+                    <form th:action="@{/recipients/{id}/delete(id=${recipient.id})}" method="post">
+                        <button class="btn extension-danger btn-sm" type="submit">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </form>
+                </div>
+            </article>
+        </div>
+        <div class="empty-state" th:if="${#lists.isEmpty(recipients)}">
+            <span><i class="bi bi-people"></i></span>
+            <strong>Brak zapisanych odbiorców</strong>
+            <p>Dodaj pierwszy rachunek, aby szybciej rozpoczynać kolejne przelewy.</p>
+        </div>
+    </section>
+</main>
+</html>

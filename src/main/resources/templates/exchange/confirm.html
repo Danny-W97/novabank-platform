@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/app-layout :: layout('Potwierdzenie wymiany', 'exchange', ~{::main})}">
+<main>
+    <div class="page-heading">
+        <div><span class="page-eyebrow">Kantor walutowy</span><h1>Potwierdź wymianę</h1>
+            <p>Sprawdź kurs i kwotę przed wykonaniem operacji.</p></div>
+    </div>
+    <section class="app-card exchange-confirm-card">
+        <div class="form-alert form-alert-error" th:if="${exchangeError}">
+            <i class="bi bi-exclamation-circle"></i><span th:text="${exchangeError}">Nie udało się wykonać wymiany.</span>
+        </div>
+        <div class="exchange-confirm-grid">
+            <div><span>Oddajesz</span><strong th:text="|${quote.sourceAmount} ${quote.sourceCurrency}|">100 PLN</strong></div>
+            <i class="bi bi-arrow-right"></i>
+            <div><span>Otrzymujesz</span><strong th:text="|${quote.targetAmount} ${quote.targetCurrency}|">22,99 EUR</strong></div>
+        </div>
+        <dl class="exchange-details">
+            <div><dt>Kurs</dt><dd th:text="${quote.appliedRate}">0,2299</dd></div>
+            <div><dt>Ważność wyceny</dt><dd>10 minut</dd></div>
+        </dl>
+        <form th:action="@{/exchange/execute}" th:object="${exchangeForm}" method="post" class="form-actions">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+            <input type="hidden" th:field="*{idempotencyKey}">
+            <a class="btn app-btn-secondary" th:href="@{/exchange}">Anuluj</a>
+            <button class="btn app-btn-primary" type="submit">Wymień środki <i class="bi bi-check2"></i></button>
+        </form>
+    </section>
+</main>
+</html>

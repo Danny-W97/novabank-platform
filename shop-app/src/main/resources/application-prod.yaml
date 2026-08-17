@@ -1,0 +1,66 @@
+spring:
+  config:
+    import: "vault://"
+  cloud:
+    vault:
+      enabled: true
+      uri: "${VAULT_ADDR}"
+      authentication: APPROLE
+      app-role:
+        role-id: "${VAULT_ROLE_ID}"
+        secret-id: "${VAULT_SECRET_ID}"
+        role: "${VAULT_ROLE}"
+        app-role-path: "${VAULT_APPROLE_PATH:approle}"
+      ssl:
+        trust-store: "${VAULT_SSL_TRUST_STORE}"
+        trust-store-password: "${VAULT_SSL_TRUST_STORE_PASSWORD}"
+        trust-store-type: "${VAULT_SSL_TRUST_STORE_TYPE:PKCS12}"
+  datasource:
+    url: "jdbc:postgresql://${SHOP_POSTGRES_HOST}:${SHOP_POSTGRES_PORT}/${SHOP_POSTGRES_DB}"
+    username: "${SHOP_POSTGRES_USER}"
+    password: "${SHOP_POSTGRES_PASSWORD}"
+
+server:
+  port: "${SHOP_APP_PORT:8081}"
+  forward-headers-strategy: framework
+  ssl:
+    enabled: "${SERVER_SSL_ENABLED:false}"
+    key-store: "${SERVER_SSL_KEY_STORE:}"
+    key-store-password: "${SERVER_SSL_KEY_STORE_PASSWORD:}"
+    key-store-type: "${SERVER_SSL_KEY_STORE_TYPE:PKCS12}"
+    key-alias: "${SERVER_SSL_KEY_ALIAS:}"
+  servlet:
+    session:
+      cookie:
+        secure: true
+        http-only: true
+        same-site: lax
+
+management:
+  metrics:
+    tags:
+      environment: prod
+
+app:
+  certificate-monitor:
+    enabled: true
+    schedule: "0 0 3 * * *"
+
+shop:
+  bank:
+    base-url: "${BANK_API_URL}"
+    api-key: "${BANK_API_KEY}"
+    api-key-id: "${BANK_API_KEY_ID}"
+  orders:
+    merchant-account-number: "${SHOP_MERCHANT_ACCOUNT_NUMBER}"
+    reconciliation-enabled: "${SHOP_PAYMENT_RECONCILIATION_ENABLED:true}"
+    reconciliation-interval-ms: "${SHOP_PAYMENT_RECONCILIATION_INTERVAL_MS:30000}"
+    reconciliation-initial-delay-ms: "${SHOP_PAYMENT_RECONCILIATION_INITIAL_DELAY_MS:10000}"
+    reconciliation-batch-size: "${SHOP_PAYMENT_RECONCILIATION_BATCH_SIZE:50}"
+  payment-provider:
+    provider: "${SHOP_PAYMENT_PROVIDER:stripe}"
+    api-base-url: "${SHOP_PAYMENT_API_BASE_URL:https://api.stripe.com}"
+    api-key: "${SHOP_PAYMENT_API_KEY}"
+    webhook-secret: "${SHOP_PAYMENT_WEBHOOK_SECRET}"
+    success-url: "${SHOP_PAYMENT_SUCCESS_URL}"
+    cancel-url: "${SHOP_PAYMENT_CANCEL_URL}"

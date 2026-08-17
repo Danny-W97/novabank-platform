@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/app-layout :: layout('Przelew zaplanowany', 'transfer', ~{::main})}">
+<main>
+    <div class="page-heading">
+        <div><span class="page-eyebrow">Przelewy</span><h1>Zaplanowany przelew</h1><p>Ustal termin wykonania przelewu jednorazowego lub cyklicznego.</p></div>
+        <a class="btn app-btn-secondary" th:href="@{/scheduled-transfers}"><i class="bi bi-arrow-left"></i> Wróć</a>
+    </div>
+    <section class="app-card scheduled-transfer-card">
+        <form th:action="@{/scheduled-transfers}" th:object="${scheduledTransferForm}" method="post" class="app-form-field scheduled-transfer-form">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+            <div class="form-alert form-alert-error" th:if="${#fields.hasGlobalErrors()}"><span th:each="error : ${#fields.globalErrors()}" th:text="${error}">Błąd</span></div>
+            <label for="recipientName">Odbiorca</label><input id="recipientName" th:field="*{recipientName}" required>
+            <p class="field-error" th:errors="*{recipientName}"></p>
+            <label for="destinationAccountNumber">Numer rachunku</label><input id="destinationAccountNumber" th:field="*{destinationAccountNumber}" required>
+            <p class="field-error" th:errors="*{destinationAccountNumber}"></p>
+            <label for="amount">Kwota</label><input id="amount" th:field="*{amount}" inputmode="decimal" required>
+            <p class="field-error" th:errors="*{amount}"></p>
+            <label for="title">Tytuł</label><input id="title" th:field="*{title}" required>
+            <p class="field-error" th:errors="*{title}"></p>
+            <label for="frequency">Częstotliwość</label>
+            <select id="frequency" th:field="*{frequency}">
+                <option value="ONCE">Jednorazowo</option><option value="DAILY">Codziennie</option>
+                <option value="WEEKLY">Co tydzień</option><option value="MONTHLY">Co miesiąc</option>
+            </select>
+            <label for="firstExecution">Pierwsze wykonanie</label><input id="firstExecution" type="datetime-local" th:field="*{firstExecution}" required>
+            <p class="field-error" th:errors="*{firstExecution}"></p>
+            <button class="btn app-btn-primary" type="submit">Zaplanuj przelew <i class="bi bi-calendar-check"></i></button>
+        </form>
+    </section>
+</main>
+</html>

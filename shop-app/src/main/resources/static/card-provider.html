@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bezpieczna płatność | NovaBank Sandbox</title>
+  <style>
+    :root { --navy:#0d172d; --blue:#1677d2; --ink:#17233c; --muted:#687892; --line:#d8e0eb; --bg:#f4f7fb; --danger:#b4233c; --success:#087443; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.45 Arial,sans-serif; }
+    header { background:var(--navy); color:#fff; padding:20px max(20px,calc((100% - 1120px)/2)); display:flex; justify-content:space-between; align-items:center; gap:20px; }
+    header strong { font-size:21px; }
+    header a { color:#cbd8f6; text-decoration:none; }
+    main { width:min(1120px,calc(100% - 32px)); margin:34px auto 64px; }
+    .layout { display:grid; grid-template-columns:minmax(0,1fr) minmax(340px,440px); gap:26px; align-items:start; }
+    .summary, .payment { background:#fff; border:1px solid var(--line); border-radius:8px; padding:28px; box-shadow:0 10px 28px rgba(21,45,84,.08); }
+    .brand { display:flex; align-items:center; gap:12px; margin-bottom:32px; }
+    .mark { width:44px; height:44px; display:grid; place-items:center; border-radius:8px; color:#fff; background:#1b5ba5; font-size:24px; }
+    h1 { margin:0 0 6px; font-size:28px; }
+    h2 { margin:0 0 24px; font-size:21px; }
+    .muted { color:var(--muted); }
+    .order-number { overflow-wrap:anywhere; }
+    .amount { margin:24px 0 30px; font-size:42px; font-weight:700; }
+    .secure { padding:15px; border-radius:6px; background:#eef4fc; color:#425b82; }
+    .secure strong { display:block; margin-bottom:4px; color:var(--ink); }
+    .field { margin-top:16px; }
+    label { display:block; margin-bottom:7px; font-weight:700; }
+    input, select { width:100%; border:1px solid #c4d0df; border-radius:6px; padding:13px; color:var(--ink); background:#fff; font:inherit; }
+    input:focus, select:focus { outline:3px solid rgba(22,119,210,.16); border-color:var(--blue); }
+    .card-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    button { width:100%; border:0; border-radius:6px; padding:14px 18px; font:inherit; font-weight:700; cursor:pointer; }
+    button.primary { margin-top:24px; color:#fff; background:var(--blue); }
+    button.primary:disabled { opacity:.55; cursor:wait; }
+    .back { display:inline-block; margin-top:20px; color:#315f9b; text-decoration:none; }
+    .message { display:none; margin-top:18px; padding:13px; border-radius:6px; }
+    .message.show { display:block; }
+    .message.error { color:var(--danger); background:#fff0f2; }
+    .message.success { color:var(--success); background:#eaf8f1; }
+    .details { display:grid; grid-template-columns:auto 1fr; gap:9px 16px; margin-top:24px; }
+    .details dt { color:var(--muted); }
+    .details dd { margin:0; text-align:right; font-weight:700; }
+    @media (max-width:760px) { main { margin-top:20px; } .layout { grid-template-columns:1fr; } .amount { font-size:34px; } .summary, .payment { padding:22px; } }
+  </style>
+</head>
+<body>
+<header><strong>NovaBank Sandbox</strong><a href="/checkout.html">Wróć do kasy</a></header>
+<main>
+  <div class="layout">
+    <section class="summary">
+      <div class="brand"><div class="mark">▦</div><div><h1>Potwierdź płatność</h1><div class="muted">Bezpieczny formularz operatora płatności</div></div></div>
+      <div class="muted">NovaTech Shop</div>
+      <div class="order-number" id="orderNumber">Ładowanie zamówienia...</div>
+      <div class="amount" id="amount">-</div>
+      <dl class="details">
+        <dt>Operator</dt><dd>NovaBank Sandbox</dd>
+        <dt>Rachunek sklepu</dt><dd>Chroniony po stronie serwera</dd>
+      </dl>
+      <div class="secure" style="margin-top:28px"><strong>Bezpieczne dane karty</strong>Numer karty, CVV i data ważności są przekazywane wyłącznie do demonstracyjnego API banku i nie są zapisywane przez sklep.</div>
+    </section>
+    <section class="payment">
+      <h2>Dane karty</h2>
+      <form id="paymentForm" novalidate>
+        <div class="field"><label for="cardNumber">Numer karty</label><input id="cardNumber" inputmode="numeric" autocomplete="cc-number" maxlength="16" placeholder="16 cyfr" required></div>
+        <div class="card-grid">
+          <div class="field"><label for="expiry">Data ważności</label><input id="expiry" inputmode="numeric" autocomplete="cc-exp" maxlength="5" placeholder="MM/RR" required></div>
+          <div class="field"><label for="cvc">Kod CVC</label><input id="cvc" inputmode="numeric" autocomplete="cc-csc" maxlength="3" placeholder="3 cyfry" required></div>
+        </div>
+        <div class="field"><label for="name">Imię i nazwisko posiadacza</label><input id="name" autocomplete="cc-name" maxlength="100" placeholder="Imię i nazwisko"></div>
+        <div class="field"><label for="country">Kraj lub region</label><select id="country"><option>Polska</option><option>Niemcy</option><option>Francja</option><option>Hiszpania</option></select></div>
+        <button class="primary" id="payButton" type="submit">Zapłać</button>
+      </form>
+      <div id="message" class="message" role="alert"></div>
+      <a class="back" href="/checkout.html">Anuluj i wróć do kasy</a>
+    </section>
+  </div>
+</main>
+<script>
+  let paymentSession;
+  const $ = id => document.getElementById(id);
+  const cookie = name => document.cookie.split('; ').find(row => row.startsWith(name + '='))?.split('=').slice(1).join('=');
+  const csrf = () => decodeURIComponent(cookie('SHOP-XSRF-TOKEN') || '');
+  const format = (value, currency) => new Intl.NumberFormat('pl-PL', { style:'currency', currency }).format(Number(value || 0));
+  async function request(url, options = {}) {
+    const headers = new Headers(options.headers || {});
+    if (options.method && options.method !== 'GET') headers.set('X-XSRF-TOKEN', csrf());
+    const response = await fetch(url, { credentials:'same-origin', ...options, headers });
+    if (response.status === 401 || response.status === 403) {
+      window.location.href = '/shop-login.html?return=' + encodeURIComponent('/card-provider.html');
+      throw new Error('Zaloguj się ponownie.');
+    }
+    return response;
+  }
+  async function json(response) {
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.detail || body.message || body.error || 'Nie udało się wykonać operacji.');
+    return body;
+  }
+  function message(text, type = 'error') { const el = $('message'); el.textContent = text; el.className = 'message show ' + type; }
+  async function load() {
+    await request('/api/auth/csrf');
+    await json(await request('/api/auth/me'));
+    paymentSession = await json(await request('/api/checkout/card-session'));
+    $('orderNumber').textContent = 'Zamówienie ' + paymentSession.orderNumber;
+    $('amount').textContent = format(paymentSession.amount, paymentSession.currency);
+  }
+  $('paymentForm').addEventListener('submit', async event => {
+    event.preventDefault();
+    const cardNumber = $('cardNumber').value.replace(/\s+/g, '');
+    const expiry = $('expiry').value.trim();
+    const cvv = $('cvc').value.trim();
+    if (!/^\d{16}$/.test(cardNumber)) return message('Wpisz 16-cyfrowy numer karty.');
+    if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(expiry)) return message('Wpisz datę ważności w formacie MM/RR.');
+    if (!/^\d{3}$/.test(cvv)) return message('Wpisz 3-cyfrowy kod CVC.');
+    $('payButton').disabled = true;
+    try {
+      const response = await request('/api/orders/' + paymentSession.orderId + '/card-pay', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', 'Idempotency-Key':paymentSession.idempotencyKey },
+        body:JSON.stringify({ cardNumber, cvv, expiry, currency:paymentSession.currency, amount:paymentSession.amount })
+      });
+      const order = await json(response);
+      if (order.status === 'PAID') {
+        window.location.href = '/novatech_shop.html?payment=paid&order=' + encodeURIComponent(order.orderNumber);
+        return;
+      }
+      message(order.failureReason || 'Płatność została odrzucona. Sprawdź dane karty lub saldo.', 'error');
+    } catch (error) { message(error.message); }
+    finally { $('payButton').disabled = false; }
+  });
+  load().catch(error => message(error.message));
+</script>
+</body>
+</html>

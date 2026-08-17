@@ -1,0 +1,43 @@
+spring:
+  datasource:
+    url: "${TEST_POSTGRES_URL:jdbc:postgresql://localhost:5432/bank_test}"
+    username: "${TEST_POSTGRES_USER:bank_test}"
+    password: "${TEST_POSTGRES_PASSWORD:bank_test}"
+  data:
+    redis:
+      host: "${TEST_REDIS_HOST:localhost}"
+      port: "${TEST_REDIS_PORT:6379}"
+  flyway:
+    enabled: true
+
+server:
+  port: 0
+  forward-headers-strategy: framework
+  servlet:
+    session:
+      cookie:
+        secure: false
+        http-only: true
+        same-site: lax
+
+management:
+  server:
+    port: 0
+  metrics:
+    tags:
+      environment: test
+
+app:
+  certificate-monitor:
+    enabled: false
+  security:
+    totp-encryption-key: "${TEST_TOTP_ENCRYPTION_KEY:MDEyMzQ1Njc4OUFCQ0RFRjAxMjM0NTY3ODlBQkNERUY=}"
+  payment-api:
+    api-key: "${TEST_BANK_API_KEY:test-api-key}"
+    api-keys: ""
+  rate-limit:
+    login-ip-per-window: 1000
+    login-account-per-window: 1000
+    auth-action-ip-per-window: 1000
+    transfer-ip-per-window: 1000
+    transfer-user-per-window: 1000

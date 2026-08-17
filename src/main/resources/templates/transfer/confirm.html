@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/app-layout :: layout('Potwierdź przelew', 'transfer', ~{::main})}">
+<main>
+    <div class="page-heading">
+        <div>
+            <span class="page-eyebrow">Płatności</span>
+            <h1>Potwierdź przelew</h1>
+            <p>Sprawdź wszystkie dane. Saldo nie zostało jeszcze zmienione.</p>
+        </div>
+    </div>
+
+    <div class="form-page-grid">
+        <section class="app-card transfer-form-card">
+            <div class="form-section-heading">
+                <span>2</span>
+                <div>
+                    <h2>Podsumowanie operacji</h2>
+                    <p>Przelew zostanie wykonany dopiero po użyciu przycisku „Wykonaj przelew”.</p>
+                </div>
+            </div>
+
+            <dl class="confirmation-list">
+                <div>
+                    <dt>Odbiorca</dt>
+                    <dd th:text="${preview.recipientName}">Anna Nowak</dd>
+                </div>
+                <div>
+                    <dt>Numer rachunku</dt>
+                    <dd><code th:text="${preview.destinationAccountNumber}">61 1090 1014 0000 0712 1981 2874</code></dd>
+                </div>
+                <div>
+                    <dt>Tytuł</dt>
+                    <dd th:text="${preview.title}">Zwrot środków</dd>
+                </div>
+                <div class="confirmation-amount">
+                    <dt>Kwota przelewu</dt>
+                    <dd th:text="${preview.amount}">100,00 zł</dd>
+                </div>
+            </dl>
+
+            <div class="confirmation-warning">
+                <i class="bi bi-info-circle"></i>
+                <span>To ostatni krok przed zmianą salda obu rachunków.</span>
+            </div>
+
+            <div class="form-actions transfer-confirm-actions">
+                <form th:action="@{/transfer/edit}" method="post">
+                    <input type="hidden" name="idempotencyKey" th:value="${transferForm.idempotencyKey}">
+                    <button class="btn app-btn-secondary" type="submit">
+                        <i class="bi bi-arrow-left"></i> Popraw dane
+                    </button>
+                </form>
+                <form th:action="@{/transfer/execute}" method="post">
+                    <input type="hidden" name="idempotencyKey" th:value="${transferForm.idempotencyKey}">
+                    <div class="form-alert form-alert-error" th:if="${pinError}" role="alert">
+                        <i class="bi bi-exclamation-circle"></i>
+                        <span th:text="${pinError}">Podano zły pin transakcyjny</span>
+                        </div>
+                    <div class="form-alert form-alert-error" th:if="${totpError}" role="alert">
+                        <i class="bi bi-shield-x"></i>
+                        <span th:text="${totpError}">Kod TOTP jest nieprawidlowy.</span>
+                    </div>
+                    <div class="form-alert form-alert-error" th:if="${totpRequired and not totpEnabled}" role="alert">
+                        <i class="bi bi-shield-lock"></i>
+                        <span>Ten przelew wymaga wlaczonego 2FA. <a th:href="@{/profile/two-factor}">Wlacz Google Authenticator</a>.</span>
+                    </div>
+                    <div class="app-form-field transaction-pin-field" th:if="${totpRequired and totpEnabled}">
+                        <label for="totpCode">Kod Google Authenticator</label>
+                        <input id="totpCode" name="totpCode" type="text" inputmode="numeric"
+                               minlength="6" maxlength="6" autocomplete="one-time-code" required
+                               th:classappend="${totpError} ? 'is-invalid'"
+                               th:attr="aria-invalid=${totpError != null}">
+                        <small th:text="${'Dodatkowe potwierdzenie: ' + totpReason}">Dodatkowe potwierdzenie przelewu.</small>
+                    </div>
+                    <div class="app-form-field transaction-pin-field" th:if="${pinRequired}">
+                        <label for="transactionPin">PIN transakcyjny</label>
+                        <input id="transactionPin" name="pin" type="password" inputmode="numeric"
+                               minlength="4" maxlength="6" autocomplete="off" required
+                               th:classappend="${pinError} ? 'is-invalid'"
+                               th:attr="aria-invalid=${pinError != null}">
+                        <small>PIN skonfigurowany w profilu jest wymagany do wykonania przelewu.</small>
+                    </div>
+                    <button class="btn app-btn-primary" type="submit">
+                        Wykonaj przelew <i class="bi bi-check2-circle"></i>
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <aside>
+            <section class="app-card transfer-summary">
+                <span class="section-icon"><i class="bi bi-wallet2"></i></span>
+                <h2>Rachunek źródłowy</h2>
+                <p>Konto osobiste w PLN</p>
+                <code th:text="${accountNumber}">48 1234 5678 9012 3456 7890 1234</code>
+                <div class="summary-balance">
+                    <span>Saldo przed przelewem</span>
+                    <strong th:text="${balance}">10 000,00 zł</strong>
+                </div>
+            </section>
+            <div class="security-tip">
+                <i class="bi bi-shield-check"></i>
+                <div>
+                    <strong>Bezpieczne zatwierdzenie</strong>
+                    <span>Jednorazowy klucz chroni operację przed podwójnym wykonaniem.</span>
+                </div>
+            </div>
+        </aside>
+    </div>
+</main>
+</html>

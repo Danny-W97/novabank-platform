@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kasa | NovaTech Shop</title>
+  <style>
+    :root { --navy:#0d172d; --blue:#377ff0; --ink:#152039; --muted:#687892; --line:#dce4ef; --bg:#f5f8fc; --danger:#b4233c; --success:#087443; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:var(--bg); font:16px/1.45 Arial,sans-serif; }
+    header { background:var(--navy); color:white; padding:22px max(22px,calc((100% - 1080px)/2)); display:flex; justify-content:space-between; align-items:center; gap:20px; }
+    header strong { font-size:21px; }
+    header a { color:#c9d8ff; text-decoration:none; }
+    main { width:min(1080px,calc(100% - 32px)); margin:36px auto 64px; }
+    h1 { margin:0 0 8px; font-size:34px; }
+    .lead { margin:0 0 26px; color:var(--muted); }
+    .layout { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(300px,.8fr); gap:24px; align-items:start; }
+    .panel { background:white; border:1px solid var(--line); border-radius:8px; padding:24px; box-shadow:0 8px 24px rgba(20,45,85,.06); }
+    .panel h2 { margin:0 0 18px; font-size:21px; }
+    .item { display:flex; justify-content:space-between; gap:16px; padding:14px 0; border-bottom:1px solid var(--line); }
+    .item:last-child { border-bottom:0; }
+    .item small { display:block; color:var(--muted); margin-top:3px; }
+    .total { display:flex; justify-content:space-between; align-items:center; padding-top:18px; font-size:20px; font-weight:700; }
+    .total strong { font-size:27px; }
+    .methods { display:grid; gap:12px; }
+    .method { width:100%; border:1px solid var(--line); background:#fff; border-radius:8px; padding:17px; text-align:left; cursor:pointer; color:var(--ink); }
+    .method:hover,.method.active { border-color:var(--blue); box-shadow:0 0 0 3px rgba(55,127,240,.12); }
+    .method strong,.method span { display:block; }
+    .method span { color:var(--muted); font-size:14px; margin-top:3px; }
+    .method-panel { margin-top:18px; padding-top:18px; border-top:1px solid var(--line); }
+    label { display:block; font-weight:700; margin:14px 0 7px; }
+    input,select { width:100%; border:1px solid #c6d3e4; border-radius:6px; padding:12px; font:inherit; color:var(--ink); background:#fff; }
+    button.primary { width:100%; border:0; border-radius:6px; padding:14px 18px; background:var(--blue); color:white; font-weight:700; font-size:16px; cursor:pointer; margin-top:18px; }
+    button.primary:disabled { opacity:.55; cursor:wait; }
+    .quote { margin-top:16px; padding:14px; border-radius:6px; background:#eef4fc; color:#33496a; }
+    .quote strong { display:block; color:var(--ink); font-size:22px; margin-top:4px; }
+    .message { display:none; margin:18px 0 0; padding:13px; border-radius:6px; }
+    .message.show { display:block; }
+    .message.error { background:#fff0f2; color:var(--danger); }
+    .message.success { background:#eaf8f1; color:var(--success); }
+    .note { margin-top:18px; color:var(--muted); font-size:13px; }
+    @media (max-width:760px) { main { margin-top:24px; } .layout { grid-template-columns:1fr; } h1 { font-size:29px; } }
+  </style>
+</head>
+<body>
+<header><strong>NovaTech Shop</strong><a href="/novatech_shop.html">Wróć do sklepu</a></header>
+<main>
+  <h1>Kasa</h1>
+  <p class="lead">Sprawdź zamówienie i wybierz sposób płatności.</p>
+  <div class="layout">
+    <section class="panel">
+      <h2>Podsumowanie zamówienia</h2>
+      <div id="items"><p class="lead">Ładowanie koszyka...</p></div>
+      <div class="total"><span>Razem</span><strong id="total">0,00 PLN</strong></div>
+    </section>
+    <section class="panel">
+      <h2>Wybierz płatność</h2>
+      <div class="methods">
+        <button class="method active" id="bankMethod" type="button">
+          <strong>Zapłać przez NovaBank</strong><span>Bezpieczne przekierowanie do logowania i potwierdzenia w banku.</span>
+        </button>
+        <button class="method" id="cardMethod" type="button">
+          <strong>Zapłać kartą</strong><span>Formularz sklepu i płatność w wybranej walucie.</span>
+        </button>
+      </div>
+      <div id="bankPanel" class="method-panel">
+        <p class="note">Kwota zamówienia pozostaje w PLN. Bank poprosi o zalogowanie i potwierdzenie przelewu.</p>
+        <button class="primary" id="bankPay" type="button">Złóż zamówienie i przejdź do NovaBank</button>
+      </div>
+      <div id="cardPanel" class="method-panel" hidden>
+        <div id="bankCardNotice" class="quote" hidden>Dane karty wpiszesz na bezpiecznej stronie NovaBank Sandbox. Sklep nie zapisuje numeru karty, CVV ani daty waznosci.</div>
+        <div id="externalCardNotice" class="quote" hidden>Dane karty wpiszesz na bezpiecznej stronie operatora platnosci. NovaTech Shop nie otrzymuje ani nie zapisuje numeru karty, CVV ani daty waznosci.</div>
+        <p class="note" id="demoCardNote">To demonstracyjny numer z profilu karty NovaTech Shop. Nie uzywaj prawdziwego numeru karty.</p>
+        <div id="demoCardFields" hidden>
+          <label for="cardNumber">Numer karty demonstracyjnej</label>
+          <input id="cardNumber" inputmode="numeric" maxlength="16" autocomplete="off" placeholder="16 cyfr">
+          <label for="cardCvv">CVV demonstracyjny</label>
+          <input id="cardCvv" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="3 cyfry">
+          <label for="cardExpiry">Wazna do (MM/RR)</label>
+          <input id="cardExpiry" inputmode="numeric" maxlength="5" autocomplete="off" placeholder="MM/RR">
+        </div>
+        <label for="currency">Waluta płatności</label>
+        <select id="currency">
+          <option value="PLN">PLN</option><option value="EUR">EUR</option><option value="USD">USD</option>
+          <option value="GBP">GBP</option><option value="CHF">CHF</option>
+        </select>
+        <div class="quote" id="quote" hidden>Do zapłaty w wybranej walucie:<strong id="quoteAmount">-</strong><small id="quoteRate"></small></div>
+        <button class="primary" id="cardPay" type="button">Zapłać kartą</button>
+        <p class="note">To demonstracyjny numer z profilu karty NovaBank. Nie używaj prawdziwego numeru karty.</p>
+      </div>
+      <div id="message" class="message" role="alert"></div>
+    </section>
+  </div>
+</main>
+<script>
+  let cart = null;
+  let quote = null;
+  let quoteCurrency = null;
+  let quoteLoading = false;
+  let method = 'bank';
+  let cardProvider = 'bank-demo';
+  const $ = id => document.getElementById(id);
+  const format = (value, currency = 'PLN') => new Intl.NumberFormat('pl-PL', { style:'currency', currency }).format(Number(value || 0));
+  const selectedCurrency = () => ($('currency').value || 'PLN').trim().toUpperCase();
+  const cartItems = () => Array.isArray(cart?.items) ? cart.items : [];
+  const cartHasItems = () => cartItems().length > 0;
+  function resetQuote() { quote = null; quoteCurrency = null; $('quote').hidden = true; }
+  function hasValidQuote() { return quote && quoteCurrency === selectedCurrency(); }
+  function setCardPaymentState() {
+    const button = $('cardPay');
+    if (!button) return;
+    button.textContent = quoteLoading ? 'Pobieranie kursu...' : 'Przejdz do bezpiecznej platnosci';
+    button.disabled = method === 'card' && (quoteLoading || !cartHasItems() || !hasValidQuote());
+  }
+  const cookie = name => document.cookie.split('; ').find(row => row.startsWith(name + '='))?.split('=').slice(1).join('=');
+  const csrf = () => decodeURIComponent(cookie('SHOP-XSRF-TOKEN') || '');
+  async function api(url, options = {}) {
+    const headers = new Headers(options.headers || {});
+    if (options.method && options.method !== 'GET') headers.set('X-XSRF-TOKEN', csrf());
+    const response = await fetch(url, { credentials:'same-origin', ...options, headers });
+    if (response.status === 401) { window.location.href = '/shop-login.html?return=' + encodeURIComponent('/checkout.html'); throw new Error('Zaloguj się ponownie.'); }
+    return response;
+  }
+  async function json(response) {
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.detail || body.message || body.error || 'Nie udało się wykonać operacji.');
+    return body;
+  }
+  function showMessage(text, type = 'error') { const el = $('message'); el.textContent = text; el.className = 'message show ' + type; }
+  function renderCart() {
+    const items = $('items'); items.replaceChildren();
+    const currentItems = cartItems();
+    currentItems.forEach(item => { const row = document.createElement('div'); row.className = 'item'; const name = document.createElement('div'); name.textContent = item.name || item.productName; const small = document.createElement('small'); small.textContent = item.quantity + ' x ' + format(item.unitPrice, item.currency); name.appendChild(small); const sum = document.createElement('strong'); sum.textContent = format(item.lineTotal, item.currency); row.append(name, sum); items.appendChild(row); });
+    if (!currentItems.length) { const empty = document.createElement('p'); empty.className = 'lead'; empty.textContent = 'Koszyk jest pusty.'; items.appendChild(empty); resetQuote(); }
+    $('total').textContent = format(cart?.total, cart?.currency || 'PLN');
+    setCardPaymentState();
+  }
+  async function load() {
+    await api('/api/auth/csrf');
+    await json(await api('/api/auth/me'));
+    cart = await json(await api('/api/cart'));
+    cardProvider = (await json(await api('/api/checkout/card-provider'))).provider;
+    const hosted = cardProvider === 'stripe';
+    $('bankCardNotice').hidden = hosted;
+    $('externalCardNotice').hidden = !hosted;
+    $('demoCardNote').hidden = true;
+    renderCart();
+    if (!cart.items?.length) showMessage('Koszyk jest pusty.', 'error');
+    setCardPaymentState();
+  }
+  async function loadQuote() {
+    if (!cartHasItems()) { resetQuote(); setCardPaymentState(); return; }
+    const requestedCurrency = selectedCurrency();
+    resetQuote();
+    quoteLoading = true;
+    setCardPaymentState();
+    try {
+      const response = await api('/api/checkout/quote', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ currency:requestedCurrency }) });
+      const nextQuote = await json(response);
+      if (selectedCurrency() !== requestedCurrency) return;
+      const returnedCurrency = String(nextQuote.currency || requestedCurrency).trim().toUpperCase();
+      if (returnedCurrency !== requestedCurrency) throw new Error('Bank zwrocil wycene w innej walucie.');
+      quote = { ...nextQuote, currency: returnedCurrency };
+      quoteCurrency = returnedCurrency;
+      $('quoteAmount').textContent = format(quote.amount, quote.currency); $('quoteRate').textContent = 'Kurs banku: ' + Number(quote.rate).toFixed(6) + ' PLN'; $('quote').hidden = false;
+    } catch (error) { showMessage(error.message); }
+    finally { quoteLoading = false; setCardPaymentState(); }
+  }
+  function selectMethod(value) { method = value; const bank = value === 'bank'; $('bankMethod').classList.toggle('active', bank); $('cardMethod').classList.toggle('active', !bank); $('bankPanel').hidden = !bank; $('cardPanel').hidden = bank; if (!bank) loadQuote(); else setCardPaymentState(); }
+  async function createOrder() { return json(await api('/api/orders', { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' })); }
+  async function payBank() {
+    const popup = window.open('about:blank', '_blank'); $('bankPay').disabled = true; showMessage('Tworzę zamówienie...', 'success');
+    try { const order = await createOrder(); const response = await api('/api/orders/' + order.id + '/pay', { method:'POST', headers:{'Idempotency-Key':'checkout-' + order.orderNumber} }); const paid = await json(response); if (!paid.authorizationUrl) throw new Error(paid.failureReason || 'Bank nie zwrócił adresu autoryzacji.'); if (popup && !popup.closed) { popup.location.href = paid.authorizationUrl; popup.focus(); } else window.location.href = paid.authorizationUrl; }
+    catch (error) { if (popup && !popup.closed) popup.close(); showMessage(error.message); } finally { $('bankPay').disabled = false; }
+  }
+  async function payCard() {
+    const requestedCurrency = selectedCurrency();
+    if (!cartHasItems()) { showMessage('Koszyk jest pusty.'); setCardPaymentState(); return; }
+    if (!hasValidQuote()) {
+      await loadQuote();
+      if (!hasValidQuote()) { showMessage('Nie udalo sie pobrac przeliczenia platnosci.'); return; }
+    }
+    $('cardPay').disabled = true;
+    try {
+      if (cardProvider === 'bank-demo') {
+        const response = await api('/api/checkout/card-session-from-cart', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({ currency:requestedCurrency, amount:quote.amount })
+        });
+        const checkout = await json(response);
+        window.location.href = checkout.redirectUrl;
+        return;
+      }
+      const order = await createOrder();
+      const response = await api('/api/orders/' + order.id + '/card-checkout', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','Idempotency-Key':'card-' + order.orderNumber},
+        body:JSON.stringify({ currency:requestedCurrency, amount:quote.amount })
+      });
+      const checkout = await json(response);
+      if (!checkout.checkoutUrl) throw new Error(checkout.failureReason || 'Operator nie zwrócił adresu płatności.');
+      window.location.href = checkout.checkoutUrl;
+    }
+    catch (error) { showMessage(error.message); } finally { setCardPaymentState(); }
+  }
+  $('bankMethod').addEventListener('click', () => selectMethod('bank')); $('cardMethod').addEventListener('click', () => selectMethod('card')); $('currency').addEventListener('change', () => { resetQuote(); setCardPaymentState(); if (method === 'card') loadQuote(); }); $('bankPay').addEventListener('click', payBank); $('cardPay').addEventListener('click', payCard);
+  load().catch(error => showMessage(error.message));
+</script>
+</body>
+</html>

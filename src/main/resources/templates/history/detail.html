@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/app-layout :: layout('Szczegóły transakcji', 'history', ~{::main})}">
+<main>
+    <div class="page-heading">
+        <div>
+            <span class="page-eyebrow">Historia operacji</span>
+            <h1>Szczegóły transakcji</h1>
+            <p>Pełne dane operacji zapisane w chwili jej wykonania.</p>
+        </div>
+        <div class="export-actions">
+            <a class="btn app-btn-secondary" th:href="@{/history}">
+                <i class="bi bi-arrow-left"></i> Wróć do historii
+            </a>
+            <a class="btn app-btn-primary"
+               th:href="@{/history/{id}/confirmation.pdf(id=${transaction.id})}">
+                <i class="bi bi-file-earmark-pdf"></i> Pobierz PDF
+            </a>
+        </div>
+    </div>
+
+    <section class="app-card history-detail-card">
+        <div class="history-detail-hero">
+            <span class="history-detail-icon"
+                  th:classappend="${transaction.direction == 'Wychodząca'} ? ' outgoing' : ' incoming'">
+                <i class="bi"
+                   th:classappend="${transaction.direction == 'Wychodząca'} ? ' bi-arrow-up-right' : ' bi-arrow-down-left'"></i>
+            </span>
+            <div>
+                <span th:text="${transaction.direction}">Wychodząca</span>
+                <h2 th:text="${transaction.counterparty}">Anna Nowak</h2>
+                <p th:text="${transaction.title}">Tytuł przelewu</p>
+            </div>
+            <strong th:text="${transaction.amount}"
+                    th:classappend="${transaction.direction == 'Wychodząca'} ? ' expense' : ' income'">
+                −100,00 zł
+            </strong>
+        </div>
+
+        <dl class="history-detail-list">
+            <div>
+                <dt>Status</dt>
+                <dd><span class="transaction-status" th:text="${transaction.status}">Zrealizowana</span></dd>
+            </div>
+            <div>
+                <dt>Typ operacji</dt>
+                <dd th:text="${transaction.type}">Przelew</dd>
+            </div>
+            <div>
+                <dt>Numer referencyjny</dt>
+                <dd><code th:text="${transaction.referenceNumber}">TRX-...</code></dd>
+            </div>
+            <div>
+                <dt>Twój rachunek</dt>
+                <dd><code th:text="${transaction.ownAccount}">00 0000 0000 0000 0000 0000 0000</code></dd>
+            </div>
+            <div>
+                <dt>Rachunek kontrahenta</dt>
+                <dd><code th:text="${transaction.counterpartyAccount}">00 0000 0000 0000 0000 0000 0000</code></dd>
+            </div>
+            <div>
+                <dt>Data utworzenia</dt>
+                <dd th:text="${transaction.createdAt}">26 lipca 2026, 14:00</dd>
+            </div>
+            <div>
+                <dt>Data realizacji</dt>
+                <dd th:text="${transaction.completedAt}">26 lipca 2026, 14:00</dd>
+            </div>
+        </dl>
+
+        <div class="history-detail-actions" th:if="${canRetry}">
+            <form th:action="@{/history/{id}/retry(id=${transaction.id})}" method="post">
+                <button class="btn app-btn-primary" type="submit">
+                    <i class="bi bi-arrow-repeat"></i> Ponow przelew
+                </button>
+            </form>
+        </div>
+
+        <div class="history-detail-note">
+            <i class="bi bi-mortarboard"></i>
+            <span>Operacja została wykonana w edukacyjnym środowisku NovaBank i nie ma wartości finansowej.</span>
+        </div>
+    </section>
+</main>
+</html>

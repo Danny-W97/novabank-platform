@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/app-layout :: layout('Powiadomienia', 'notifications', ~{::main})}">
+<main>
+    <div class="page-heading">
+        <div>
+            <span class="page-eyebrow">Aktywność konta</span>
+            <h1>Powiadomienia</h1>
+            <p>Informacje o przelewach i zdarzeniach bezpieczeństwa.</p>
+        </div>
+        <span class="verified-badge">
+            <i class="bi bi-bell"></i>
+            <span th:text="${notificationPage.unreadCount + ' nieprzeczytanych'}">0 nieprzeczytanych</span>
+        </span>
+    </div>
+    <section class="app-card extension-card">
+        <div class="notification-list" th:if="${not #lists.isEmpty(notificationPage.notifications)}">
+            <article class="notification-row"
+                     th:each="notification : ${notificationPage.notifications}"
+                     th:classappend="${notification.read} ? ' read'">
+                <span class="notification-icon" th:classappend="${notification.type}">
+                    <i class="bi"
+                       th:classappend="${notification.type == 'security'} ? ' bi-shield-lock' : (${notification.type == 'success'} ? ' bi-check-circle' : ' bi-info-circle')"></i>
+                </span>
+                <div>
+                    <strong th:text="${notification.type == 'security' ? 'Bezpieczeństwo' : 'Operacja na rachunku'}">
+                        Powiadomienie
+                    </strong>
+                    <p th:text="${notification.message}">Treść powiadomienia</p>
+                    <small th:text="${notification.createdAt}">Data</small>
+                </div>
+                <form th:if="${not notification.read}"
+                      th:action="@{/notifications/{id}/read(id=${notification.id})}" method="post">
+                    <button class="btn app-btn-secondary btn-sm" type="submit">Oznacz jako przeczytane</button>
+                </form>
+            </article>
+        </div>
+        <div class="empty-state" th:if="${#lists.isEmpty(notificationPage.notifications)}">
+            <span><i class="bi bi-bell-slash"></i></span>
+            <strong>Brak powiadomień</strong>
+            <p>Nowe operacje i zdarzenia bezpieczeństwa pojawią się tutaj.</p>
+        </div>
+    </section>
+</main>
+</html>

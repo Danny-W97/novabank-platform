@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/app-layout :: layout('Edycja profilu', 'profile', ~{::main})}">
+<main>
+    <div class="page-heading">
+        <div>
+            <span class="page-eyebrow">Ustawienia konta</span>
+            <h1>Edytuj dane profilu</h1>
+            <p>Zaktualizuj dane osobowe przypisane do konta demonstracyjnego.</p>
+        </div>
+    </div>
+
+    <div class="profile-form-layout">
+        <section class="app-card profile-form-card">
+            <div class="form-section-heading">
+                <span><i class="bi bi-person-gear"></i></span>
+                <div>
+                    <h2>Dane osobowe</h2>
+                    <p>Adres e-mail pozostaje identyfikatorem logowania i nie podlega edycji.</p>
+                </div>
+            </div>
+
+            <div class="profile-readonly">
+                <span>Adres e-mail</span>
+                <strong th:text="${profile.email}">email@example.pl</strong>
+                <small><i class="bi bi-lock"></i> Identyfikator konta</small>
+            </div>
+
+            <form th:action="@{/profile/edit}" th:object="${profileUpdateForm}" method="post"
+                  novalidate data-client-validation>
+                <div class="profile-form-grid">
+                    <div class="app-form-field">
+                        <label for="firstName">Imię</label>
+                        <input id="firstName" type="text" th:field="*{firstName}"
+                               th:classappend="${#fields.hasErrors('firstName')} ? 'is-invalid'"
+                               maxlength="100" autocomplete="given-name" required>
+                        <p class="field-error" th:if="${#fields.hasErrors('firstName')}"
+                           th:errors="*{firstName}">Błąd imienia</p>
+                    </div>
+
+                    <div class="app-form-field">
+                        <label for="lastName">Nazwisko</label>
+                        <input id="lastName" type="text" th:field="*{lastName}"
+                               th:classappend="${#fields.hasErrors('lastName')} ? 'is-invalid'"
+                               maxlength="100" autocomplete="family-name" required>
+                        <p class="field-error" th:if="${#fields.hasErrors('lastName')}"
+                           th:errors="*{lastName}">Błąd nazwiska</p>
+                    </div>
+
+                    <div class="app-form-field">
+                        <label for="phone">Numer telefonu</label>
+                        <input id="phone" type="tel" th:field="*{phone}"
+                               th:classappend="${#fields.hasErrors('phone')} ? 'is-invalid'"
+                               maxlength="20" autocomplete="tel" placeholder="+48 500 600 700">
+                        <small>Opcjonalnie, od 7 do 20 znaków.</small>
+                        <p class="field-error" th:if="${#fields.hasErrors('phone')}"
+                           th:errors="*{phone}">Błąd numeru telefonu</p>
+                    </div>
+
+                    <div class="app-form-field">
+                        <label for="birthDate">Data urodzenia</label>
+                        <input id="birthDate" type="date" th:field="*{birthDate}"
+                               th:classappend="${#fields.hasErrors('birthDate')} ? 'is-invalid'"
+                               autocomplete="bday">
+                        <small>Data musi przypadać w przeszłości.</small>
+                        <p class="field-error" th:if="${#fields.hasErrors('birthDate')}"
+                           th:errors="*{birthDate}">Błąd daty urodzenia</p>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <a class="btn app-btn-secondary" th:href="@{/profile}">Anuluj</a>
+                    <button class="btn app-btn-primary" type="submit">
+                        <i class="bi bi-check2"></i> Zapisz zmiany
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <aside class="security-tip profile-form-tip">
+            <i class="bi bi-info-circle"></i>
+            <div>
+                <strong>Dane demonstracyjne</strong>
+                <span>Nie wpisuj prawdziwych danych osobowych. NovaBank jest środowiskiem edukacyjnym.</span>
+            </div>
+        </aside>
+    </div>
+</main>
+</html>

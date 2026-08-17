@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Adres dostawy | NovaTech Shop</title>
+  <link rel="stylesheet" href="/css/shop-account.css">
+</head>
+<body>
+<header class="account-topbar">
+  <a class="account-brand" href="/novatech_shop.html">NovaTech Shop</a>
+  <a href="/novatech_shop.html">Wróć do sklepu</a>
+</header>
+<main class="account-shell">
+  <div class="account-heading">
+    <p class="account-eyebrow">Konto sklepu</p>
+    <h1>Adres dostawy</h1>
+    <p>Zapisz adres, który będzie można wykorzystać przy obsłudze zamówienia.</p>
+  </div>
+  <div class="account-layout">
+    <nav class="account-nav" aria-label="Menu konta">
+      <a href="/shop-profile.html">Profil</a>
+      <a class="active" href="/shop-address.html">Adres dostawy</a>
+      <a href="/shop-orders.html">Moje zamówienia</a>
+      <a href="/novatech_shop.html?logout">Sklep</a>
+    </nav>
+    <section class="account-panel">
+      <h2>Dane do wysyłki</h2>
+      <p class="account-panel-intro">Pola oznaczają dane adresowe, nie dane rachunku bankowego.</p>
+      <form class="account-form" id="addressForm">
+        <div class="field-grid">
+          <div class="field full">
+            <label for="recipientName">Odbiorca</label>
+            <input id="recipientName" type="text" maxlength="150" required autocomplete="name">
+          </div>
+          <div class="field">
+            <label for="street">Ulica</label>
+            <input id="street" type="text" maxlength="150" required autocomplete="street-address">
+          </div>
+          <div class="field">
+            <label for="houseNumber">Numer domu</label>
+            <input id="houseNumber" type="text" maxlength="20" required>
+          </div>
+          <div class="field">
+            <label for="apartmentNumber">Numer lokalu</label>
+            <input id="apartmentNumber" type="text" maxlength="20">
+          </div>
+          <div class="field">
+            <label for="postalCode">Kod pocztowy</label>
+            <input id="postalCode" type="text" maxlength="16" required autocomplete="postal-code">
+          </div>
+          <div class="field">
+            <label for="city">Miasto</label>
+            <input id="city" type="text" maxlength="100" required autocomplete="address-level2">
+          </div>
+          <div class="field">
+            <label for="country">Kraj</label>
+            <input id="country" type="text" maxlength="100" required autocomplete="country-name" value="Polska">
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="primary-action" id="saveAddress" type="submit">Zapisz adres</button>
+          <a class="secondary-action" href="/novatech_shop.html">Anuluj</a>
+        </div>
+        <div class="form-message" id="message" role="status" aria-live="polite"></div>
+      </form>
+    </section>
+  </div>
+</main>
+<script src="/js/shop-account.js"></script>
+<script>
+  const addressForm = document.getElementById('addressForm');
+  const addressMessage = document.getElementById('message');
+  const addressFields = ['recipientName', 'street', 'houseNumber', 'apartmentNumber', 'postalCode', 'city', 'country'];
+
+  async function loadAddress() {
+    const response = await shopAccountFetch('/api/account/address');
+    if (response.status === 401) return shopAccountRequireLogin();
+    if (!response.ok) throw new Error(await shopAccountReadError(response));
+    const address = await response.json();
+    addressFields.forEach(id => {
+      if (address[id] !== null && address[id] !== undefined) document.getElementById(id).value = address[id];
+    });
+  }
+
+  addressForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    const button = document.getElementById('saveAddress');
+    button.disabled = true;
+    shopAccountMessage(addressMessage, '', '');
+    try {
+      const body = Object.fromEntries(addressFields.map(id => [id, document.getElementById(id).value]));
+      const response = await shopAccountFetch('/api/account/address', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (response.status === 401) return shopAccountRequireLogin();
+      if (!response.ok) throw new Error(await shopAccountReadError(response));
+      shopAccountMessage(addressMessage, 'Adres dostawy został zapisany.', 'success');
+    } catch (error) {
+      shopAccountMessage(addressMessage, error.message, 'error');
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  loadAddress().catch(error => shopAccountMessage(addressMessage, error.message, 'error'));
+</script>
+</body>
+</html>

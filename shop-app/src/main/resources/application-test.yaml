@@ -1,0 +1,41 @@
+spring:
+  datasource:
+    url: "${TEST_SHOP_POSTGRES_URL:jdbc:postgresql://localhost:5432/shop_test}"
+    username: "${TEST_SHOP_POSTGRES_USER:shop_test}"
+    password: "${TEST_SHOP_POSTGRES_PASSWORD:shop_test}"
+  flyway:
+    enabled: true
+
+server:
+  port: 0
+  forward-headers-strategy: framework
+  servlet:
+    session:
+      cookie:
+        secure: false
+        http-only: true
+        same-site: lax
+
+management:
+  server:
+    port: 0
+  metrics:
+    tags:
+      environment: test
+
+app:
+  certificate-monitor:
+    enabled: false
+
+shop:
+  rate-limit:
+    enabled: false
+  bank:
+    base-url: "${TEST_BANK_BASE_URL:http://localhost:8080}"
+    api-key: "${TEST_BANK_API_KEY:test-api-key}"
+    api-key-id: "${TEST_BANK_API_KEY_ID:test}"
+  orders:
+    merchant-account-number: "${TEST_SHOP_MERCHANT_ACCOUNT:00000000000000000000000000}"
+    reconciliation-enabled: false
+  payment-provider:
+    provider: bank-demo

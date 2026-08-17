@@ -1,0 +1,14 @@
+FROM maven:3.9.11-eclipse-temurin-25 AS build
+
+WORKDIR /workspace
+COPY shop-app/pom.xml ./
+RUN mvn -B -ntp -DskipTests dependency:go-offline
+COPY shop-app/src ./src
+RUN mvn -B -ntp -DskipTests package && cp target/*.jar /tmp/application.jar
+
+FROM eclipse-temurin:25-jre
+
+WORKDIR /app
+COPY --from=build /tmp/application.jar /app/application.jar
+USER 10001
+ENTRYPOINT ["java", "-jar", "/app/application.jar"]

@@ -1,0 +1,39 @@
+spring:
+  config:
+    import: "optional:file:../.novabank/env/project.env[.properties],optional:file:../.novabank/env/dev.env[.properties],optional:file:.novabank/env/project.env[.properties],optional:file:.novabank/env/dev.env[.properties]"
+  datasource:
+    url: "jdbc:postgresql://${SHOP_POSTGRES_HOST:localhost}:${SHOP_POSTGRES_PORT:5400}/${SHOP_POSTGRES_DB:shopdb}"
+    username: "${SHOP_POSTGRES_USER:shopuser}"
+    password: "${SHOP_POSTGRES_PASSWORD:}"
+
+server:
+  port: "${SHOP_APP_PORT:8081}"
+  forward-headers-strategy: framework
+  servlet:
+    session:
+      cookie:
+        secure: false
+        http-only: true
+        same-site: lax
+
+management:
+  metrics:
+    tags:
+      environment: dev
+
+app:
+  certificate-monitor:
+    enabled: false
+
+shop:
+  bank:
+    base-url: "${BANK_API_URL:http://localhost:8080}"
+    api-key: "${BANK_API_KEY:}"
+    api-key-id: "${BANK_API_KEY_ID:legacy}"
+  payment-provider:
+    provider: "${SHOP_PAYMENT_PROVIDER:bank-demo}"
+    api-base-url: "${SHOP_PAYMENT_API_BASE_URL:https://api.stripe.com}"
+    api-key: "${SHOP_PAYMENT_API_KEY:}"
+    webhook-secret: "${SHOP_PAYMENT_WEBHOOK_SECRET:}"
+    success-url: "${SHOP_PAYMENT_SUCCESS_URL:http://localhost:8081/api/payments/stripe/success?order={ORDER_NUMBER}&session_id={CHECKOUT_SESSION_ID}}"
+    cancel-url: "${SHOP_PAYMENT_CANCEL_URL:http://localhost:8081/api/payments/stripe/cancel?order={ORDER_NUMBER}}"

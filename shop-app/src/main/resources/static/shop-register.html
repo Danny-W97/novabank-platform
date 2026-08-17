@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rejestracja | NovaTech Shop</title>
+  <style>
+    :root { font-family: Arial, sans-serif; color: #0f172a; background: #f1f5f9; }
+    body { min-height: 100vh; display: grid; place-items: center; margin: 0; }
+    main { width: min(100% - 32px, 420px); background: white; padding: 32px; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 12px 32px rgba(15,23,42,.08); }
+    h1 { margin: 0 0 8px; font-size: 24px; }
+    p, .hint { color: #64748b; line-height: 1.5; }
+    label { display: block; margin: 18px 0 6px; font-weight: 600; font-size: 14px; }
+    input { width: 100%; box-sizing: border-box; padding: 11px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 15px; }
+    button { width: 100%; margin-top: 22px; padding: 12px; border: 0; border-radius: 8px; background: #2563eb; color: white; font-weight: 700; cursor: pointer; }
+    button:disabled { opacity: .65; cursor: wait; }
+    .message { margin-top: 16px; padding: 10px 12px; border-radius: 8px; background: #fef2f2; color: #b91c1c; }
+    .link { display: block; margin-top: 18px; text-align: center; color: #2563eb; }
+    .hint { margin: 4px 0 0; font-size: 12px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Za&#322;&#243;&#380; konto</h1>
+  <p>Konto sklepu s&#322;u&#380;y do obs&#322;ugi koszyka i zam&oacute;wie&#324;.</p>
+  <form id="registerForm">
+    <label for="email">E-mail</label>
+    <input id="email" type="email" autocomplete="email" required>
+    <label for="password">Has&#322;o</label>
+    <input id="password" type="password" minlength="8" maxlength="72" autocomplete="new-password" required>
+    <label for="passwordConfirmation">Powt&oacute;rz has&#322;o</label>
+    <input id="passwordConfirmation" type="password" minlength="8" maxlength="72" autocomplete="new-password" required>
+    <div class="hint">Numer rachunku wybierzesz bezpiecznie po zalogowaniu do NovaBank podczas p&#322;atno&#347;ci.</div>
+    <button type="submit">Utw&oacute;rz konto</button>
+  </form>
+  <div class="message" id="message" hidden></div>
+  <a class="link" href="/shop-login.html">Mam ju&#380; konto</a>
+</main>
+<script>
+  function cookie(name) {
+    const item = document.cookie.split('; ').find(value => value.startsWith(name + '='));
+    return item ? decodeURIComponent(item.substring(name.length + 1)) : '';
+  }
+
+  async function csrf() {
+    const response = await fetch('/api/auth/csrf', {
+      credentials: 'same-origin',
+      cache: 'no-store'
+    });
+    if (!response.ok) {
+      throw new Error('Nie można pobrać tokenu bezpieczeństwa. Odśwież stronę sklepu.');
+    }
+    const data = await response.json();
+    const token = cookie('SHOP-XSRF-TOKEN') || data.token;
+    if (!token) {
+      throw new Error('Brak tokenu bezpieczeństwa. Odśwież stronę sklepu.');
+    }
+    return token;
+  }
+
+  const form = document.getElementById('registerForm');
+  const message = document.getElementById('message');
+
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+    message.hidden = true;
+    const submit = form.querySelector('button[type="submit"]');
+    submit.disabled = true;
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': await csrf() },
+        body: JSON.stringify({
+          email: document.getElementById('email').value,
+          password: document.getElementById('password').value,
+          passwordConfirmation: document.getElementById('passwordConfirmation').value
+        })
+      });
+      if (!response.ok) {
+        const body = await response.text();
+        let data = {};
+        try { data = JSON.parse(body); } catch (ignored) { }
+        if (response.status === 403) {
+          throw new Error('Żądanie odrzucone przez ochronę CSRF. Odśwież stronę i spróbuj ponownie.');
+        }
+        throw new Error(data.detail || data.message || data.title || body || ('Nie udało się utworzyć konta (HTTP ' + response.status + ').'));
+      }
+      location.href = '/shop-login.html?registered';
+    } catch (error) {
+      message.textContent = error.message;
+      message.hidden = false;
+    } finally {
+      submit.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

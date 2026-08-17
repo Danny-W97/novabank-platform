@@ -1,0 +1,98 @@
+groups:
+  - name: novabank-services
+    rules:
+      - alert: BankOrShopDown
+        expr: up{job=~"bank-demo|shop-app", instance=~"localhost:808[23]"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Usługa {{ $labels.service }} jest niedostępna"
+          description: "Prometheus nie może pobrać metryk z {{ $labels.instance }}."
+
+      - alert: HighHttp5xxRate
+        expr: |
+          sum by (job) (rate(http_server_requests_seconds_count{status=~"5..", instance=~"localhost:808[23]"}[5m]))
+            /
+          sum by (job) (rate(http_server_requests_seconds_count{instance=~"localhost:808[23]"}[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Podwyższony poziom błędów HTTP 5xx"
+          description: "Ponad 5% żądań {{ $labels.job }} kończy się błędem 5xx."
+
+      - alert: HighJvmMemoryUsage
+        expr: |
+          jvm_memory_used_bytes{area="heap", instance=~"localhost:808[23]"}
+            /
+          jvm_memory_max_bytes{area="heap", instance=~"localhost:808[23]"} > 0.85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Wysokie zużycie pamięci JVM"
+          description: "Sterta JVM {{ $labels.application }} przekracza 85%."
+
+      - alert: PrometheusTargetErrors
+        expr: scrape_samples_scraped{job=~"bank-demo|shop-app", instance=~"localhost:808[23]"} == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Prometheus nie pobiera próbek"
+          description: "Cel {{ $labels.instance }} nie dostarczył próbek w ostatnich 5 minutach."
+
+      - alert: RetentionJobFailed
+        expr: increase(bank_retention_errors_total[15m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Zadanie retencji zakończyło się błędem"
+          description: "Bank odnotował błąd podczas czyszczenia danych technicznych. Sprawdź panel retencji i logi banku."
+
+      - alert: CertificateExpiresWithin60Days
+        expr: novabank_certificate_expiry_days >= 30 and novabank_certificate_expiry_days < 60
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Certyfikat {{ $labels.certificate }} wygasa w ciągu 60 dni"
+          description: "{{ $labels.service }} ma około {{ $value | printf \"%.0f\" }} dni do wygaśnięcia certyfikatu."
+
+      - alert: CertificateExpiresWithin30Days
+        expr: novabank_certificate_expiry_days >= 7 and novabank_certificate_expiry_days < 30
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Certyfikat {{ $labels.certificate }} wygasa w ciągu 30 dni"
+          description: "{{ $labels.service }} ma mniej niż 30 dni do wygaśnięcia certyfikatu."
+
+      - alert: CertificateExpiresWithin7Days
+        expr: novabank_certificate_expiry_days >= 0 and novabank_certificate_expiry_days < 7
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Certyfikat {{ $labels.certificate }} wygasa w ciągu 7 dni"
+          description: "{{ $labels.service }} wymaga pilnej rotacji certyfikatu."
+
+      - alert: CertificateExpired
+        expr: novabank_certificate_expiry_days < 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Certyfikat {{ $labels.certificate }} wygasł"
+          description: "Certyfikat usługi {{ $labels.service }} jest po terminie ważności."
+
+      - alert: CertificateMonitorFailed
+        expr: novabank_certificate_monitor_error == 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Kontrola certyfikatów {{ $labels.service }} zakończyła się błędem"
+          description: "Sprawdź ścieżki certyfikatów, uprawnienia i hasła magazynów TLS."
