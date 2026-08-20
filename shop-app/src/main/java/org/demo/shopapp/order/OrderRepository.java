@@ -301,6 +301,19 @@ public class OrderRepository {
         );
     }
 
+    public boolean claimCartCleanup(long orderId) {
+        return jdbcTemplate.update(
+                """
+                UPDATE shop_orders
+                SET cart_cleanup_completed_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                  AND status = 'PAID'
+                  AND cart_cleanup_completed_at IS NULL
+                """,
+                orderId
+        ) == 1;
+    }
+
     private OrderRow findByIdWithoutCustomer(long orderId) {
         return find(
                 """

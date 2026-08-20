@@ -8,6 +8,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class CartService {
@@ -46,6 +47,14 @@ public class CartService {
     @Transactional
     public void clear(String customerId) {
         cartRepository.clear(customerId);
+    }
+
+    @Transactional
+    public void removePurchasedQuantities(String customerId, Map<Long, Integer> purchasedQuantities) {
+        if (purchasedQuantities.values().stream().anyMatch(quantity -> quantity == null || quantity < 1)) {
+            throw new IllegalArgumentException("Purchased quantities must be positive.");
+        }
+        cartRepository.removePurchasedQuantities(customerId, Map.copyOf(purchasedQuantities));
     }
 
     private static CartResponse response(String customerId, List<CartItemResponse> items) {

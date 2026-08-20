@@ -1,6 +1,7 @@
 package org.demo.shopapp.web;
 
-import org.demo.shopapp.cart.CartService;
+import org.demo.shopapp.order.OrderCartCleanupService;
+import org.demo.shopapp.order.OrderRepository;
 import org.demo.shopapp.order.OrderStateService;
 import org.demo.shopapp.payment.BankAuthorizationClient;
 import org.demo.shopapp.payment.BankAuthorizationRedeemRequest;
@@ -15,16 +16,16 @@ public class ShopPaymentCallbackController {
 
     private final OrderStateService orderStateService;
     private final BankAuthorizationClient bankAuthorizationClient;
-    private final CartService cartService;
+    private final OrderCartCleanupService cartCleanupService;
 
     public ShopPaymentCallbackController(
             OrderStateService orderStateService,
             BankAuthorizationClient bankAuthorizationClient,
-            CartService cartService
+            OrderCartCleanupService cartCleanupService
     ) {
         this.orderStateService = orderStateService;
         this.bankAuthorizationClient = bankAuthorizationClient;
-        this.cartService = cartService;
+        this.cartCleanupService = cartCleanupService;
     }
 
     @GetMapping("/callback")
@@ -40,7 +41,7 @@ public class ShopPaymentCallbackController {
             return redirect(order.orderNumber(), "failed");
         }
         if (order.status().name().equals("PAID")) {
-            clearCart(order.customerId());
+            cleanupCart(order);
             return redirect(order.orderNumber(), "paid");
         }
 
@@ -62,7 +63,7 @@ public class ShopPaymentCallbackController {
                         order.id(), order.paymentIdempotencyKey(), bankResult.referenceNumber(),
                         bankResult.customerAccountNumber()
                 );
-                clearCart(paid.customerId());
+                cleanupCart(paid);
                 return redirect(paid.orderNumber(), "paid");
             } catch (RuntimeException exception) {
                 var failed = orderStateService.markFailed(order.id(), "Bank payment confirmation failed.");
@@ -81,9 +82,9 @@ public class ShopPaymentCallbackController {
         return redirect(failed.orderNumber(), "failed");
     }
 
-    private void clearCart(String customerId) {
+    private void cleanupCart(OrderRepository.OrderRow order) {
         try {
-            cartService.clear(customerId);
+            cartCleanupService.cleanupPaidOrder(order);
         } catch (RuntimeException ignored) {
             // Payment is already confirmed; cart cleanup can be retried on the next callback.
         }

@@ -1,6 +1,5 @@
 package org.demo.shopapp.order;
 
-import org.demo.shopapp.cart.CartService;
 import org.demo.shopapp.common.ShopInput;
 import org.demo.shopapp.payment.BankAuthorizationClient;
 import org.demo.shopapp.payment.BankCardPaymentRequest;
@@ -11,16 +10,16 @@ public class CardOrderPaymentService {
 
     private final OrderStateService orderStateService;
     private final BankAuthorizationClient bankClient;
-    private final CartService cartService;
+    private final OrderCartCleanupService cartCleanupService;
 
     public CardOrderPaymentService(
             OrderStateService orderStateService,
             BankAuthorizationClient bankClient,
-            CartService cartService
+            OrderCartCleanupService cartCleanupService
     ) {
         this.orderStateService = orderStateService;
         this.bankClient = bankClient;
-        this.cartService = cartService;
+        this.cartCleanupService = cartCleanupService;
     }
 
     public OrderResponse pay(
@@ -32,6 +31,7 @@ public class CardOrderPaymentService {
         var key = ShopInput.idempotencyKey(idempotencyKey);
         var prepared = orderStateService.preparePayment(orderId, customerId, key);
         if (prepared.status() == OrderStatus.PAID) {
+            cleanupCart(prepared);
             return OrderResponse.from(prepared).withReplayed(true);
         }
         if (!"PLN".equals(prepared.currency())) {
@@ -56,7 +56,7 @@ public class CardOrderPaymentService {
             var paid = orderStateService.markPaid(
                     orderId, key, bankResponse.referenceNumber(), bankResponse.sourceAccountNumber()
             );
-            clearCart(paid.customerId());
+            cleanupCart(paid);
             return OrderResponse.from(paid);
         } catch (RuntimeException exception) {
             var failed = orderStateService.markFailed(orderId, failureMessage(exception));
@@ -64,9 +64,9 @@ public class CardOrderPaymentService {
         }
     }
 
-    private void clearCart(String customerId) {
+    private void cleanupCart(OrderRepository.OrderRow order) {
         try {
-            cartService.clear(customerId);
+            cartCleanupService.cleanupPaidOrder(order);
         } catch (RuntimeException ignored) {
             // Payment is already confirmed; cleanup can be retried later.
         }
