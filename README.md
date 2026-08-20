@@ -1,30 +1,32 @@
-# NovaBank i NovaTech Shop
+# NovaBank and NovaTech Shop
 
-Edukacyjny projekt demonstracyjny składający się z dwóch aplikacji Spring Boot:
+[English](README.md) | [Polski](README.pl.md)
 
-- **NovaBank** — aplikacja bankowa z kontami, przelewami, kartami, walutami, historią operacji, 2FA i panelem administracyjnym;
-- **NovaTech Shop** — aplikacja sklepowa z katalogiem produktów, kontem klienta, koszykiem, zamówieniami, płatnościami i refundacjami.
+An educational demonstration project consisting of two Spring Boot applications:
 
-Projekt pokazuje integrację dwóch usług, bezpieczne zarządzanie sesjami i sekretami, migracje bazy danych, testy automatyczne oraz podstawowy monitoring. Nie jest prawdziwym bankiem, operatorem płatności ani gotowym systemem produkcyjnym. Płatności są symulowane przez `bank-demo` albo wykonywane w trybie testowym Stripe.
+- **NovaBank** — a banking application with accounts, transfers, cards, currencies, transaction history, 2FA and an administration panel;
+- **NovaTech Shop** — an online shop with a product catalog, customer accounts, cart, orders, payments and refunds.
 
-## Najważniejsze elementy
+The project demonstrates service integration, secure session and secret management, database migrations, automated testing and basic monitoring. It is not a real bank, payment operator or production-ready system. Payments are simulated by `bank-demo` or run in Stripe test mode.
 
-NovaBank obsługuje między innymi:
+## Main capabilities
 
-- rejestrację, logowanie, zmianę hasła i historię logowań;
-- konta bankowe, salda, przelewy zwykłe i zaplanowane oraz zapisanych odbiorców;
-- karty demonstracyjne, płatności, refundacje i autoryzację płatności sklepu;
-- wymianę walut, limity użytkownika, rate limiting oraz uwierzytelnianie 2FA/TOTP;
-- audyt administracyjny, retencję danych technicznych i eksport potwierdzeń do PDF.
+NovaBank includes, among other features:
 
-NovaTech Shop obsługuje między innymi:
+- registration, login, password changes and login history;
+- bank accounts, balances, regular and scheduled transfers, and saved recipients;
+- demo cards, payments, refunds and shop payment authorization;
+- currency exchange, user limits, rate limiting and 2FA/TOTP authentication;
+- administrative auditing, technical data retention and PDF confirmation export.
 
-- katalog produktów, konta klientów, adresy dostawy i koszyk;
-- zamówienia, płatności przez NovaBank lub Stripe sandbox oraz refundacje;
-- uzgadnianie statusu płatności z bankiem i webhooki operatora płatności;
-- niezależne uwierzytelnianie klientów sklepu.
+NovaTech Shop includes, among other features:
 
-## Architektura
+- product catalog, customer accounts, delivery addresses and shopping cart;
+- orders, payments through NovaBank or Stripe Sandbox, and refunds;
+- reconciliation of payment status with the bank and payment-provider webhooks;
+- independent customer authentication.
+
+## Architecture
 
 ```text
                  +----------------------+
@@ -32,48 +34,48 @@ NovaTech Shop obsługuje między innymi:
                  |      :8080           |
                  +----------+-----------+
                             |
-                    API autoryzacji płatności
+                    Payment authorization API
                             |
                  +----------v-----------+
                  |    NovaTech Shop     |
                  |      :8081           |
                  +----------------------+
 
-  PostgreSQL bank :5300       PostgreSQL shop :5400       Redis :6379
-  Actuator bank   :8082       Actuator shop   :8083
+  Bank PostgreSQL :5300       Shop PostgreSQL :5400       Redis :6379
+  Bank Actuator   :8082       Shop Actuator   :8083
 ```
 
-Bank korzysta z PostgreSQL, JPA, Flyway, Spring Security i sesji przechowywanych w Redisie. Sklep korzysta z PostgreSQL/JDBC, Flyway, Spring Security oraz sesji JDBC; Redis wspiera między innymi dane pomocnicze i ograniczanie liczby żądań. Profil produkcyjny pobiera sekrety z HashiCorp Vault.
+The bank uses PostgreSQL, JPA, Flyway, Spring Security and sessions stored in Redis. The shop uses PostgreSQL/JDBC, Flyway, Spring Security and JDBC sessions; Redis supports, among other things, auxiliary data and request limiting. The production profile obtains secrets from HashiCorp Vault.
 
-## Technologie
+## Technology stack
 
 - Java 25;
 - Spring Boot 4.1.0;
 - Maven Wrapper;
 - PostgreSQL 18;
 - Redis 7.4-alpine;
-- Spring Security, Thymeleaf, JPA/JDBC i Spring Session;
-- Flyway, Actuator, Micrometer/Prometheus i Springdoc OpenAPI;
-- Testcontainers dla testów integracyjnych;
-- Docker Compose dla lokalnej infrastruktury.
+- Spring Security, Thymeleaf, JPA/JDBC and Spring Session;
+- Flyway, Actuator, Micrometer/Prometheus and Springdoc OpenAPI;
+- Testcontainers for integration tests;
+- Docker Compose for local infrastructure.
 
-## Wymagania
+## Prerequisites
 
-Do pracy lokalnej potrzebne są:
+Local development requires:
 
 - JDK 25;
-- Docker Engine z Docker Compose;
+- Docker Engine with Docker Compose;
 - Git;
-- Bash, `curl` i `jq` do przewodnika oraz testów E2E;
-- na Windowsie zalecane są WSL 2 i PowerShell.
+- Bash, `curl` and `jq` for the guide and E2E tests;
+- WSL 2 and PowerShell are recommended on Windows.
 
-HashiCorp Vault, Stripe CLI, IntelliJ IDEA, OpenSSL i GPG są potrzebne tylko do wybranych scenariuszy: profilu PROD, TLS, Stripe sandbox, monitoringu lub kopii zapasowych.
+HashiCorp Vault, Stripe CLI, IntelliJ IDEA, OpenSSL and GPG are needed only for selected scenarios such as the PROD profile, TLS, Stripe Sandbox, monitoring or backups.
 
-## Szybki start
+## Quick start
 
-Najprostsza ścieżka korzysta z NovaBank Control Center. Uruchom ją z katalogu projektu.
+The simplest path uses NovaBank Control Center. Start it from the project directory.
 
-### Linux, WSL lub macOS
+### Linux, WSL or macOS
 
 ```bash
 bash scripts/control-center/control-center.sh
@@ -85,92 +87,92 @@ bash scripts/control-center/control-center.sh
 .\scripts\control-center\start.ps1
 ```
 
-Wybierz opcję pierwszego uruchomienia. Centrala przygotuje lokalny katalog `.novabank`, pliki środowiskowe, wymagane sekrety developerskie i pomoże uruchomić PostgreSQL oraz Redis.
+Choose the first-run option. The Control Center prepares the local `.novabank` directory, environment files and required development secrets, and helps start PostgreSQL and Redis.
 
-Nie dodawaj katalogu `.novabank` do repozytorium. Może zawierać lokalne hasła, klucze, certyfikaty, tokeny i logi.
+Do not commit `.novabank`. It may contain local passwords, keys, certificates, tokens and logs.
 
-## Uruchomienie ręczne
+## Manual startup
 
-1. Przygotuj lokalną konfigurację na podstawie [.env.example](.env.example). Wartości `change-me-*`, `replace-with-*` i `generate-*` zastąp własnymi wartościami.
-2. Utwórz `.novabank/env/project.env` oraz `.novabank/env/dev.env`. Do generowania środowiska developerskiego można użyć:
+1. Prepare local configuration from [.env.example](.env.example). Replace values such as `change-me-*`, `replace-with-*` and `generate-*` with your own values.
+2. Create `.novabank/env/project.env` and `.novabank/env/dev.env`. You can generate the development environment with:
 
    ```powershell
    .\scripts\generate-dev-env.ps1
    ```
 
-3. Uruchom infrastrukturę:
+3. Start the infrastructure:
 
    ```bash
    docker compose --env-file .novabank/env/project.env up -d postgres shop-postgres redis
    docker compose --env-file .novabank/env/project.env ps
    ```
 
-4. Uruchom obie aplikacje w profilu `dev`, najlepiej przez IntelliJ IDEA albo gotowy skrypt:
+4. Start both applications with the `dev` profile, preferably through IntelliJ IDEA or the prepared script:
 
    ```powershell
    .\scripts\start-dev.ps1
    ```
 
-   Skrypt zatrzymuje procesy developerskie i uruchamia bank oraz sklep z lokalnym plikiem środowiskowym. Do zatrzymania aplikacji użyj:
+   The script stops existing development processes and starts the bank and shop with the local environment file. Stop the applications with:
 
    ```powershell
    .\scripts\stop-dev.ps1
    ```
 
-Domyślne adresy:
+Default addresses:
 
 - bank: <http://localhost:8080/login>;
-- sklep: <http://localhost:8081/novatech_shop.html>;
-- Actuator banku: <http://localhost:8082/actuator/health>;
-- Actuator sklepu: <http://localhost:8083/actuator/health>.
+- shop: <http://localhost:8081/novatech_shop.html>;
+- bank Actuator: <http://localhost:8082/actuator/health>;
+- shop Actuator: <http://localhost:8083/actuator/health>.
 
-Lokalne porty infrastruktury są dostępne tylko na `127.0.0.1`:
+Local infrastructure ports are available only on `127.0.0.1`:
 
 - bank PostgreSQL: `5300`;
 - shop PostgreSQL: `5400`;
 - Redis: `6379`.
 
-## Profile Spring
+## Spring profiles
 
 ### `dev`
 
-Profil do codziennej pracy lokalnej. Korzysta z lokalnych baz, Redis, HTTP oraz plików `.novabank/env/*.env`. Nie wymaga Vault ani Stripe.
+For everyday local development. It uses local databases, Redis, HTTP and `.novabank/env/*.env` files. Vault and Stripe are not required.
 
 ### `test`
 
-Profil do automatyzacji. Testy integracyjne uruchamiają izolowane PostgreSQL i Redis przez Testcontainers. Nie kieruj testów na bazy używane przez `dev`.
+For automation. Integration tests start isolated PostgreSQL and Redis instances through Testcontainers. Do not point tests at databases used by `dev`.
 
 ### `prod`
 
-Profil wymagający zewnętrznego zarządzania sekretami, Vault, AppRole, TLS i bezpiecznych cookies. Nie używaj lokalnych sekretów developerskich w środowisku produkcyjnym.
+Requires external secret management, Vault, AppRole, TLS and secure cookies. Do not use local development secrets in production.
 
-## Testy i budowanie
+## Tests and builds
 
-Testy są podzielone według konwencji Maven:
+Tests are separated using Maven naming conventions:
 
-- `Unit-test` — klasy zakończone `*Test.java`. Są szybkie, korzystają z mocków lub testów warstwy MVC i nie wymagają uruchomionego Dockera.
-- `Integration-test` — klasy zakończone `*IT.java`. Uruchamiają pełniejszy kontekst aplikacji, Testcontainers albo przepływ HTTP i są wykonywane przez Failsafe.
+- `Unit tests` — classes ending in `*Test.java`. They are fast, use mocks or MVC-layer tests, and do not require Docker.
+- `Integration tests` — classes ending in `*IT.java`. They start a fuller application context, Testcontainers or an HTTP flow and are executed by Failsafe.
 
-Testy jednostkowe banku:
+Bank unit tests:
 
 ```powershell
 .\mvnw.cmd -Punit-tests test
 ```
 
-Testy jednostkowe sklepu:
+Shop unit tests:
 
 ```powershell
 .\mvnw.cmd -f shop-app\pom.xml -Punit-tests test
 ```
 
-Testy integracyjne wymagają działającego Docker Engine:
+Integration tests require a working Docker Engine:
 
 ```powershell
 .\mvnw.cmd -Pintegration-tests verify
 .\mvnw.cmd -f shop-app\pom.xml -Pintegration-tests verify
 ```
 
-Odpowiedniki dla Linux/WSL:
+Linux/WSL equivalents:
 
 ```bash
 ./mvnw -Punit-tests test
@@ -179,26 +181,26 @@ Odpowiedniki dla Linux/WSL:
 ./mvnw -f shop-app/pom.xml -Pintegration-tests verify
 ```
 
-Test HTTP E2E znajduje się w [scripts/e2e-smoke.sh](scripts/e2e-smoke.sh). Sprawdza między innymi rejestrację klienta sklepu, logowanie, koszyk, utworzenie zamówienia oraz przepływ płatności między sklepem a bankiem.
+The HTTP E2E smoke test is located at [scripts/e2e-smoke.sh](scripts/e2e-smoke.sh). It checks, among other things, shop registration, login, cart operations, order creation and the payment flow between the shop and bank.
 
-Pipeline GitHub Actions w [.github/workflows/ci.yml](.github/workflows/ci.yml) uruchamia testy jednostkowe, integracyjne, przepływ HTTP E2E oraz budowanie artefaktów JAR.
+The GitHub Actions pipeline in [.github/workflows/ci.yml](.github/workflows/ci.yml) runs unit tests, integration tests, the HTTP E2E flow and JAR packaging.
 
-## Konfiguracja sekretów
+## Secret configuration
 
-`.env.example` jest wyłącznie szablonem. Nie wpisuj do repozytorium:
+`.env.example` is only a template. Do not commit:
 
-- haseł baz danych;
-- `BANK_API_KEY`, `BANK_API_KEYS` ani kluczy Stripe;
+- database passwords;
+- `BANK_API_KEY`, `BANK_API_KEYS` or Stripe keys;
 - `TOTP_ENCRYPTION_KEY`;
-- danych AppRole Vault;
-- haseł i plików keystore/truststore;
-- lokalnych backupów, certyfikatów i logów.
+- Vault AppRole data;
+- keystore/truststore passwords or files;
+- local backups, certificates and logs.
 
-W profilu `dev` sekrety są przechowywane lokalnie w `.novabank`. W profilu `prod` powinny pochodzić z Vault, Kubernetes Secret albo innego menedżera sekretów.
+In `dev`, secrets are stored locally in `.novabank`. In `prod`, they should come from Vault, Kubernetes Secrets or another secret manager.
 
 ## Monitoring
 
-Projekt zawiera konfigurację Prometheus, Grafany i Alertmanagera. Monitoring developerski można przygotować skryptem:
+The project contains Prometheus, Grafana and Alertmanager configuration. Prepare development monitoring with:
 
 ```bash
 bash scripts/monitoring/monitoring.sh setup
@@ -206,21 +208,23 @@ bash scripts/monitoring/monitoring.sh start
 bash scripts/monitoring/monitoring.sh status
 ```
 
-Konfiguracja monitoringu wymaga osobnego pliku `.novabank/monitoring/.env.monitoring`, tworzonego na podstawie [infra/monitoring/.env.monitoring.example](infra/monitoring/.env.monitoring.example). Endpointy Actuator nie powinny być publicznie wystawiane bez dodatkowego uwierzytelniania i ograniczenia dostępu.
+Monitoring requires a separate `.novabank/monitoring/.env.monitoring` file created from [infra/monitoring/.env.monitoring.example](infra/monitoring/.env.monitoring.example). Actuator endpoints should not be exposed publicly without additional authentication and access restrictions.
 
-## Dokumentacja
+## Documentation
 
-- [Generalna instrukcja uruchomienia i obsługi](docs/General_Instruction.md) — pełna instrukcja WSL, Docker, profili, Vault, TLS, monitoringu, backupów i diagnostyki;
-- [Interaktywny przewodnik](docs/interactive-guide.html) — wizualne wprowadzenie do projektu;
-- [Rodzaje testów oprogramowania](docs/Rodzaje%20test%C3%B3w%20oprogramowania.md) — opis strategii testowania;
-- [Instrukcja generatora regulaminu](docs/regulamin/README.md);
-- [Konfiguracja lokalnej infrastruktury](docker-compose.yaml);
-- [Przykładowe zmienne środowiskowe](.env.example).
+- [General setup and operations guide](docs/General_Instruction.md) — complete guide to WSL, Docker, profiles, Vault, TLS, monitoring, backups and diagnostics;
+- [Polish version of the main guide](docs/General_Instruction.pl.md);
+- [Interactive guide](docs/interactive-guide.html) — a visual introduction to the project;
+- [Software test types](docs/Software_Test_Types.md) — testing strategy overview;
+- [Polish version of the testing guide](docs/Software_Test_Types.pl.md);
+- [Regulations generator guide](docs/regulamin/README.md);
+- [Local infrastructure configuration](docker-compose.yaml);
+- [Example environment variables](.env.example).
 
-## Bezpieczeństwo i zakres projektu
+## Security and project scope
 
-Projekt służy do nauki i demonstracji. Nie używaj go do przechowywania prawdziwych środków, danych klientów, numerów kart, haseł produkcyjnych ani rzeczywistych danych osobowych. Przed użyciem publicznym lub produkcyjnym potrzebne byłyby dodatkowe audyty bezpieczeństwa, testy obciążeniowe, przegląd zgodności prawnej, hardening infrastruktury i niezależna weryfikacja procesu płatności.
+This project is intended for learning and demonstration. Do not use it to store real funds, customer data, card numbers, production passwords or real personal data. Before public or production use, additional security audits, load testing, legal compliance review, infrastructure hardening and independent payment-flow verification would be required.
 
-## Licencja
+## License
 
-W repozytorium nie określono jeszcze licencji. Bez pliku `LICENSE` prawa do kodu pozostają przy autorze. Przed zezwoleniem innym osobom na ponowne wykorzystanie projektu wybierz i dodaj odpowiednią licencję.
+This repository is distributed under the MIT License. See [LICENSE](LICENSE).
