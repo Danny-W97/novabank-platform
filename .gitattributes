@@ -1,2 +1,6 @@
 /mvnw text eol=lf
 *.cmd text eol=crlf
+
+# Keep Windows helper scripts available while excluding them from GitHub's
+# language statistics.
+*.ps1 linguist-detectable=false
