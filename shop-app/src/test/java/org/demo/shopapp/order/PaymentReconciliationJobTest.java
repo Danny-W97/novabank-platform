@@ -1,6 +1,5 @@
 package org.demo.shopapp.order;
 
-import org.demo.shopapp.cart.CartService;
 import org.demo.shopapp.config.ShopOrderProperties;
 import org.demo.shopapp.payment.BankAuthorizationClient;
 import org.demo.shopapp.payment.BankAuthorizationStatusResponse;
@@ -24,14 +23,14 @@ class PaymentReconciliationJobTest {
     private static final String CUSTOMER_ACCOUNT = "11111111111111111111111111";
 
     @Test
-    void completedBankAuthorizationMarksOrderPaidAndClearsCart() {
+    void completedBankAuthorizationMarksOrderPaidAndCleansPurchasedItems() {
         var orderRepository = mock(OrderRepository.class);
         var orderStateService = mock(OrderStateService.class);
         var bankClient = mock(BankAuthorizationClient.class);
-        var cartService = mock(CartService.class);
+        var cartCleanupService = mock(OrderCartCleanupService.class);
         var properties = properties();
         var job = new PaymentReconciliationJob(
-                orderRepository, orderStateService, bankClient, cartService, properties
+                orderRepository, orderStateService, bankClient, cartCleanupService, properties
         );
         var pending = order(OrderStatus.PENDING);
         var paid = order(OrderStatus.PAID);
@@ -47,7 +46,7 @@ class PaymentReconciliationJobTest {
         job.reconcilePendingPayments();
 
         verify(orderStateService).markPaid(7L, "payment-1", "BANK-REF-1", CUSTOMER_ACCOUNT);
-        verify(cartService).clear("customer-1");
+        verify(cartCleanupService).cleanupPaidOrder(paid);
         verify(orderStateService).markPaymentReconciled(7L);
     }
 
@@ -56,9 +55,9 @@ class PaymentReconciliationJobTest {
         var orderRepository = mock(OrderRepository.class);
         var orderStateService = mock(OrderStateService.class);
         var bankClient = mock(BankAuthorizationClient.class);
-        var cartService = mock(CartService.class);
+        var cartCleanupService = mock(OrderCartCleanupService.class);
         var job = new PaymentReconciliationJob(
-                orderRepository, orderStateService, bankClient, cartService, properties()
+                orderRepository, orderStateService, bankClient, cartCleanupService, properties()
         );
         var pending = order(OrderStatus.PENDING);
 
@@ -72,7 +71,7 @@ class PaymentReconciliationJobTest {
 
         verify(orderStateService, never()).markPaid(anyLong(), any(), any(), any());
         verify(orderStateService, never()).markFailed(anyLong(), any());
-        verify(cartService, never()).clear(any());
+        verify(cartCleanupService, never()).cleanupPaidOrder(any());
     }
 
     private static ShopOrderProperties properties() {

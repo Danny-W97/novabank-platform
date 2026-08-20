@@ -3,8 +3,9 @@ package org.demo.shopapp.web;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
-import org.demo.shopapp.cart.CartService;
 import org.demo.shopapp.config.ShopPaymentProperties;
+import org.demo.shopapp.order.OrderCartCleanupService;
+import org.demo.shopapp.order.OrderRepository;
 import org.demo.shopapp.order.OrderStateService;
 import org.demo.shopapp.payment.StripeWebhookVerifier;
 import org.springframework.http.HttpStatus;
@@ -34,14 +35,15 @@ public class StripeWebhookController {
     private final ObjectMapper objectMapper;
     private final ShopPaymentProperties properties;
     private final OrderStateService orderStateService;
-    private final CartService cartService;
+    private final OrderCartCleanupService cartCleanupService;
 
     public StripeWebhookController(ObjectMapper objectMapper, ShopPaymentProperties properties,
-                                    OrderStateService orderStateService, CartService cartService) {
+                                    OrderStateService orderStateService,
+                                    OrderCartCleanupService cartCleanupService) {
         this.objectMapper = objectMapper;
         this.properties = properties;
         this.orderStateService = orderStateService;
-        this.cartService = cartService;
+        this.cartCleanupService = cartCleanupService;
     }
 
     @PostMapping(value = "/webhook", consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -88,7 +90,7 @@ public class StripeWebhookController {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Kwota webhooka nie pasuje do zamowienia.");
             }
             var paid = orderStateService.markPaidExternal(order.id(), paymentId);
-            clearCart(paid.customerId());
+            cleanupCart(paid);
             return "processed";
         } catch (ResponseStatusException exception) {
             throw exception;
@@ -129,7 +131,7 @@ public class StripeWebhookController {
                 .build();
     }
 
-    private void clearCart(String customerId) {
-        try { cartService.clear(customerId); } catch (RuntimeException ignored) { }
+    private void cleanupCart(OrderRepository.OrderRow order) {
+        try { cartCleanupService.cleanupPaidOrder(order); } catch (RuntimeException ignored) { }
     }
 }

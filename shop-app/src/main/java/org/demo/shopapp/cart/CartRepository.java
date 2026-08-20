@@ -6,6 +6,7 @@ import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Map;
 
 @Repository
 public class CartRepository {
@@ -102,6 +103,43 @@ public class CartRepository {
     public void clear(String customerId) {
         jdbcTemplate.update(
                 "DELETE FROM shop_cart_items WHERE cart_id = (SELECT id FROM shop_carts WHERE customer_id = ?)",
+                customerId
+        );
+    }
+
+    public void removePurchasedQuantities(String customerId, Map<Long, Integer> purchasedQuantities) {
+        if (purchasedQuantities.isEmpty()) {
+            return;
+        }
+        for (var entry : purchasedQuantities.entrySet()) {
+            var productId = entry.getKey();
+            var quantity = entry.getValue();
+            jdbcTemplate.update(
+                    """
+                    DELETE FROM shop_cart_items
+                    WHERE cart_id = (SELECT id FROM shop_carts WHERE customer_id = ?)
+                      AND product_id = ?
+                      AND quantity <= ?
+                    """,
+                    customerId, productId, quantity
+            );
+            jdbcTemplate.update(
+                    """
+                    UPDATE shop_cart_items
+                    SET quantity = quantity - ?
+                    WHERE cart_id = (SELECT id FROM shop_carts WHERE customer_id = ?)
+                      AND product_id = ?
+                      AND quantity > ?
+                    """,
+                    quantity, customerId, productId, quantity
+            );
+        }
+        jdbcTemplate.update(
+                """
+                UPDATE shop_carts
+                SET updated_at = CURRENT_TIMESTAMP
+                WHERE customer_id = ?
+                """,
                 customerId
         );
     }

@@ -1,6 +1,5 @@
 package org.demo.shopapp.order;
 
-import org.demo.shopapp.cart.CartService;
 import org.demo.shopapp.config.ShopOrderProperties;
 import org.demo.shopapp.payment.BankAuthorizationClient;
 import org.demo.shopapp.payment.BankAuthorizationStatusResponse;
@@ -19,20 +18,20 @@ public class PaymentReconciliationJob {
     private final OrderRepository orderRepository;
     private final OrderStateService orderStateService;
     private final BankAuthorizationClient bankClient;
-    private final CartService cartService;
+    private final OrderCartCleanupService cartCleanupService;
     private final ShopOrderProperties properties;
 
     public PaymentReconciliationJob(
             OrderRepository orderRepository,
             OrderStateService orderStateService,
             BankAuthorizationClient bankClient,
-            CartService cartService,
+            OrderCartCleanupService cartCleanupService,
             ShopOrderProperties properties
     ) {
         this.orderRepository = orderRepository;
         this.orderStateService = orderStateService;
         this.bankClient = bankClient;
-        this.cartService = cartService;
+        this.cartCleanupService = cartCleanupService;
         this.properties = properties;
     }
 
@@ -98,7 +97,7 @@ public class PaymentReconciliationJob {
                 bankStatus.customerAccountNumber()
         );
         try {
-            cartService.clear(paid.customerId());
+            cartCleanupService.cleanupPaidOrder(paid);
         } catch (RuntimeException exception) {
             log.warn("Payment {} was reconciled, but cart cleanup failed.", order.orderNumber());
         }

@@ -127,6 +127,7 @@
     return body;
   }
   function showMessage(text, type = 'error') { const el = $('message'); el.textContent = text; el.className = 'message show ' + type; }
+  function clearMessage() { const el = $('message'); el.textContent = ''; el.className = 'message'; }
   function renderCart() {
     const items = $('items'); items.replaceChildren();
     const currentItems = cartItems();
@@ -135,10 +136,19 @@
     $('total').textContent = format(cart?.total, cart?.currency || 'PLN');
     setCardPaymentState();
   }
+  async function refreshCart() {
+    cart = await json(await api('/api/cart'));
+    renderCart();
+    return cart;
+  }
+  async function refreshCartAfterError(error) {
+    try { await refreshCart(); } catch (refreshError) { console.warn('Nie udało się odświeżyć koszyka.', refreshError); }
+    showMessage(error.message);
+  }
   async function load() {
     await api('/api/auth/csrf');
     await json(await api('/api/auth/me'));
-    cart = await json(await api('/api/cart'));
+    await refreshCart();
     cardProvider = (await json(await api('/api/checkout/card-provider'))).provider;
     const hosted = cardProvider === 'stripe';
     $('bankCardNotice').hidden = hosted;
@@ -150,6 +160,7 @@
   }
   async function loadQuote() {
     if (!cartHasItems()) { resetQuote(); setCardPaymentState(); return; }
+    clearMessage();
     const requestedCurrency = selectedCurrency();
     resetQuote();
     quoteLoading = true;
@@ -163,7 +174,7 @@
       quote = { ...nextQuote, currency: returnedCurrency };
       quoteCurrency = returnedCurrency;
       $('quoteAmount').textContent = format(quote.amount, quote.currency); $('quoteRate').textContent = 'Kurs banku: ' + Number(quote.rate).toFixed(6) + ' PLN'; $('quote').hidden = false;
-    } catch (error) { showMessage(error.message); }
+    } catch (error) { await refreshCartAfterError(error); }
     finally { quoteLoading = false; setCardPaymentState(); }
   }
   function selectMethod(value) { method = value; const bank = value === 'bank'; $('bankMethod').classList.toggle('active', bank); $('cardMethod').classList.toggle('active', !bank); $('bankPanel').hidden = !bank; $('cardPanel').hidden = bank; if (!bank) loadQuote(); else setCardPaymentState(); }
@@ -171,7 +182,7 @@
   async function payBank() {
     const popup = window.open('about:blank', '_blank'); $('bankPay').disabled = true; showMessage('Tworzę zamówienie...', 'success');
     try { const order = await createOrder(); const response = await api('/api/orders/' + order.id + '/pay', { method:'POST', headers:{'Idempotency-Key':'checkout-' + order.orderNumber} }); const paid = await json(response); if (!paid.authorizationUrl) throw new Error(paid.failureReason || 'Bank nie zwrócił adresu autoryzacji.'); if (popup && !popup.closed) { popup.location.href = paid.authorizationUrl; popup.focus(); } else window.location.href = paid.authorizationUrl; }
-    catch (error) { if (popup && !popup.closed) popup.close(); showMessage(error.message); } finally { $('bankPay').disabled = false; }
+    catch (error) { if (popup && !popup.closed) popup.close(); await refreshCartAfterError(error); } finally { $('bankPay').disabled = false; }
   }
   async function payCard() {
     const requestedCurrency = selectedCurrency();
@@ -202,9 +213,10 @@
       if (!checkout.checkoutUrl) throw new Error(checkout.failureReason || 'Operator nie zwrócił adresu płatności.');
       window.location.href = checkout.checkoutUrl;
     }
-    catch (error) { showMessage(error.message); } finally { setCardPaymentState(); }
+    catch (error) { await refreshCartAfterError(error); } finally { setCardPaymentState(); }
   }
   $('bankMethod').addEventListener('click', () => selectMethod('bank')); $('cardMethod').addEventListener('click', () => selectMethod('card')); $('currency').addEventListener('change', () => { resetQuote(); setCardPaymentState(); if (method === 'card') loadQuote(); }); $('bankPay').addEventListener('click', payBank); $('cardPay').addEventListener('click', payCard);
+  window.addEventListener('storage', event => { if (event.key === 'nova-shop-payment-completed') refreshCart().catch(error => showMessage(error.message)); });
   load().catch(error => showMessage(error.message));
 </script>
 </body>
