@@ -3,7 +3,7 @@ set -u
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
-GUIDE="$PROJECT_ROOT/docs/interactive-guide.html"
+GUIDE="$SCRIPT_DIR/guide/index.html"
 
 if [[ ! -f "$GUIDE" ]]; then
   printf 'Nie znaleziono przewodnika: %s\n' "$GUIDE" >&2

@@ -124,7 +124,7 @@ MAVEN_ARGS = {
     "build-prod-bank": ["-Pprod", "-DskipTests", "clean", "package"],
     "build-prod-shop": ["-f", "shop-app/pom.xml", "-Pprod", "-DskipTests", "clean", "package"],
 }
-DOCUMENTS = {"guide": "docs/General_Instruction.md", "panel": "docs/control-center-web.md"}
+DOCUMENTS = {"guide": "docs/General_Instruction.md", "panel": "docs/General_Instruction.pl.md"}
 
 
 def now() -> str:

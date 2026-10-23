@@ -83,16 +83,16 @@ bash ./scripts/start.sh
 
 The browser panel opens at `http://127.0.0.1:18110`, using Python 3.10+ in WSL/Linux without a Node build. Use Bash `.sh`, not PowerShell `.ps1`, in WSL. DEV supports local operations; TEST runs Maven/Testcontainers; PROD-like offers explicit named Vault/AppRole/bootstrap/TLS/build procedures with an additional warning and typed PROD confirmation, not remote-production control or deployment.
 
-Use **Konfiguracja DEV** for setup and **Pliki i sekrety** for DEV/TEST secret edits. File edits do not change PostgreSQL passwords, migrate TOTP data or restart processes. **Operacje → Vault** has status, one Shamir share, AppRole setup, and Secret ID rotation/finalization for a fixed verified localhost HTTPS Vault; root tokens are rejected and input secrets are never persisted in job history. Monitoring, backups/DR, Stripe TEST, Redis/E2E, a guided startup, IntelliJ information and bounded artifact cleanup are available. PL/EN covers navigation/action names; technical content remains in its source language. CLI: `bash ./scripts/start.sh --cli`. Requirements and limitations: [Control Center web](docs/control-center-web.md).
+Use **Konfiguracja DEV** for setup and **Pliki i sekrety** for DEV/TEST secret edits. File edits do not change PostgreSQL passwords, migrate TOTP data or restart processes. **Operacje → Vault** has status, one Shamir share, AppRole setup, and Secret ID rotation/finalization for a fixed verified localhost HTTPS Vault; root tokens are rejected and input secrets are never persisted in job history. Monitoring, backups/DR, Stripe TEST, Redis/E2E, a guided startup, IntelliJ information and bounded artifact cleanup are available. PL/EN covers navigation/action names; technical content remains in its source language. CLI: `bash ./scripts/start.sh --cli`. Requirements and limitations: [Control Center in the main operating guide](docs/General_Instruction.md#control-center).
 
-The **Operacje → Salda DEV** category also provides audited, idempotent credit/debit corrections for local active PLN accounts. **Powiadomienia** collects bank/shop WARN/ERROR logs and failed panel jobs, with a counter and scrollable history. Payment reconciliation suspends further checks after three consecutive failures without declaring the payment rejected. Restart the panel and both DEV applications to activate these changes and migrations V25/V12; details and safety limits are in the [panel guide](docs/control-center-web.md).
+The **Operacje → Salda DEV** category also provides audited, idempotent credit/debit corrections for local active PLN accounts. **Powiadomienia** collects bank/shop WARN/ERROR logs and failed panel jobs, with a counter and scrollable history. Payment reconciliation suspends further checks after three consecutive failures without declaring the payment rejected. After updating, restart the panel and both DEV applications and check Flyway migration history; follow the [main operating guide](docs/General_Instruction.md#control-center).
 
 Do not commit `.novabank`. It may contain local passwords, keys, certificates, tokens and logs.
 
 ## Manual startup
 
 1. Use `bash ./scripts/start.sh` → **Konfiguracja DEV**, or `python3 -B scripts/control-center/web/dev_env_layout.py prepare` in WSL. Do not copy the mixed legacy `.env.example` into `project.env`.
-2. `project.env` owns non-sensitive local infrastructure settings; `dev.env` owns DEV passwords, keys and application settings. Each key has one owner. Existing conflicts stop automatic setup; see [DEV layout report](docs/dev-env-deduplication-report.md).
+2. `project.env` owns non-sensitive local infrastructure settings; `dev.env` owns DEV passwords, keys and application settings. Each key has one owner. Existing conflicts stop automatic setup; see [configuration conflict handling](docs/General_Instruction.md#manual-conflict).
 
 3. Start the infrastructure:
 
@@ -187,14 +187,14 @@ Monitoring requires a separate `.novabank/monitoring/.env.monitoring` file creat
 
 ## Documentation
 
-- [General setup and operations guide](docs/General_Instruction.md) — complete guide to WSL, Docker, profiles, Vault, TLS, monitoring, backups and diagnostics;
-- [Polish version of the main guide](docs/General_Instruction.pl.md);
-- [Interactive guide](docs/interactive-guide.html) — a visual introduction to the project;
-- [Software test types](docs/Software_Test_Types.md) — testing strategy overview;
-- [Polish version of the testing guide](docs/Software_Test_Types.pl.md);
-- [Regulations generator guide](docs/regulamin/README.md);
-- [Local infrastructure configuration](docker-compose.yaml);
-- [Example environment variables](.env.example).
+The complete operating manual for the entire platform — **NovaBank, NovaTech Shop and Control Center** — is maintained in two equivalent language versions:
+
+- [General_Instruction.md — English](docs/General_Instruction.md);
+- [General_Instruction.pl.md — Polish](docs/General_Instruction.pl.md).
+
+These are the only documents in `docs`. They cover first-time setup, DEV/TEST/PROD profiles, bank and shop operation, Control Center actions and their input fields, payments/Stripe TEST, Vault/TOTP/TLS, monitoring, backups/restore/DR, testing and troubleshooting. Start here before running an administrative operation; prerequisites, confirmation words and dependent steps are explained in the manual.
+
+The optional visual introduction is an application resource under `scripts/control-center/guide`, launched with `bash scripts/control-center/interactive-guide.sh`; it supplements rather than replaces the manual.
 
 ## Security and project scope
 

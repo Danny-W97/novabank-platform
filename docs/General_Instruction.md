@@ -6,7 +6,7 @@
 
 This document describes the complete local project workflow: WSL 2, Docker Engine, PostgreSQL, Redis, Spring/Maven profiles, IntelliJ IDEA, HashiCorp Vault, TLS/HTTPS, monitoring, Stripe, tests, auditing and backups.
 
-**DEV configuration split (2026-10-14):** `project.env` owns non-sensitive infrastructure hosts, ports, names and usernames; `dev.env` owns database passwords, keys and DEV application settings. Compose requires both `--env-file` arguments. Do not copy the entire historical `.env.example` into project.env. The wizard and WSL generator `python3 -B scripts/control-center/web/dev_env_layout.py prepare` create the files with the correct ownership split. Conflicting duplicate values stop a normal save; see the [report](dev-env-deduplication-report.md). TEST/PROD do not inherit these DEV secrets.
+**DEV configuration split (2026-10-14):** `project.env` owns non-sensitive infrastructure hosts, ports, names and usernames; `dev.env` owns database passwords, keys and DEV application settings. Compose requires both `--env-file` arguments. Do not copy the entire historical `.env.example` into project.env. The wizard and WSL generator `python3 -B scripts/control-center/web/dev_env_layout.py prepare` create the files with the correct ownership split. Conflicting duplicate values stop a normal save; see the [configuration conflict procedure](#manual-conflict). TEST/PROD do not inherit these DEV secrets.
 
 This is a locally run educational environment, not a production bank or a real payment operator. The Stripe variant uses a Stripe test account; bank-demo simulates transfers in the application databases.
 
@@ -21,9 +21,9 @@ This is a locally run educational environment, not a production bank or a real p
 
 ### One main guide
 
-`General_Instruction.md` is the main, and ultimately the only, project user manual. It contains first-run procedures, working with `dev`, `test` and `prod`, IntelliJ configuration, Docker/WSL, Vault, TLS, monitoring, backups, tests, payments and NovaBank Control Center. All commands needed for daily operations are described in the following chapters.
+`General_Instruction.md` and `General_Instruction.pl.md` are two equivalent language versions of the complete operating manual for the entire platform: NovaBank, NovaTech Shop and Control Center. It contains first-run procedures, working with `dev`, `test` and `prod`, IntelliJ configuration, Docker/WSL, Vault, TLS, monitoring, backups, tests, payments and NovaBank Control Center. All commands needed for daily operations are described in the following chapters.
 
-The other Markdown files under `docs` are currently retained as source materials and working copies. They are not required for normal application startup or Control Center operation. They may later be moved or removed after further verification, because current operational references lead to this main guide.
+The `docs` directory contains only these two manuals. Notification help and operational procedures are part of this manual. The optional visual introduction is an application resource under `scripts/control-center/guide`, launched with `bash scripts/control-center/interactive-guide.sh`; it does not replace the manual. [Polish version](General_Instruction.pl.md).
 
 ## Start here: the guide and NovaBank Control Center
 
@@ -33,9 +33,9 @@ Start the operator panel **from a WSL/Bash terminal**, in the project directory:
 bash ./scripts/start.sh
 ```
 
-The panel opens at `http://127.0.0.1:18110`. It requires Python 3.10+ in WSL; starting DEV applications from the panel also requires JDK 25 in WSL. Terminal menu: `bash ./scripts/start.sh --cli`. Do not run `.ps1` commands in Bash. Details: [Panel operations](control-center-web.md).
+The panel opens at `http://127.0.0.1:18110`. It requires Python 3.10+ in WSL; starting DEV applications from the panel also requires JDK 25 in WSL. Terminal menu: `bash ./scripts/start.sh --cli`. Do not run `.ps1` commands in Bash. Details: [Panel operations](#control-center).
 
-**Files and secrets** edits only the designated DEV/TEST files, with confirmation and a 45-second reveal. Saving does not change PostgreSQL/Grafana passwords, migrate TOTP or restart applications. Since 2026-10-14, **Operations → Vault** covers local status, unsealing with one Shamir share, AppRole and bank/shop Secret ID rotation/finalization; bootstrap, PROD builds and local TLS keystores without PowerShell have also been added. Every PROD task requires a warning, checkbox and typing PROD, enforced by the API as well. Vault is limited to HTTPS 127.0.0.1:8200 with the project CA and an operator token, never root. There is no business-KV editor, init/rekey, remote production or automatic PROD startup/deployment. The panel also provides a guide, IntelliJ preview, bounded cleanup of generated artifacts and PL/EN navigation/action names. Enter sudo passwords outside the web interface. Details, operator-policy requirements and boundaries: [Panel operations](control-center-web.md#vault-i-jawne-procedury-prod--2026-10-14).
+**Files and secrets** edits only the designated DEV/TEST files, with confirmation and a 45-second reveal. Saving does not change PostgreSQL/Grafana passwords, migrate TOTP or restart applications. Since 2026-10-14, **Operations → Vault** covers local status, unsealing with one Shamir share, AppRole and bank/shop Secret ID rotation/finalization; bootstrap, PROD builds and local TLS keystores without PowerShell have also been added. Every PROD task requires a warning, checkbox and typing PROD, enforced by the API as well. Vault is limited to HTTPS 127.0.0.1:8200 with the project CA and an operator token, never root. There is no business-KV editor, init/rekey, remote production or automatic PROD startup/deployment. The panel also provides a guide, IntelliJ preview, bounded cleanup of generated artifacts and PL/EN navigation/action names. Enter sudo passwords outside the web interface. Details, operator-policy requirements and boundaries: [Panel operations](#control-center-prod).
 
 For your first run, start with the interactive guide. It shows the architecture, application screens, startup order, `dev`, `test` and `prod`, monitoring, Vault, backups and the basic bank/shop flows.
 
@@ -72,7 +72,7 @@ they are not extra stages that must be performed after chapter `20`.
 
 ## Quick project guide
 
-This chapter consolidates procedures from the other project notes into one operational path. Other Markdown files remain in the repository as detailed documentation, but you can work through the entire project using this chapter alone.
+This chapter consolidates procedures into one operational path. Further details are in the following chapters of this manual; no additional documents under `docs` are required.
 
 ### What you run and what each component does
 
@@ -103,7 +103,7 @@ Important distinction: Docker runs infrastructure services, while local applicat
 
 ### First run of a new project copy
 
-Once WSL, Docker and the JDK are ready, configure standard local DEV in the browser: `bash ./scripts/start.sh` → **DEV configuration**. The form creates missing `project.env`/`dev.env`, accepts database/Redis settings, ports and the shop merchant account, and generates missing secrets without rotating existing valid values. Buttons in the same tab start databases/Redis, build the bank, build the shop and start DEV applications—each separately after confirmation. If a database/volume already exists, keep its previous credentials; changing a file secret does not reset PostgreSQL's password. Details and limitations: [Control Center configuration wizard](control-center-web.md).
+Once WSL, Docker and the JDK are ready, configure standard local DEV in the browser: `bash ./scripts/start.sh` → **DEV configuration**. The form creates missing `project.env`/`dev.env`, accepts database/Redis settings, ports and the shop merchant account, and generates missing secrets without rotating existing valid values. Buttons in the same tab start databases/Redis, build the bank, build the shop and start DEV applications—each separately after confirmation. If a database/volume already exists, keep its previous credentials; changing a file secret does not reset PostgreSQL's password. Details and limitations: [Control Center configuration wizard](#control-center).
 
 The following additional interactive CLI variant is also used for broader prerequisite diagnostics and advanced procedures:
 
@@ -456,7 +456,7 @@ bank-demo: UP
 shop-app:  UP
 ~~~
 
-401 means mismatched Basic Auth credentials; connection refused means the application is not listening on the management port; context deadline exceeded indicates a network problem between WSL and the Windows process. Do not blindly change host.docker.internal: Prometheus uses localhost in the current network mode. For another WSL mode, check the address as described in monitoring-preparation.md.
+401 means mismatched Basic Auth credentials; connection refused means the application is not listening on the management port; context deadline exceeded indicates a network problem between WSL and the Windows process. Do not blindly change host.docker.internal: Prometheus uses localhost in the current network mode. For another WSL mode, check the address using chapter 7 of this manual on monitoring.
 
 In Grafana, open the NovaBank service-overview dashboard (NovaBank - przegląd usług). Empty panels may mean no traffic in the selected time range, not an outage. In Alertmanager, check active alerts:
 
@@ -477,7 +477,7 @@ bash scripts/monitoring/monitoring.sh stop
 
 Monitoring does not automatically start after a computer restart unless you configure Compose autostart. In DEV, it can run only while you work. In PROD, restrict Actuator endpoints to the monitoring network and technical account. Keep Grafana/metrics passwords and script-generated files outside the repository.
 
-On Windows with WSL, the script opens the guide in the default Windows browser. If that does not happen, it prints the exact path to `docs/interactive-guide.html`.
+On Windows with WSL, the script opens the guide in the default Windows browser. If that does not happen, it prints the exact path to `scripts/control-center/guide/index.html`.
 
 Then start NovaBank Control Center:
 
@@ -2088,7 +2088,7 @@ Do not install Docker Desktop as a project prerequisite. This configuration uses
 
 ## Extended procedures and your own project path
 
-This chapter supplements the main guide with operational commands from production-security.md, postgres-backup-restore.md, monitoring-preparation.md and ci-cd.md. The remaining .md files stay in the repository as detailed documentation.
+This chapter provides extended security, backup/restore, monitoring and CI/CD procedures. All steps are part of this manual and do not require separate documents under `docs`.
 
 ### Replace the example path with your own
 
@@ -2407,7 +2407,7 @@ In WSL, the guide opens in the Windows browser. In NovaBank Control Center selec
 
 ## Final supplements
 
-This chapter consolidates key information from `first-run.md`, `runtime-layout.md` and `data-retention.md`. The original files remain detailed documentation. If they differ, first check actual project configuration, `.novabank` files, the active profile and the NovaBank Control Center message.
+This chapter consolidates first-run, runtime-file layout and data-retention information. If they differ, first check actual project configuration, `.novabank` files, the active profile and the NovaBank Control Center message.
 
 ### First run from scratch
 
@@ -2654,17 +2654,7 @@ Safe PROD order:
 
 **PROD:** start Vault, set `VAULT_ADDR` and `VAULT_CACERT`, check status, unseal with three keys, check AppRole, then start the bank and shop PROD configurations. Do not use the root token as an application secret.
 
-Detailed sources remain available:
-
-- `docs/first-run.md`;
-- `docs/runtime-layout.md`;
-- `docs/data-retention.md`;
-- `docs/VAULT-PROD-INSTRUKCJA.md`;
-- `docs/production-security.md`;
-- `docs/monitoring-preparation.md`;
-- `docs/postgres-backup-restore.md`;
-- `docs/ci-cd.md`;
-- `docs/control-center.md`.
+Details are consolidated in this manual's chapters on first run, `.novabank` layout, retention, Vault/PROD, monitoring, backups and testing/CI. The [Polish version](General_Instruction.pl.md) covers the same scope.
 
 If an example differs from local settings, follow the actual profile, `.novabank`, Compose configuration, IntelliJ configuration and Control Center message. Example passwords, keys, Role IDs, Secret IDs, tokens and paths are not values to copy into the environment.
 
@@ -2822,3 +2812,192 @@ flowchart TD
 ```
 
 The remaining Stripe and shop API key fields and values are covered in chapters `8. Stripe TEST` and `12. Key rotation`. The `USUN` field applies only to permanent deletion of expired artifacts within a restricted scope; do not use it for source files, secrets, databases or backups.
+
+<a id="control-center"></a>
+
+## Control Center — panel operation and documentation
+
+Start CC in WSL with `bash ./scripts/start.sh`, then open `http://127.0.0.1:18110` locally. Dashboard probes check TCP ports, not complete service health. Under **Operations**, select the profile, read the description/input fields, confirm the scope and inspect the result in **Tests and logs**. Exit code 0 confirms that procedure's execution, not every independent business check. If the connection is lost, inspect the existing task before retrying.
+
+**DEV configuration** prepares the environment; **Files and secrets** edits permitted files. Saving does not restart services or change credentials in an initialized database. **Bank accounts / Shop accounts** provide bounded DEV reads; **Payment reconciliation** requires evidence and separate confirmation for operator decisions. Closing a case without resolution preserves `UNKNOWN`. **Notifications** links to the runbooks below; archiving is not repair.
+
+The **Documentation** tab provides this manual in both languages and API contracts. The compatible `/docs/guide` and `/docs/panel` addresses serve the English and Polish manuals respectively as Markdown text. They do not expose arbitrary files from disk.
+
+<a id="control-center-prod"></a>
+
+### PROD and the panel trust boundary
+
+PROD operations require a warning, checkbox and typing `PROD`, enforced by the API too. This is not automatic production deployment or a substitute for Vault administrative permissions. CC's instance token is not a full operator-account/RBAC system: keep access local and do not expose its port to a LAN or the Internet. Enter sudo passwords outside the panel. Vault, TOTP, backup and testing procedures remain in their respective chapters above.
+
+### Terms PDF generator
+
+**Generate terms PDF** runs `scripts/generate_regulamin_pdf.py` and writes `regulamin/regulamin_novabank.pdf`. Its helper creates local `.novabank/pdf-venv` if missing, installs missing `reportlab` from `scripts/requirements-pdf.txt` and uses that environment's Python. Do not commit the venv. Installing dependencies requires WSL Internet access.
+
+If the venv module is missing, an administrator installs it outside the web interface:
+
+```bash
+sudo apt update
+sudo apt install -y python3-venv
+```
+
+Then retry the operation. To run it manually from the project directory in WSL:
+
+```bash
+python3 -m venv .novabank/pdf-venv
+./.novabank/pdf-venv/bin/python -m pip install -r scripts/requirements-pdf.txt
+./.novabank/pdf-venv/bin/python scripts/generate_regulamin_pdf.py
+```
+
+The generator recognizes Windows/WSL Arial and common Linux fonts to preserve Polish characters.
+
+## Control Center — troubleshooting common problems
+
+These runbooks also support the notification panel. Each recognized case has a code, profile context, impact and, when available, a link to the task log.
+
+### Common rules
+
+- Open **Notifications → event → Diagnosis and resolution**. Check the profile before acting.
+- Diagnosis comes from trusted backend codes, not commands or codes embedded in log text. Old or unknown events receive general instructions without automatic repair.
+- **Check again** verifies only the stated technical condition. Its result is independent of notification archiving/deletion; archiving does not fix the cause.
+- Normal CC confirmations apply. Monitoring file repair additionally requires its own plan and confirmation. Resolve unsaved form changes deliberately before entering repair.
+- This module does not automatically repair PROD, databases, TOTP, Vault, balances, transfers or payments. Do not repeat a financial operation simply because an error appeared.
+- CC is a local operator tool. Its instance token is not an operator identity or role-control system. Do not expose the server to a LAN or the Internet.
+
+<a id="schedule-runtime"></a>
+
+### § schedule-runtime — SCHEDULE_CONFIGURATION_INVALID / SCHEDULE_UPDATE_FAILED / SCHEDULE_EXECUTION_FAILED
+
+Timer installation, configuration validity and the last execution are three separate results. Open **Operation settings → Check timers and history**. “Not run yet” is neither a backup success nor failure.
+
+For an invalid directory, do not create a folder containing the literal sequence `\x20`. Systemd must reference the existing project directory with an ordinary space. Updating requires separate confirmation, does not interrupt an active service and backs up units/state under `.novabank/control-center/web/timer-updates/<id>`. It does not install a second CLI timer. After a failure/interruption, inspect both units and their backups before retrying: this sequence is not a process-crash-safe transaction. Rollback does not automatically start the previous invalid configuration.
+
+Once configuration checks pass, separately **Run scheduled backup/DR now**. Inspect the exit code, time and service log. Operations provides separate schedule logs; panel executions also appear under **Tests and logs**. Backup retention may remove old copies only after a successful new backup; check the scope. DR restores into separate Docker resources, never the application's current database. Do not retry financial operations to fix a failed test.
+
+Timers are WSL user services and cannot execute while WSL is stopped. `Linger=no` requires an explicit decision about operation after logout; CC does not change linger or boot configuration automatically. The CLI menu need not remain open, but a web server started from a terminal remains tied to that process. Do not delete shared backend scripts.
+
+<a id="vault-ca"></a>
+
+### § vault-ca — VAULT_CA_NOT_READY
+
+1. Select **PROD → Vault → Vault and CA certificate diagnostics**, accept the warning and type `PROD`. This reads public fingerprints/dates and service status only; it needs no Vault token and reads no private keys or KV.
+2. CC trusts only `.novabank/tls/vault/vault.crt`. Public certificates under `/opt/vault/tls` or a legacy project location are compared, never automatically selected or copied.
+3. An administrator must verify the active `https://127.0.0.1:8200` listener, certificate IP SAN `127.0.0.1`, expiry and CA chain. Diagnostics checks the same IP identity as CC's Vault client; DNS `localhost` alone is insufficient. Missing access to system files is not a reason to grant broad permissions.
+4. Do not use `VAULT_SKIP_VERIFY`, an unverified certificate or automatic restart. Deliberately fix the CA/listener/truststore using the Vault procedure, then repeat diagnostics.
+5. Successful TLS checks do not establish correct AppRole, KV, databases or application startup. Never publish secrets or tokens in logs.
+
+<a id="operator-settings"></a>
+
+### § operator-settings — OPERATOR_SETTINGS_FAILED / TIMER_MIGRATION_UNCONFIRMED
+
+`OPERATOR_SETTINGS_FAILED` means parameter saving failed; `TIMER_MIGRATION_UNCONFIRMED` means schedule migration completion was not confirmed. Read the specific task log if available. An error does not prove that every previous systemd setting was restored.
+
+**Operation settings** are separate for DEV/TEST. Saving neither moves backups nor changes an installed timer. Times use WSL/systemd local time, not the browser's time zone. After saving, separately install/update the schedule and inspect its status/log.
+
+The backup directory must be a child of `.novabank/backups` or a dedicated `novabank-dev-backups[-name]` directory outside the project. A nonempty directory without an ownership marker is not adopted. Do not remove the marker to bypass a conflict. Existing backups stay in their previous location; moving an archive is a separate procedure, not a form-field edit.
+
+**Timer migration:** refresh the plan → check old/new names and directory → confirm the scope. CC recognizes only this repository's user units, without drop-ins or an active backup/DR. Original units are backed up under `.novabank/control-center/web/timer-migrations/<id>`. The old timer is disabled, not deleted. The new timer is installed and enabled; `Persistent` may trigger a missed execution. Do not concurrently change schedules through CLI or another tool.
+
+On installation failure, CC attempts to remove only its own new units and restore the old timer's previous state. If rollback is unconfirmed or a new job is active, **do not enable a second timer**. Inspect `systemctl --user status` for the indicated old/new timers and services and inspect unit backups. Do not interrupt a running backup/DR. Never blindly retry after a timeout/process kill; systemd changes are not a crash-safe transaction.
+
+**CLI history:** import reads up to the last 256 KB of `activity.log` (source up to 16 MB), retains up to 500 valid entries and deduplicates repeated imports. The original is unchanged. The profile is unknown; this is a separate journal, not an executable task queue. Larger, damaged or symlinked sources require manual diagnostics. Archive content is masked on reading too.
+
+<a id="shop-accounts-read"></a>
+
+### § shop-accounts-read — SHOP_ACCOUNTS_READ_FAILED
+
+A failed read does not mean an empty database or lost customers. Do not register them again or reset the database.
+
+1. Start CC in WSL using `bash ./scripts/start.sh`. This view covers local DEV only, not TEST/PROD or remote databases.
+2. Check **Operations → Infrastructure status** and Docker. The running `shop-postgres` must belong to this checkout's Compose project, not `bank-postgres` or another repository.
+3. Check **DEV configuration / Files and secrets**: `SHOP_POSTGRES_HOST`, `SHOP_POSTGRES_DB`, `SHOP_POSTGRES_USER` must match the existing database. Editing a file password does not change PostgreSQL's password. Do not generate another password to bypass the failure.
+4. The view requires shop migrations, including `shop_users` and V9's profile/address extension. Apply missing migrations through normal shop startup. A ready database can be read without the shop HTTP process running.
+5. Select **Shop accounts → Refresh shop accounts**. Wait during overload; a details 404 means the ID does not exist, so refresh the list.
+
+Nothing is repaired automatically. Shop users are not bank accounts; matching email addresses do not establish shared identity. Do not share API responses or screenshots containing real customer data.
+
+<a id="accounts-read"></a>
+
+### § accounts-read — ACCOUNTS_READ_FAILED
+
+A failed read **does not mean an empty database or lost accounts**. Return to **Bank accounts** after these checks.
+
+1. Start CC in WSL with `bash ./scripts/start.sh`; the browser may run in Windows. Reads support local DEV only, not TEST/PROD or remote databases.
+2. Check Docker and **Operations → Infrastructure status**. `bank-postgres` must be running with Compose labels identifying this checkout. CC rejects containers from another project.
+3. Check DEV configuration and bank migrations. Apply missing tables/columns through normal bank startup. Do not reset an initialized database or blindly generate new passwords.
+4. Select **Refresh accounts**. Reads have timeouts and bounded concurrency; wait after temporary overload. Missing-account details return 404; refresh the list.
+
+CC does not store returned account data in task/notification history. Do not share API responses or real-data screenshots. This runbook executes no repair SQL, changes no balances and recreates no accounts.
+
+<a id="monitoring-metrics"></a>
+
+### § monitoring-metrics — METRICS_CREDENTIALS_CONFLICT
+
+The authoritative DEV metrics credentials are the **existing** `METRICS_USERNAME` / `METRICS_PASSWORD` pair in `.novabank/env/dev.env`. Monitoring preparation does not choose a conflicting password automatically.
+
+1. Open the notification and read the plan. Repair is available only for DEV with the required files, a valid credential pair and two standard local Prometheus jobs.
+2. Only `.novabank/monitoring/.env.monitoring` and `.novabank/monitoring/prometheus.yml` are written. Repair does not change `dev.env`, Grafana passwords, databases or running processes, and generates no new secret. Other Prometheus settings/jobs are preserved.
+3. Confirm the scope and run repair. The backend rechecks the plan signature and file revisions; a change since preview stops the operation.
+4. Both edited files are backed up under `.novabank/control-center/web/repair-backups/<requestId>/` first. These backups contain secrets: never publish or commit them. They are created with restricted permissions; on a Windows drive mounted in WSL, also verify actual Windows ACLs/mount permissions.
+5. In **Tests and logs**, inspect the result and backup path without password values. “Configuration verified” means file consistency, **not service reload or health**.
+6. Deliberately reload/restart dependent applications and monitoring through the appropriate procedure, then verify metrics and `targets UP`. For a single-file Docker bind mount, restarting an existing container may not load an atomically replaced file; controlled recreation of the Prometheus container may be needed. Do not delete Grafana volumes.
+
+The same request ID returns the original task without repeating writes. After an uncertain result, inspect the log/backups before deliberately submitting another attempt. Plan signatures are bound to the current server instance: obtain a new plan after restart.
+
+Nonstandard/remote targets, mismatched ports, ambiguous YAML or symlinks block the plan and require manual review. Replacement writes roll back detected write errors but **are not atomic across both files during power loss/process kill**. After interruption, check both files and backups before starting services. Restore a consistent pair without overwriting later operator edits.
+
+<a id="missing-configuration"></a>
+
+### § missing-configuration — CONFIG_FILES_MISSING
+
+1. DEV: open **DEV configuration**, complete the settings and confirm preparation of `project.env` and `dev.env`.
+2. TEST: use **Operations → Prepare TEST configuration**. Do not copy PROD/DEV secrets into TEST.
+3. If files were lost but the database is initialized, recover its previous credentials. Generating a different file password does not change the existing database's password.
+4. Return to the notification and check again. This validates basic configuration, not database availability or login. Creating files does not start services.
+
+<a id="stale-form"></a>
+
+### § stale-form — CONFIG_REVISION_CHANGED
+
+Saving was rejected to protect concurrent changes. Do not force an old revision. Return to the form, reconcile unsaved data, then deliberately reload/refresh. Never copy secrets to chat or logs. Reapply the needed edits to the current version. CC cannot determine whether you reconciled your draft; this requires manual judgment.
+
+<a id="build-required"></a>
+
+### § build-required — BUILD_REQUIRED
+
+Build the indicated component (bank/shop), confirm and read its log, then check again. The check looks for a single JAR no older than sources and `pom.xml`; it does not verify binary correctness, business behavior or whole-environment compatibility. A build does not start applications. Explicitly start DEV after success.
+
+<a id="port-in-use"></a>
+
+### § port-in-use — PORT_IN_USE
+
+Check the component/port in the notification. Use WSL `ss -ltnp`, and check IntelliJ or another CC instance. Reuse a needed running instance rather than launching a second one. Stop a process only through its owning launcher after identifying it. Alternatively, deliberately reconcile the port and dependent addresses. CC does not kill other processes. Rechecking is a local TCP probe, not process identification or an application healthcheck.
+
+<a id="manual-conflict"></a>
+
+### § manual-conflict — CONFIG_CONFLICT_MANUAL
+
+Open the appropriate form and related log. Establish the setting's source/owner: `project.env` owns nonsensitive infrastructure; `dev.env` owns DEV secrets/application settings. Do not remove conflicting values without agreement. Editing an env password does not execute `ALTER USER`; changing a TOTP encryption key may prevent decryption of existing secrets. API keys require agreement across all clients. Vault/TLS/PROD require their proper administrative procedure. Never resolve an unknown payment by editing balances or repeating a transfer.
+
+<a id="task-failed"></a>
+
+### § task-failed — TASK_FAILED
+
+Open the **specific task's log**. Check the first cause, profile and effects of previous steps. Failure/interruption does not mean complete rollback. Do not automatically repeat payment, transfer, rotation or restore operations. Old task history may be unavailable after restart; a notification is a historical event, not evidence of current service health.
+
+<a id="task-busy"></a>
+
+### § task-busy — TASK_BUSY
+
+A new operation did not start because another task is running. Open **Tests and logs**, wait for its result and review it before retrying. Do not interrupt repair, rotation or a financial operation halfway through. Do not overwrite concurrent configuration changes.
+
+<a id="write-failed"></a>
+
+### § write-failed — CONFIG_WRITE_FAILED
+
+Check permissions and free space. Do not assume the entire set was written. Inspect the log and available `.control-config-*` / `repair-backups` copies. Restore only agreed files without overwriting newer operator edits. If rollback is incomplete, stop further configuration mutations. Backups contain secrets; share only masked logs when reporting a problem.
+
+<a id="unclassified"></a>
+
+### § unclassified — UNCLASSIFIED_EVENT
+
+Check the source, time, masked message and available task/application log. A code or command embedded in a log never executes repair. Older events are not retroactively treated as confirmed diagnoses. An unknown case, payment, database, TOTP or PROD needs diagnostics and its proper procedure, not a “force” button.

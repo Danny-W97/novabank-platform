@@ -1,7 +1,7 @@
 // Parse documentation without editing Markdown or producing replacement diagrams.
 import {JSDOM} from 'jsdom';
 import {createHash} from 'node:crypto';
-import {readFileSync} from 'node:fs';
+import {existsSync, readFileSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import path from 'node:path';
 
@@ -15,6 +15,8 @@ const files = [...new Set(execFileSync('git', ['-c', 'core.fsmonitor=false', 'ls
   .split('\0').filter(file => file.endsWith('.md') && !file.startsWith('tmp/') && !file.includes('/node_modules/')))];
 let checked = 0, failures = 0, deferredCount = 0;
 for (const file of files) {
+  // git ls-files --cached also includes locally deleted, not-yet-staged documents.
+  if (!existsSync(path.join(root, file))) continue;
   const text = readFileSync(path.join(root, file), 'utf8');
   for (const block of text.matchAll(/^```mermaid[^\r\n]*\r?\n([\s\S]*?)^```[ \t]*$/gm)) {
     const line = text.slice(0, block.index).split('\n').length;

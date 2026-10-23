@@ -85,9 +85,9 @@ Panel otwiera się pod `http://127.0.0.1:18110`. Zalecany sposób pracy to WSL/B
 
 W **Operacje → Salda DEV** można dodać lub odjąć testowe środki na aktywnych kontach PLN. Każda korekta wymaga wyboru konta, kwoty i potwierdzenia, jest audytowana i chroniona przed powtórzeniem tym samym UUID. TEST/PROD nie udostępniają korekt.
 
-**Powiadomienia** zbiera ostrzeżenia/błędy banku, sklepu i zadań panelu, z licznikiem oraz przewijaną historią. Scheduler sprawdzania płatności w sklepie zawiesza dalsze odpytywanie po trzech kolejnych błędach, bez oznaczania nierozstrzygniętej płatności jako odrzuconej. Po aktualizacji kodu uruchom ponownie panel i obie aplikacje DEV (migracje V25/V12 i zapis logów). Szczegóły: [instrukcja panelu](docs/control-center-web.md).
+**Powiadomienia** zbiera ostrzeżenia/błędy banku, sklepu i zadań panelu, z licznikiem oraz przewijaną historią. Scheduler sprawdzania płatności w sklepie zawiesza dalsze odpytywanie po trzech kolejnych błędach, bez oznaczania nierozstrzygniętej płatności jako odrzuconej. Po aktualizacji kodu uruchom ponownie panel i obie aplikacje DEV oraz sprawdź historię migracji Flyway. Szczegóły: [Control Center w instrukcji głównej](docs/General_Instruction.pl.md#control-center).
 
-Pierwszy start wykonasz z **Konfiguracja DEV**; zaawansowane ustawienia edytujesz w **Pliki i sekrety**. Panel uruchamia lokalne bazy/Redis, buildy i aplikacje DEV bez zatrzymywania IDE. **Operacje → Vault** obejmuje status, pojedynczy udział Shamir, AppRole oraz rotację/finalizację Secret ID. Dodano bootstrap, buildy PROD i lokalne keystore TLS. Każde zadanie PROD wymaga ostrzeżenia i wpisania PROD; tylko lokalny HTTPS Vault z CA projektu i token operatora, nie root. Panel nie inicjalizuje Vault, nie edytuje biznesowych KV i nie wdraża aplikacji PROD. Jest też przewodnik, raport IntelliJ, ograniczone porządkowanie artefaktów i PL/EN dla nawigacji/nazw operacji. Pełne wymagania: [instrukcja panelu](docs/control-center-web.md).
+Pierwszy start wykonasz z **Konfiguracja DEV**; zaawansowane ustawienia edytujesz w **Pliki i sekrety**. Panel uruchamia lokalne bazy/Redis, buildy i aplikacje DEV bez zatrzymywania IDE. **Operacje → Vault** obejmuje status, pojedynczy udział Shamir, AppRole oraz rotację/finalizację Secret ID. Dodano bootstrap, buildy PROD i lokalne keystore TLS. Każde zadanie PROD wymaga ostrzeżenia i wpisania PROD; tylko lokalny HTTPS Vault z CA projektu i token operatora, nie root. Panel nie inicjalizuje Vault, nie edytuje biznesowych KV i nie wdraża aplikacji PROD. Jest też przewodnik, raport IntelliJ, ograniczone porządkowanie artefaktów i PL/EN dla nawigacji/nazw operacji. Pełne wymagania: [instrukcja główna](docs/General_Instruction.pl.md#control-center).
 
 Nie dodawaj katalogu `.novabank` do repozytorium. Może zawierać lokalne hasła, klucze, certyfikaty, tokeny i logi.
 
@@ -212,12 +212,14 @@ Konfiguracja monitoringu wymaga osobnego pliku `.novabank/monitoring/.env.monito
 
 ## Dokumentacja
 
-- [Generalna instrukcja uruchomienia i obsługi](docs/General_Instruction.pl.md) — pełna instrukcja WSL, Docker, profili, Vault, TLS, monitoringu, backupów i diagnostyki;
-- [Interaktywny przewodnik](docs/interactive-guide.html) — wizualne wprowadzenie do projektu;
-- [Rodzaje testów oprogramowania](docs/Software_Test_Types.pl.md) — opis strategii testowania;
-- [Instrukcja generatora regulaminu](docs/regulamin/README.md);
-- [Konfiguracja lokalnej infrastruktury](docker-compose.yaml);
-- [Przykładowe zmienne środowiskowe](.env.example).
+Pełny podręcznik obsługi całej platformy — **NovaBank, NovaTech Shop i Control Center** — jest utrzymywany w dwóch równoważnych wersjach językowych:
+
+- [General_Instruction.pl.md — polska](docs/General_Instruction.pl.md);
+- [General_Instruction.md — angielska](docs/General_Instruction.md).
+
+Są to jedyne dokumenty w `docs`. Opisują pierwszy start, profile DEV/TEST/PROD, obsługę banku i sklepu, operacje Control Center i pola ich formularzy, płatności/Stripe TEST, Vault/TOTP/TLS, monitoring, kopie/odtwarzanie/DR, testowanie i rozwiązywanie problemów. Przed operacją administracyjną zacznij od instrukcji — wyjaśnia wymagania, słowa potwierdzenia i zależności między krokami.
+
+Opcjonalne wizualne wprowadzenie jest zasobem aplikacji w `scripts/control-center/guide`, uruchamianym przez `bash scripts/control-center/interactive-guide.sh`; uzupełnia podręcznik, a nie go zastępuje.
 
 ## Bezpieczeństwo i zakres projektu
 

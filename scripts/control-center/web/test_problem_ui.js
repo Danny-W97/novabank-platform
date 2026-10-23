@@ -20,7 +20,7 @@ const notificationsState = {selected: {id: 1}};
 const requests = [], navigations = [], actions = [];
 let uuidCounter = 0, failJob = false, deferredGet = null;
 let details = {notificationId: 1, profile: 'dev', jobId: 'a'.repeat(32), context: {}, outcome: 'open', outcomeNote: null, readOnly: false,
-  problem: {title: 'Fixture conflict', code: 'METRICS_CREDENTIALS_CONFLICT', impact: 'Fixture impact', document: 'docs/control-center-troubleshooting.md', anchor: 'monitoring-metrics', steps: ['Read plan', 'Confirm deliberately'], check: 'metrics'},
+  problem: {title: 'Fixture conflict', code: 'METRICS_CREDENTIALS_CONFLICT', impact: 'Fixture impact', document: 'docs/General_Instruction.pl.md', anchor: 'monitoring-metrics', steps: ['Read plan', 'Confirm deliberately'], check: 'metrics'},
   actions: [], plan: {revision: 'a'.repeat(64), planToken: 'b'.repeat(64), title: 'Existing DEV metrics', source: '.novabank/env/dev.env', writes: ['.novabank/monitoring/.env.monitoring', '.novabank/monitoring/prometheus.yml'], effects: 'No restarts'}, diagnosis: 'Fixture only'};
 const context = {
   console, structuredClone, crypto: {randomUUID: () => `00000000-0000-4000-8000-${String(++uuidCounter).padStart(12, '0')}`},

@@ -417,6 +417,22 @@ class HttpTests(unittest.TestCase):
         connection.close()
         return result
 
+    def test_document_routes_serve_only_the_two_main_manuals(self):
+        documents = Path(self.temp.name) / "docs"
+        documents.mkdir()
+        for route, name, content in (
+            ("/docs/guide", "General_Instruction.md", "English platform manual"),
+            ("/docs/panel", "General_Instruction.pl.md", "Polska instrukcja platformy"),
+        ):
+            (documents / name).write_text(content, encoding="utf-8")
+            status, headers, body = self.request("GET", route)
+            self.assertEqual(200, status)
+            self.assertEqual(content.encode("utf-8"), body)
+            self.assertIn("text/plain", headers["Content-Type"])
+        (documents / "private.txt").write_text("not served", encoding="utf-8")
+        for route in ("/docs/private.txt", "/docs/General_Instruction.md", "/docs/../private.txt"):
+            self.assertEqual(404, self.request("GET", route)[0])
+
     def test_retention_requires_trusted_request_and_explicit_export(self):
         payload = {"operation": "plan", "profile": "dev", "trashDays": 30, "archiveDays": 180}
         for extra in ({"X-Control-Center-Token": "bad"}, {"Origin": "https://untrusted.example"}):

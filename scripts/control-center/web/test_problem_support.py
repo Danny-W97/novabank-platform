@@ -60,11 +60,12 @@ class ProblemSupportTests(unittest.TestCase):
         self.assertEqual("a" * 32, details["jobId"])
 
     def test_every_catalog_entry_has_an_existing_document_anchor(self):
-        document = (ROOT / "docs/control-center-troubleshooting.md").read_text(encoding="utf-8")
-        for code, entry in CATALOG.items():
-            with self.subTest(code=code):
-                self.assertIn(f'<a id="{entry["section"]}"></a>', document)
-                self.assertIn(code, document)
+        for name in ("General_Instruction.md", "General_Instruction.pl.md"):
+            document = (ROOT / "docs" / name).read_text(encoding="utf-8")
+            for code, entry in CATALOG.items():
+                with self.subTest(document=name, code=code):
+                    self.assertIn(f'<a id="{entry["section"]}"></a>', document)
+                    self.assertIn(code, document)
 
     def test_untrusted_log_cannot_create_a_repair_plan(self):
         self.fixture()

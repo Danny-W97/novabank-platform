@@ -1749,12 +1749,12 @@ first_run_menu() {
     local choice=""
     IFS= read -r choice || return
     case "$choice" in
-      1) run_action "Kontrola pierwszego uruchomienia" "docs/first-run.md" none first_run_status ;;
-      2) run_action "Utworzenie .novabank/env/project.env" "docs/first-run.md" yes create_root_env ;;
-      3) run_action "Utworzenie .novabank/env/dev.env" "docs/intellij-dev.md" yes create_dev_env_file ;;
-      4) run_action "Utworzenie plików bootstrap PROD" "docs/VAULT-PROD-INSTRUKCJA.md" yes create_prod_bootstrap_files ;;
-      5) run_action "Mapa sekretów PROD" "docs/first-run.md" none show_prod_secret_locations ;;
-      6) run_action "Przygotowanie monitoringu DEV" "docs/monitoring-preparation.md" yes bash "$PROJECT_ROOT/scripts/monitoring/monitoring.sh" setup --profile dev ;;
+      1) run_action "Kontrola pierwszego uruchomienia" "$MAIN_GUIDE_REL" none first_run_status ;;
+      2) run_action "Utworzenie .novabank/env/project.env" "$MAIN_GUIDE_REL" yes create_root_env ;;
+      3) run_action "Utworzenie .novabank/env/dev.env" "$MAIN_GUIDE_REL" yes create_dev_env_file ;;
+      4) run_action "Utworzenie plików bootstrap PROD" "$MAIN_GUIDE_REL" yes create_prod_bootstrap_files ;;
+      5) run_action "Mapa sekretów PROD" "$MAIN_GUIDE_REL" none show_prod_secret_locations ;;
+      6) run_action "Przygotowanie monitoringu DEV" "$MAIN_GUIDE_REL" yes bash "$PROJECT_ROOT/scripts/monitoring/monitoring.sh" setup --profile dev ;;
       7) run_action "Kontrola wymaganych komponentów" "docs/General_Instruction.md" none check_installation_status ;;
       8) run_action "Instrukcja pierwszego uruchomienia" "$MAIN_GUIDE_REL" none show_document "$PROJECT_ROOT/$MAIN_GUIDE_REL" ;;
       0) return ;;
@@ -2036,12 +2036,12 @@ docker_menu() {
     local choice=""
     IFS= read -r choice || return
     case "$choice" in
-      1) run_action "Status Docker, PostgreSQL i Redis" "docs/control-center.md" none docker_infrastructure_status ;;
-      2) run_action "Start PostgreSQL i Redis" "docs/control-center.md" yes start_project_databases ;;
-      3) run_action "Restart PostgreSQL i Redis" "docs/control-center.md" yes restart_project_databases ;;
-      4) run_action "Stop PostgreSQL i Redis" "docs/control-center.md" yes stop_project_databases ;;
-      5) run_action "Logi PostgreSQL i Redis" "docs/control-center.md" none project_database_logs ;;
-      6) run_action "Walidacja docker-compose.yaml" "docs/control-center.md" none validate_project_compose ;;
+      1) run_action "Status Docker, PostgreSQL i Redis" "$MAIN_GUIDE_REL" none docker_infrastructure_status ;;
+      2) run_action "Start PostgreSQL i Redis" "$MAIN_GUIDE_REL" yes start_project_databases ;;
+      3) run_action "Restart PostgreSQL i Redis" "$MAIN_GUIDE_REL" yes restart_project_databases ;;
+      4) run_action "Stop PostgreSQL i Redis" "$MAIN_GUIDE_REL" yes stop_project_databases ;;
+      5) run_action "Logi PostgreSQL i Redis" "$MAIN_GUIDE_REL" none project_database_logs ;;
+      6) run_action "Walidacja docker-compose.yaml" "$MAIN_GUIDE_REL" none validate_project_compose ;;
       0) return ;;
       *) printf '%s\n' "$(t common.invalid)"; sleep 1 ;;
     esac
@@ -2049,7 +2049,7 @@ docker_menu() {
 }
 
 flyway_menu() {
-  run_action "Diagnostyka migracji Flyway" "docs/control-center.md" none flyway_diagnostics
+  run_action "Diagnostyka migracji Flyway" "$MAIN_GUIDE_REL" none flyway_diagnostics
 }
 
 stripe_menu() {
@@ -2064,9 +2064,9 @@ stripe_menu() {
     local choice=""
     IFS= read -r choice || return
     case "$choice" in
-      1) run_action "Status Stripe CLI" "docs/intellij-dev.md" none stripe_cli_status ;;
-      2) run_action "Logowanie Stripe CLI" "docs/intellij-dev.md" yes stripe_cli_login ;;
-      3) run_action "Listener webhookow Stripe" "docs/intellij-dev.md" yes stripe_webhook_listener ;;
+      1) run_action "Status Stripe CLI" "$MAIN_GUIDE_REL" none stripe_cli_status ;;
+      2) run_action "Logowanie Stripe CLI" "$MAIN_GUIDE_REL" yes stripe_cli_login ;;
+      3) run_action "Listener webhookow Stripe" "$MAIN_GUIDE_REL" yes stripe_webhook_listener ;;
       0) return ;;
       *) printf '%s\n' "$(t common.invalid)"; sleep 1 ;;
     esac
@@ -2086,10 +2086,10 @@ build_menu() {
     local choice=""
     IFS= read -r choice || return
     case "$choice" in
-      1) run_action "Build banku" "docs/ci-cd.md" yes build_bank ;;
-      2) run_action "Build shop-app" "docs/ci-cd.md" yes build_shop ;;
-      3) run_action "Build banku i shop-app" "docs/ci-cd.md" yes build_both ;;
-      4) run_action "Build artefaktow PROD" "docs/ci-cd.md" prod build_prod_artifacts ;;
+      1) run_action "Build banku" "$MAIN_GUIDE_REL" yes build_bank ;;
+      2) run_action "Build shop-app" "$MAIN_GUIDE_REL" yes build_shop ;;
+      3) run_action "Build banku i shop-app" "$MAIN_GUIDE_REL" yes build_both ;;
+      4) run_action "Build artefaktow PROD" "$MAIN_GUIDE_REL" prod build_prod_artifacts ;;
       0) return ;;
       *) printf '%s\n' "$(t common.invalid)"; sleep 1 ;;
     esac
@@ -2107,8 +2107,8 @@ redis_menu() {
     local choice=""
     IFS= read -r choice || return
     case "$choice" in
-      1) run_action "Status sesji Redis" "docs/control-center.md" none redis_session_status ;;
-      2) run_action "Uniewaznienie sesji banku" "docs/control-center.md" yes invalidate_bank_sessions ;;
+      1) run_action "Status sesji Redis" "$MAIN_GUIDE_REL" none redis_session_status ;;
+      2) run_action "Uniewaznienie sesji banku" "$MAIN_GUIDE_REL" yes invalidate_bank_sessions ;;
       0) return ;;
       *) printf '%s\n' "$(t common.invalid)"; sleep 1 ;;
     esac
@@ -2135,7 +2135,7 @@ maintenance_menu() {
       3) stripe_menu ;;
       4) build_menu ;;
       5) redis_menu ;;
-      6) run_action "Porzadkowanie artefaktow lokalnych" "docs/control-center.md" yes local_artifact_cleanup ;;
+      6) run_action "Porzadkowanie artefaktow lokalnych" "$MAIN_GUIDE_REL" yes local_artifact_cleanup ;;
       0) return ;;
       *) printf '%s\n' "$(t common.invalid)"; sleep 1 ;;
     esac
@@ -2160,11 +2160,11 @@ installation_menu() {
     IFS= read -r choice || return
     case "$choice" in
       1) run_action "Kontrola wymaganych komponentow" "docs/General_Instruction.md" none check_installation_status ;;
-      2) run_action "Instalacja Vault w WSL" "docs/VAULT-PROD-INSTRUKCJA.md" yes install_vault_wsl ;;
+      2) run_action "Instalacja Vault w WSL" "$MAIN_GUIDE_REL" yes install_vault_wsl ;;
       3) run_action "Instalacja narzedzi WSL" "docs/General_Instruction.md" yes install_wsl_tools ;;
       4) run_action "Kontrola Docker Engine i Compose" "docs/General_Instruction.md" none check_docker_engine ;;
       5) run_action "Kontrola Java JDK i keytool" "docs/General_Instruction.md" none check_java_toolchain ;;
-      6) run_action "Instalacja Stripe CLI" "docs/intellij-dev.md" yes install_stripe_cli ;;
+      6) run_action "Instalacja Stripe CLI" "$MAIN_GUIDE_REL" yes install_stripe_cli ;;
       7) run_action "Uruchomienie PostgreSQL i Redis" "docs/General_Instruction.md" yes start_project_databases ;;
       8) run_action "Pelna kontrola zaleznosci" "docs/General_Instruction.md" none check_installation_status ;;
       0) return ;;
@@ -2189,13 +2189,13 @@ environment_menu() {
     local choice=""
     IFS= read -r choice || return
     case "$choice" in
-      1) run_action "Przygotowanie DEV" "docs/intellij-dev.md" yes prepare_dev ;;
-      2) run_action "Rotacja lokalnego klucza API" "docs/intellij-dev.md" yes prepare_dev_env true ;;
+      1) run_action "Przygotowanie DEV" "$MAIN_GUIDE_REL" yes prepare_dev ;;
+      2) run_action "Rotacja lokalnego klucza API" "$MAIN_GUIDE_REL" yes prepare_dev_env true ;;
       3) run_action "Status infrastruktury" "docs/General_Instruction.md" none show_infrastructure_status ;;
-      4) run_action "Start DEV poza IntelliJ" "docs/intellij-dev.md" yes run_powershell_script "$PROJECT_ROOT/scripts/start-dev.ps1" ;;
-      5) run_action "Stop DEV poza IntelliJ" "docs/intellij-dev.md" yes run_powershell_script "$PROJECT_ROOT/scripts/stop-dev.ps1" -Confirm:\$false ;;
-      6) run_action "Przygotowanie PROD" "docs/VAULT-PROD-INSTRUKCJA.md" prod prepare_prod ;;
-      7) run_action "Konfiguracje IntelliJ" "docs/control-center.md" none show_intellij_configurations ;;
+      4) run_action "Start DEV poza IntelliJ" "$MAIN_GUIDE_REL" yes run_powershell_script "$PROJECT_ROOT/scripts/start-dev.ps1" ;;
+      5) run_action "Stop DEV poza IntelliJ" "$MAIN_GUIDE_REL" yes run_powershell_script "$PROJECT_ROOT/scripts/stop-dev.ps1" -Confirm:\$false ;;
+      6) run_action "Przygotowanie PROD" "$MAIN_GUIDE_REL" prod prepare_prod ;;
+      7) run_action "Konfiguracje IntelliJ" "$MAIN_GUIDE_REL" none show_intellij_configurations ;;
       0) return ;;
       *) printf '%s\n' "$(t common.invalid)"; sleep 1 ;;
     esac
@@ -2219,14 +2219,14 @@ monitoring_menu() {
     local choice=""
     IFS= read -r choice || return
     case "$choice" in
-      1) run_action "Konfiguracja monitoringu DEV" "docs/monitoring-preparation.md" yes bash "$PROJECT_ROOT/scripts/monitoring/monitoring.sh" setup --profile dev ;;
-      2) run_action "Start monitoringu" "docs/monitoring-preparation.md" yes bash "$PROJECT_ROOT/scripts/monitoring/monitoring.sh" start --profile dev ;;
-      3) run_action "Status monitoringu" "docs/monitoring-preparation.md" none bash "$PROJECT_ROOT/scripts/monitoring/monitoring.sh" status --profile dev ;;
-      4) run_action "Logi Prometheus" "docs/monitoring-preparation.md" none bash "$PROJECT_ROOT/scripts/monitoring/monitoring.sh" logs prometheus ;;
-      5) run_action "Logi Grafana" "docs/monitoring-preparation.md" none bash "$PROJECT_ROOT/scripts/monitoring/monitoring.sh" logs grafana ;;
-      6) run_action "Logi Alertmanager" "docs/monitoring-preparation.md" none bash "$PROJECT_ROOT/scripts/monitoring/monitoring.sh" logs alertmanager ;;
-      7) run_action "Stop monitoringu" "docs/monitoring-preparation.md" yes bash "$PROJECT_ROOT/scripts/monitoring/monitoring.sh" stop --profile dev ;;
-      8) run_action "Rotacja hasel monitoringu DEV" "docs/monitoring-preparation.md" yes bash "$PROJECT_ROOT/scripts/monitoring/monitoring.sh" setup --profile dev --force ;;
+      1) run_action "Konfiguracja monitoringu DEV" "$MAIN_GUIDE_REL" yes bash "$PROJECT_ROOT/scripts/monitoring/monitoring.sh" setup --profile dev ;;
+      2) run_action "Start monitoringu" "$MAIN_GUIDE_REL" yes bash "$PROJECT_ROOT/scripts/monitoring/monitoring.sh" start --profile dev ;;
+      3) run_action "Status monitoringu" "$MAIN_GUIDE_REL" none bash "$PROJECT_ROOT/scripts/monitoring/monitoring.sh" status --profile dev ;;
+      4) run_action "Logi Prometheus" "$MAIN_GUIDE_REL" none bash "$PROJECT_ROOT/scripts/monitoring/monitoring.sh" logs prometheus ;;
+      5) run_action "Logi Grafana" "$MAIN_GUIDE_REL" none bash "$PROJECT_ROOT/scripts/monitoring/monitoring.sh" logs grafana ;;
+      6) run_action "Logi Alertmanager" "$MAIN_GUIDE_REL" none bash "$PROJECT_ROOT/scripts/monitoring/monitoring.sh" logs alertmanager ;;
+      7) run_action "Stop monitoringu" "$MAIN_GUIDE_REL" yes bash "$PROJECT_ROOT/scripts/monitoring/monitoring.sh" stop --profile dev ;;
+      8) run_action "Rotacja hasel monitoringu DEV" "$MAIN_GUIDE_REL" yes bash "$PROJECT_ROOT/scripts/monitoring/monitoring.sh" setup --profile dev --force ;;
       0) return ;;
       *) printf '%s\n' "$(t common.invalid)"; sleep 1 ;;
     esac
@@ -2250,14 +2250,14 @@ backup_menu() {
     local choice=""
     IFS= read -r choice || return
     case "$choice" in
-      1) run_action "Backup banku i sklepu" "docs/postgres-backup-restore.md" yes bash "$PROJECT_ROOT/scripts/backup/backup.sh" create ;;
-      2) run_action "Test odtworzenia najnowszej kopii" "docs/postgres-backup-restore.md" yes bash "$PROJECT_ROOT/scripts/backup/backup.sh" restore-test ;;
-      3) run_action "Backup z retencja" "docs/postgres-backup-restore.md" yes bash "$PROJECT_ROOT/scripts/backup/backup.sh" prune ;;
-      4) run_action "Instalacja harmonogramu backupu" "docs/postgres-backup-restore.md" yes bash "$PROJECT_ROOT/scripts/backup/backup.sh" schedule-install ;;
-      5) run_action "Status harmonogramu backupu" "docs/postgres-backup-restore.md" none bash "$PROJECT_ROOT/scripts/backup/backup.sh" schedule-status ;;
-      6) run_action "Natychmiastowy zaplanowany backup" "docs/postgres-backup-restore.md" yes bash "$PROJECT_ROOT/scripts/backup/backup.sh" schedule-run-now ;;
-      7) run_action "Logi harmonogramu backupu" "docs/postgres-backup-restore.md" none bash "$PROJECT_ROOT/scripts/backup/backup.sh" schedule-logs ;;
-      8) run_action "Usuniecie harmonogramu backupu" "docs/postgres-backup-restore.md" yes bash "$PROJECT_ROOT/scripts/backup/backup.sh" schedule-remove ;;
+      1) run_action "Backup banku i sklepu" "$MAIN_GUIDE_REL" yes bash "$PROJECT_ROOT/scripts/backup/backup.sh" create ;;
+      2) run_action "Test odtworzenia najnowszej kopii" "$MAIN_GUIDE_REL" yes bash "$PROJECT_ROOT/scripts/backup/backup.sh" restore-test ;;
+      3) run_action "Backup z retencja" "$MAIN_GUIDE_REL" yes bash "$PROJECT_ROOT/scripts/backup/backup.sh" prune ;;
+      4) run_action "Instalacja harmonogramu backupu" "$MAIN_GUIDE_REL" yes bash "$PROJECT_ROOT/scripts/backup/backup.sh" schedule-install ;;
+      5) run_action "Status harmonogramu backupu" "$MAIN_GUIDE_REL" none bash "$PROJECT_ROOT/scripts/backup/backup.sh" schedule-status ;;
+      6) run_action "Natychmiastowy zaplanowany backup" "$MAIN_GUIDE_REL" yes bash "$PROJECT_ROOT/scripts/backup/backup.sh" schedule-run-now ;;
+      7) run_action "Logi harmonogramu backupu" "$MAIN_GUIDE_REL" none bash "$PROJECT_ROOT/scripts/backup/backup.sh" schedule-logs ;;
+      8) run_action "Usuniecie harmonogramu backupu" "$MAIN_GUIDE_REL" yes bash "$PROJECT_ROOT/scripts/backup/backup.sh" schedule-remove ;;
       0) return ;;
       *) printf '%s\n' "$(t common.invalid)"; sleep 1 ;;
     esac
@@ -2280,13 +2280,13 @@ dr_menu() {
     local choice=""
     IFS= read -r choice || return
     case "$choice" in
-      1) run_action "Pelny test Disaster Recovery" "docs/postgres-backup-restore.md" yes bash "$PROJECT_ROOT/scripts/backup/backup.sh" dr-test ;;
-      2) run_action "Instalacja harmonogramu DR" "docs/postgres-backup-restore.md" yes bash "$PROJECT_ROOT/scripts/backup/backup.sh" dr-schedule-install ;;
-      3) run_action "Status harmonogramu DR" "docs/postgres-backup-restore.md" none bash "$PROJECT_ROOT/scripts/backup/backup.sh" dr-schedule-status ;;
-      4) run_action "Natychmiastowy test DR" "docs/postgres-backup-restore.md" yes bash "$PROJECT_ROOT/scripts/backup/backup.sh" dr-schedule-run-now ;;
-      5) run_action "Ostatni raport DR" "docs/postgres-backup-restore.md" none bash "$PROJECT_ROOT/scripts/backup/backup.sh" dr-report ;;
-      6) run_action "Logi testow DR" "docs/postgres-backup-restore.md" none bash "$PROJECT_ROOT/scripts/backup/backup.sh" dr-schedule-logs ;;
-      7) run_action "Usuniecie harmonogramu DR" "docs/postgres-backup-restore.md" yes bash "$PROJECT_ROOT/scripts/backup/backup.sh" dr-schedule-remove ;;
+      1) run_action "Pelny test Disaster Recovery" "$MAIN_GUIDE_REL" yes bash "$PROJECT_ROOT/scripts/backup/backup.sh" dr-test ;;
+      2) run_action "Instalacja harmonogramu DR" "$MAIN_GUIDE_REL" yes bash "$PROJECT_ROOT/scripts/backup/backup.sh" dr-schedule-install ;;
+      3) run_action "Status harmonogramu DR" "$MAIN_GUIDE_REL" none bash "$PROJECT_ROOT/scripts/backup/backup.sh" dr-schedule-status ;;
+      4) run_action "Natychmiastowy test DR" "$MAIN_GUIDE_REL" yes bash "$PROJECT_ROOT/scripts/backup/backup.sh" dr-schedule-run-now ;;
+      5) run_action "Ostatni raport DR" "$MAIN_GUIDE_REL" none bash "$PROJECT_ROOT/scripts/backup/backup.sh" dr-report ;;
+      6) run_action "Logi testow DR" "$MAIN_GUIDE_REL" none bash "$PROJECT_ROOT/scripts/backup/backup.sh" dr-schedule-logs ;;
+      7) run_action "Usuniecie harmonogramu DR" "$MAIN_GUIDE_REL" yes bash "$PROJECT_ROOT/scripts/backup/backup.sh" dr-schedule-remove ;;
       0) return ;;
       *) printf '%s\n' "$(t common.invalid)"; sleep 1 ;;
     esac
@@ -2311,15 +2311,15 @@ vault_menu() {
     local choice=""
     IFS= read -r choice || return
     case "$choice" in
-      1) run_action "Status Vault" "docs/VAULT-PROD-INSTRUKCJA.md" none vault_status_action ;;
-      2) run_action "Odpieczetowanie Vault" "docs/VAULT-PROD-INSTRUKCJA.md" yes vault_unseal_action ;;
-      3) run_action "Konfiguracja AppRole PROD" "docs/VAULT-PROD-INSTRUKCJA.md" prod vault_operation vault_command bash "$PROJECT_ROOT/scripts/vault/setup-prod-approles.sh" ;;
-      4) run_action "Rotacja Secret ID banku" "docs/VAULT-PROD-INSTRUKCJA.md" prod vault_operation vault_command bash "$PROJECT_ROOT/scripts/vault/approle-secret-id.sh" rotate bank ;;
-      5) run_action "Rotacja Secret ID sklepu" "docs/VAULT-PROD-INSTRUKCJA.md" prod vault_operation vault_command bash "$PROJECT_ROOT/scripts/vault/approle-secret-id.sh" rotate shop ;;
-      6) run_action "Rotacja Secret ID obu aplikacji" "docs/VAULT-PROD-INSTRUKCJA.md" prod vault_operation vault_command bash "$PROJECT_ROOT/scripts/vault/approle-secret-id.sh" rotate all ;;
-      7) run_action "Finalizacja rotacji banku" "docs/VAULT-PROD-INSTRUKCJA.md" prod vault_operation vault_command bash "$PROJECT_ROOT/scripts/vault/approle-secret-id.sh" finalize bank ;;
-      8) run_action "Finalizacja rotacji sklepu" "docs/VAULT-PROD-INSTRUKCJA.md" prod vault_operation vault_command bash "$PROJECT_ROOT/scripts/vault/approle-secret-id.sh" finalize shop ;;
-      9) run_action "Finalizacja rotacji obu aplikacji" "docs/VAULT-PROD-INSTRUKCJA.md" prod vault_operation vault_command bash "$PROJECT_ROOT/scripts/vault/approle-secret-id.sh" finalize all ;;
+      1) run_action "Status Vault" "$MAIN_GUIDE_REL" none vault_status_action ;;
+      2) run_action "Odpieczetowanie Vault" "$MAIN_GUIDE_REL" yes vault_unseal_action ;;
+      3) run_action "Konfiguracja AppRole PROD" "$MAIN_GUIDE_REL" prod vault_operation vault_command bash "$PROJECT_ROOT/scripts/vault/setup-prod-approles.sh" ;;
+      4) run_action "Rotacja Secret ID banku" "$MAIN_GUIDE_REL" prod vault_operation vault_command bash "$PROJECT_ROOT/scripts/vault/approle-secret-id.sh" rotate bank ;;
+      5) run_action "Rotacja Secret ID sklepu" "$MAIN_GUIDE_REL" prod vault_operation vault_command bash "$PROJECT_ROOT/scripts/vault/approle-secret-id.sh" rotate shop ;;
+      6) run_action "Rotacja Secret ID obu aplikacji" "$MAIN_GUIDE_REL" prod vault_operation vault_command bash "$PROJECT_ROOT/scripts/vault/approle-secret-id.sh" rotate all ;;
+      7) run_action "Finalizacja rotacji banku" "$MAIN_GUIDE_REL" prod vault_operation vault_command bash "$PROJECT_ROOT/scripts/vault/approle-secret-id.sh" finalize bank ;;
+      8) run_action "Finalizacja rotacji sklepu" "$MAIN_GUIDE_REL" prod vault_operation vault_command bash "$PROJECT_ROOT/scripts/vault/approle-secret-id.sh" finalize shop ;;
+      9) run_action "Finalizacja rotacji obu aplikacji" "$MAIN_GUIDE_REL" prod vault_operation vault_command bash "$PROJECT_ROOT/scripts/vault/approle-secret-id.sh" finalize all ;;
       0) return ;;
       *) printf '%s\n' "$(t common.invalid)"; sleep 1 ;;
     esac
@@ -2338,9 +2338,9 @@ tools_menu() {
     local choice=""
     IFS= read -r choice || return
     case "$choice" in
-      1) run_action "Generowanie keystore TLS" "docs/VAULT-PROD-INSTRUKCJA.md" prod run_powershell_script "$PROJECT_ROOT/scripts/generate-prod-tls-keystores.ps1" ;;
-      2) run_action "Ponowne generowanie keystore TLS" "docs/VAULT-PROD-INSTRUKCJA.md" prod run_powershell_script "$PROJECT_ROOT/scripts/generate-prod-tls-keystores.ps1" -Force ;;
-      3) run_action "Generowanie PDF regulaminu" "docs/regulamin/README.md" yes generate_regulamin_pdf ;;
+      1) run_action "Generowanie keystore TLS" "$MAIN_GUIDE_REL" prod run_powershell_script "$PROJECT_ROOT/scripts/generate-prod-tls-keystores.ps1" ;;
+      2) run_action "Ponowne generowanie keystore TLS" "$MAIN_GUIDE_REL" prod run_powershell_script "$PROJECT_ROOT/scripts/generate-prod-tls-keystores.ps1" -Force ;;
+      3) run_action "Generowanie PDF regulaminu" "$MAIN_GUIDE_REL" yes generate_regulamin_pdf ;;
       0) return ;;
       *) printf '%s\n' "$(t common.invalid)"; sleep 1 ;;
     esac
@@ -2362,13 +2362,13 @@ tests_menu() {
     local choice=""
     IFS= read -r choice || return
     case "$choice" in
-      1) run_action "Testy jednostkowe banku" "docs/ci-cd.md" yes run_maven -Punit-tests test ;;
-      2) run_action "Testy jednostkowe sklepu" "docs/ci-cd.md" yes run_maven -f "$PROJECT_ROOT/shop-app/pom.xml" -Punit-tests test ;;
-      3) run_action "Testy integracyjne banku" "docs/ci-cd.md" yes run_maven -Pintegration-tests verify ;;
-      4) run_action "Testy integracyjne sklepu" "docs/ci-cd.md" yes run_maven -f "$PROJECT_ROOT/shop-app/pom.xml" -Pintegration-tests verify ;;
-      5) run_action "Smoke E2E bank-sklep" "docs/ci-cd.md" yes run_e2e_smoke ;;
+      1) run_action "Testy jednostkowe banku" "$MAIN_GUIDE_REL" yes run_maven -Punit-tests test ;;
+      2) run_action "Testy jednostkowe sklepu" "$MAIN_GUIDE_REL" yes run_maven -f "$PROJECT_ROOT/shop-app/pom.xml" -Punit-tests test ;;
+      3) run_action "Testy integracyjne banku" "$MAIN_GUIDE_REL" yes run_maven -Pintegration-tests verify ;;
+      4) run_action "Testy integracyjne sklepu" "$MAIN_GUIDE_REL" yes run_maven -f "$PROJECT_ROOT/shop-app/pom.xml" -Pintegration-tests verify ;;
+      5) run_action "Smoke E2E bank-sklep" "$MAIN_GUIDE_REL" yes run_e2e_smoke ;;
       6)
-        run_action "Testy jednostkowe banku i sklepu" "docs/ci-cd.md" yes run_all_unit_tests
+        run_action "Testy jednostkowe banku i sklepu" "$MAIN_GUIDE_REL" yes run_all_unit_tests
         ;;
       0) return ;;
       *) printf '%s\n' "$(t common.invalid)"; sleep 1 ;;
@@ -2519,7 +2519,7 @@ main_menu() {
       9) tests_menu ;;
       10) docs_menu ;;
       11) run_action "Interaktywne wprowadzenie" "docs/General_Instruction.md" none launch_interactive_guide ;;
-      12) run_action "Diagnostyka calego srodowiska" "docs/control-center.md" none show_infrastructure_status ;;
+      12) run_action "Diagnostyka calego srodowiska" "$MAIN_GUIDE_REL" none show_infrastructure_status ;;
       13) maintenance_menu ;;
       14) settings_menu ;;
       0|exit|quit) exit 0 ;;

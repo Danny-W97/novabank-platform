@@ -163,5 +163,5 @@ class ProblemError(RuntimeError):
 def metadata(code=None):
     code = code if code in CATALOG else "UNCLASSIFIED_EVENT"
     item = dict(CATALOG[code])
-    item.update(code=code, document="docs/control-center-troubleshooting.md", anchor=item["section"])
+    item.update(code=code, document="docs/General_Instruction.pl.md", anchor=item["section"])
     return item
