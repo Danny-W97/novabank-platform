@@ -33,8 +33,9 @@ shop:
   bank:
     base-url: "${TEST_BANK_BASE_URL:http://localhost:8080}"
     api-key: "${TEST_BANK_API_KEY:test-api-key}"
-    api-key-id: "${TEST_BANK_API_KEY_ID:test}"
+    api-key-id: "${TEST_BANK_API_KEY_ID:legacy}"
   orders:
+    merchant-id: "${TEST_SHOP_MERCHANT_ID:synthetic-merchant}"
     merchant-account-number: "${TEST_SHOP_MERCHANT_ACCOUNT:00000000000000000000000000}"
     reconciliation-enabled: false
   payment-provider:

@@ -47,9 +47,11 @@ public class ShopSecurityConfig {
                                                 || authentication.get().getAuthorities().stream()
                                                 .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()))
                                 ))
+                        .requestMatchers("/api/auth/me").access(clientRoles())
                         .requestMatchers(
                                 "/",
                                 "/novatech_shop.html",
+                                "/product.html",
                                 "/shop-login.html",
                                 "/shop-register.html",
                                 "/card-provider.html",
@@ -63,13 +65,17 @@ public class ShopSecurityConfig {
                                 "/shop-profile.html",
                                 "/shop-address.html",
                                 "/shop-orders.html",
+                                "/checkout.html",
                                 "/api/account/**"
-                        ).authenticated()
-                        .requestMatchers("/api/cart/**", "/api/orders/**", "/api/checkout/**").authenticated()
+                        ).access(clientRoles())
+                        .requestMatchers("/api/cart/**", "/api/orders/**", "/api/checkout/**").access(clientRoles())
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers("/actuator/prometheus").hasAnyRole("ADMIN", "METRICS")
-                        .requestMatchers("/actuator/**").hasRole("ADMIN")
-                        .anyRequest().permitAll()
+                        .requestMatchers("/actuator/**").access(clientRoles("ADMIN"))
+                        .requestMatchers("/payment/callback", "/api/payments/stripe/webhook",
+                                "/api/payments/stripe/success", "/api/payments/stripe/cancel",
+                                "/error", "/favicon.ico", "/favicon.svg").permitAll()
+                        .anyRequest().denyAll()
                 )
                 .formLogin(form -> form
                         .loginPage("/shop-login.html")
@@ -108,6 +114,19 @@ public class ShopSecurityConfig {
                         .sessionFixation(fixation -> fixation.migrateSession())
                 )
                 .build();
+    }
+
+    private static org.springframework.security.authorization.AuthorizationManager<org.springframework.security.web.access.intercept.RequestAuthorizationContext>
+    clientRoles(String... roles) {
+        return (supplier, context) -> {
+            var authentication = supplier.get();
+            boolean active = authentication.getPrincipal() instanceof org.springframework.security.core.userdetails.UserDetails user
+                    && user.isEnabled() && user.isAccountNonLocked() && user.isAccountNonExpired() && user.isCredentialsNonExpired();
+            var allowed=roles.length==0?new String[]{"CUSTOMER","ADMIN"}:roles;
+            boolean role = authentication.getAuthorities().stream().anyMatch(authority ->
+                    java.util.Arrays.stream(allowed).anyMatch(expected -> authority.getAuthority().equals("ROLE_"+expected)));
+            return new org.springframework.security.authorization.AuthorizationDecision(authentication.isAuthenticated() && active && role);
+        };
     }
 
     @Bean

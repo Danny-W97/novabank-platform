@@ -5,16 +5,25 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "app.email")
 public class EmailProperties {
 
-    private String mode = "log";
+    public enum Mode { LOG, SMTP }
+
+    private Mode mode = Mode.LOG;
     private String from = "no-reply@novabank.local";
     private String baseUrl = "http://localhost:8080";
 
     public String getMode() {
-        return mode;
+        return mode.name();
     }
 
     public void setMode(String mode) {
-        this.mode = mode;
+        if (mode == null || mode.isBlank()) {
+            throw new IllegalArgumentException("app.email.mode wymaga LOG albo SMTP.");
+        }
+        try {
+            this.mode = Mode.valueOf(mode.strip().toUpperCase(java.util.Locale.ROOT));
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("app.email.mode wymaga LOG albo SMTP.");
+        }
     }
 
     public String getFrom() {

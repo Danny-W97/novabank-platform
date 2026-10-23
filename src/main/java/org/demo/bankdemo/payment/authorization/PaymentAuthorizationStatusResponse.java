@@ -12,7 +12,8 @@ public record PaymentAuthorizationStatusResponse(
         String referenceNumber,
         String customerAccountNumber,
         String failureReason,
-        Instant expiresAt
+        Instant expiresAt,
+        String merchantId
 ) {
 
     public static PaymentAuthorizationStatusResponse from(PaymentAuthorization authorization) {
@@ -25,7 +26,8 @@ public record PaymentAuthorizationStatusResponse(
                 authorization.getBankReference(),
                 authorization.getSourceAccountNumber(),
                 authorization.getFailureReason(),
-                authorization.getExpiresAt()
+                authorization.getExpiresAt(),
+                authorization.getMerchantId()
         );
     }
 }

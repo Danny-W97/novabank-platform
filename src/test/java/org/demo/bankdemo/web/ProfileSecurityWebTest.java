@@ -38,16 +38,32 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(ProfileController.class)
+@WebMvcTest({ProfileController.class, ProfileSecurityController.class, ProfileTwoFactorController.class, ProfileLimitsController.class})
 @Import({SecurityConfig.class, PaymentApiProperties.class, MetricsAccessProperties.class,
-        MetricsBasicAuthenticationFilter.class,
+        MetricsBasicAuthenticationFilter.class, ProfilePageModel.class,
         SecurityAutoConfiguration.class, ServletWebSecurityAutoConfiguration.class})
 class ProfileSecurityWebTest {
+
+    @Test
+    void bankUserBasicAuthenticationCannotOpenProfileInsteadOfFormMfa() throws Exception {
+        when(databaseUserDetailsService.loadUserByUsername(EMAIL)).thenReturn(
+                org.springframework.security.core.userdetails.User.withUsername(EMAIL)
+                        .password(new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode("Synthetic-password-1"))
+                        .roles("USER").build());
+        mockMvc.perform(get("/profile").with(
+                org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic(
+                        EMAIL, "Synthetic-password-1")))
+                .andExpect(status().is3xxRedirection()).andExpect(redirectedUrl("/login"));
+        org.mockito.Mockito.verifyNoInteractions(databaseUserDetailsService);
+    }
 
     private static final String EMAIL = "anna.nowak@example.pl";
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockitoBean
+    private org.demo.bankdemo.auth.DatabaseUserDetailsService databaseUserDetailsService;
 
     @MockitoBean
     private DashboardService dashboardService;
@@ -150,6 +166,51 @@ class ProfileSecurityWebTest {
                 .andExpect(status().is3xxRedirection());
 
         verify(profileService).updateProfile(eq(EMAIL), any(ProfileUpdateForm.class));
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings={"/profile","/profile/edit","/profile/password","/profile/pin","/profile/limits","/profile/2fa","/profile/2fa/recovery"})
+    void everyExtractedProfilePageStillRequiresAuthentication(String path) throws Exception {
+        mockMvc.perform(get(path)).andExpect(status().is3xxRedirection()).andExpect(redirectedUrl("/login"));
+        org.mockito.Mockito.verifyNoInteractions(profileService,transactionPinService,twoFactorService,userLimitsService);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings={"/profile/edit","/profile/password","/profile/pin","/profile/pin/remove","/profile/limits","/profile/2fa/enable","/profile/2fa/disable"})
+    void everyExtractedProfileMutationStillRejectsInvalidCsrf(String path) throws Exception {
+        mockMvc.perform(post(path).with(user(EMAIL)).with(csrf().useInvalidToken())).andExpect(status().isForbidden());
+        org.mockito.Mockito.verifyNoInteractions(profileService,transactionPinService,twoFactorService,userLimitsService,userSessionService);
+    }
+
+    @Test void passwordMismatchDoesNotCallServiceOrInvalidateSession() throws Exception {
+        var session=new org.springframework.mock.web.MockHttpSession();
+        mockMvc.perform(post("/profile/password").session(session).with(user(EMAIL)).with(csrf())
+                .param("currentPassword","Synthetic-current-1").param("newPassword","Synthetic-next-2")
+                .param("passwordConfirmation","Different-next-3"))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.view().name("profile/password"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.model().attributeHasFieldErrors("passwordChangeForm","passwordConfirmation"));
+        org.assertj.core.api.Assertions.assertThat(session.isInvalid()).isFalse();
+        org.mockito.Mockito.verify(profileService,org.mockito.Mockito.never()).changePassword(any(),any(),any());
+    }
+
+    @Test void recoveryCodesAreRemovedFromSessionAfterOneRead() throws Exception {
+        var session=new org.springframework.mock.web.MockHttpSession();
+        session.setAttribute("BANK_TOTP_RECOVERY_CODES",List.of("synthetic-one-use-recovery"));
+        mockMvc.perform(get("/profile/2fa/recovery").session(session).with(user(EMAIL)))
+                .andExpect(status().isOk()).andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.view().name("profile/two-factor-recovery"));
+        org.assertj.core.api.Assertions.assertThat(session.getAttribute("BANK_TOTP_RECOVERY_CODES")).isNull();
+        mockMvc.perform(get("/profile/2fa/recovery").session(session).with(user(EMAIL)))
+                .andExpect(redirectedUrl("/profile"));
+    }
+
+    @Test void rejectedTwoFactorDisableDoesNotInvalidateOtherSessions() throws Exception {
+        org.mockito.Mockito.doThrow(new org.demo.bankdemo.profile.TwoFactorException("code","Synthetic refusal"))
+                .when(twoFactorService).disable(EMAIL,"bad-password","000000");
+        mockMvc.perform(post("/profile/2fa/disable").with(user(EMAIL)).with(csrf())
+                .param("currentPassword","bad-password").param("code","000000"))
+                .andExpect(redirectedUrl("/profile/2fa"));
+        org.mockito.Mockito.verifyNoInteractions(userSessionService);
     }
 
     private static org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder

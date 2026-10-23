@@ -15,6 +15,7 @@ LOG_SERVICE=""
 MONITORING_ENV="$MONITORING_DIR/.env.monitoring"
 MONITORING_ENV_EXAMPLE="$PROJECT_ROOT/infra/monitoring/.env.monitoring.example"
 DEV_ENV="$ENV_DIR/dev.env"
+PROJECT_ENV="$ENV_DIR/project.env"
 PROMETHEUS_CONFIG="$MONITORING_DIR/prometheus.yml"
 PROMETHEUS_EXAMPLE="$PROJECT_ROOT/infra/monitoring/prometheus/prometheus.yml.example"
 COMPOSE_FILE="$PROJECT_ROOT/docker-compose.monitoring.yaml"
@@ -160,6 +161,13 @@ upsert_env_value() {
 render_prometheus_config() {
   local username="$1"
   local password="$2"
+  local bank_port shop_port
+  bank_port="$(read_env_value "$DEV_ENV" BANK_MANAGEMENT_PORT)"
+  [[ -n "$bank_port" ]] || bank_port="$(read_env_value "$PROJECT_ENV" BANK_MANAGEMENT_PORT)"
+  shop_port="$(read_env_value "$DEV_ENV" SHOP_MANAGEMENT_PORT)"
+  [[ -n "$shop_port" ]] || shop_port="$(read_env_value "$PROJECT_ENV" SHOP_MANAGEMENT_PORT)"
+  bank_port="${bank_port:-8082}"; shop_port="${shop_port:-8083}"
+  [[ "$bank_port" =~ ^[0-9]{4,5}$ && "$shop_port" =~ ^[0-9]{4,5}$ ]] || fail 'Niepoprawne porty Actuator.'
   local source="$PROMETHEUS_CONFIG"
   local temp
 
@@ -169,15 +177,19 @@ render_prometheus_config() {
   fi
 
   temp="$(mktemp "${PROMETHEUS_CONFIG}.tmp.XXXXXX")"
-  awk -v username="$username" -v password="$password" '
+  awk -v username="$username" -v password="$password" -v bank_port="$bank_port" -v shop_port="$shop_port" '
+    function yaml_string(value) { gsub(/\047/, "\047\047", value); return "\047" value "\047" }
+    /job_name:[[:space:]]*bank-demo/ { target_port = bank_port }
+    /job_name:[[:space:]]*shop-app/ { target_port = shop_port }
+    /^[[:space:]]*- targets:/ && target_port != "" { sub(/localhost:[0-9]+/, "localhost:" target_port) }
     /^[[:space:]]*username:[[:space:]]*/ {
       match($0, /^[[:space:]]*/)
-      print substr($0, 1, RLENGTH) "username: " username
+      print substr($0, 1, RLENGTH) "username: " yaml_string(username)
       next
     }
     /^[[:space:]]*password:[[:space:]]*/ {
       match($0, /^[[:space:]]*/)
-      print substr($0, 1, RLENGTH) "password: " password
+      print substr($0, 1, RLENGTH) "password: " yaml_string(password)
       next
     }
     { sub(/\r$/, ""); gsub(/CHANGE_ME/, password); print }
@@ -209,12 +221,14 @@ validate_configuration() {
 }
 
 setup_dev() {
+  mkdir -p "$ENV_DIR" "$MONITORING_DIR" || fail 'Nie można utworzyć katalogów konfiguracji monitoringu DEV.'
   local dev_metrics monitoring_metrics metrics_password
   local metrics_username grafana_user grafana_password
 
   [[ -f "$MONITORING_ENV_EXAMPLE" ]] || fail "Brak pliku wzorcowego: $MONITORING_ENV_EXAMPLE"
 
   dev_metrics="$(read_env_value "$DEV_ENV" METRICS_PASSWORD)"
+  [[ -n "$dev_metrics" ]] || dev_metrics="$(read_env_value "$PROJECT_ENV" METRICS_PASSWORD)"
   monitoring_metrics="$(read_env_value "$MONITORING_ENV" METRICS_PASSWORD)"
 
   if [[ "$FORCE" == true ]]; then
@@ -230,6 +244,7 @@ setup_dev() {
   fi
 
   metrics_username="$(read_env_value "$DEV_ENV" METRICS_USERNAME)"
+  [[ -n "$metrics_username" ]] || metrics_username="$(read_env_value "$PROJECT_ENV" METRICS_USERNAME)"
   [[ -n "$metrics_username" ]] || metrics_username="$(read_env_value "$MONITORING_ENV" METRICS_USERNAME)"
   [[ -n "$metrics_username" ]] || metrics_username="metrics-reader"
 
@@ -244,6 +259,7 @@ setup_dev() {
   upsert_env_value "$DEV_ENV" METRICS_USERNAME "$metrics_username"
   upsert_env_value "$DEV_ENV" METRICS_PASSWORD "$metrics_password"
   upsert_env_value "$DEV_ENV" MANAGEMENT_SERVER_ADDRESS "0.0.0.0"
+  # DEV owns metrics credentials; project.env contains infrastructure addresses only.
 
   if [[ ! -f "$MONITORING_ENV" ]]; then
     cp "$MONITORING_ENV_EXAMPLE" "$MONITORING_ENV"

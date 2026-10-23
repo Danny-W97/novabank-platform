@@ -11,7 +11,8 @@ public record CardPaymentResponse(
         String status,
         String reason,
         String sourceAccountNumber,
-        boolean replayed
+        boolean replayed,
+        String merchantId
 ) {
 
     public static CardPaymentResponse from(String orderId, CardService.OnlinePaymentResult result) {
@@ -24,7 +25,13 @@ public record CardPaymentResponse(
                 result.status().name(),
                 result.reason(),
                 result.sourceAccountNumber(),
-                result.replayed()
+                result.replayed(),
+                null
         );
+    }
+
+    public CardPaymentResponse withMerchant(String merchantId) {
+        return new CardPaymentResponse(referenceNumber,orderId,amount,currency,amountInPln,status,reason,
+                sourceAccountNumber,replayed,merchantId);
     }
 }

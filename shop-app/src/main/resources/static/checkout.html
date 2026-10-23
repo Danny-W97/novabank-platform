@@ -38,7 +38,9 @@
     .message.show { display:block; }
     .message.error { background:#fff0f2; color:var(--danger); }
     .message.success { background:#eaf8f1; color:var(--success); }
+    .message.warning{background:#fff6e7;color:#79561e;border:1px solid #e4cc9f}
     .note { margin-top:18px; color:var(--muted); font-size:13px; }
+    .purchase-buttons{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:16px}.purchase-buttons button{border:1px solid #bbcade;background:white;color:#244475;padding:11px 14px;border-radius:7px;cursor:pointer;font:600 13px/1.5 Arial,sans-serif}.purchase-buttons button:first-child{background:#1c5fbf;color:white;border-color:#1c5fbf}.purchase-buttons button:disabled{opacity:.55;cursor:wait}#pendingPurchase{border:1px solid #b8cce6}#pendingPurchase p{line-height:1.7}#purchaseIdentity{background:#fff6e7;border:1px solid #e4cc9f}#purchaseIdentity>strong{font-size:16px}#cancellationFeedback:empty{display:none}
     @media (max-width:760px) { main { margin-top:24px; } .layout { grid-template-columns:1fr; } h1 { font-size:29px; } }
   </style>
 </head>
@@ -88,6 +90,8 @@
         <button class="primary" id="cardPay" type="button">Zapłać kartą</button>
         <p class="note">To demonstracyjny numer z profilu karty NovaBank. Nie używaj prawdziwego numeru karty.</p>
       </div>
+      <section id="pendingPurchase" class="quote" hidden aria-labelledby="pendingPurchaseTitle"><strong id="pendingPurchaseTitle">Masz niedokończone zamówienie</strong><p id="pendingPurchaseMessage"></p><div class="purchase-buttons"><button id="resumePurchase" type="button">Kontynuuj płatność</button><button id="cancelPurchase" type="button">Zrezygnuj i wróć do koszyka</button><a href="/shop-orders.html">Moje zamówienia</a></div><p id="cancellationFeedback" role="status"></p></section>
+      <section id="purchaseIdentity" class="quote" hidden><strong>Wyjątek: niezależny nowy zakup</strong><p id="purchaseStatus"></p><p>Poprzednie zamówienie i jego płatność pozostają w historii. Rozpoczęcie niezależnego zakupu zapisze snapshot i opróżni obecny koszyk — bez anulowania starej płatności. Używaj tylko po świadomej decyzji dotyczącej nierozstrzygniętej historii.</p><p><a href="/shop-orders.html">Wróć do istniejącego zamówienia</a></p><button id="independentPurchase" type="button" disabled>Odłóż koszyk i rozpocznij nowy zakup</button></section>
       <div id="message" class="message" role="alert"></div>
     </section>
   </div>
@@ -99,6 +103,9 @@
   let quoteLoading = false;
   let method = 'bank';
   let cardProvider = 'bank-demo';
+  let purchaseIdentity=null;
+  let cancellationBusy=false,cancellationRequest=null;
+  const currentPurchase=()=>purchaseIdentity?.orders?.find(order=>!['PAID','CANCELLED'].includes(order.status));
   const $ = id => document.getElementById(id);
   const format = (value, currency = 'PLN') => new Intl.NumberFormat('pl-PL', { style:'currency', currency }).format(Number(value || 0));
   const selectedCurrency = () => ($('currency').value || 'PLN').trim().toUpperCase();
@@ -110,7 +117,7 @@
     const button = $('cardPay');
     if (!button) return;
     button.textContent = quoteLoading ? 'Pobieranie kursu...' : 'Przejdz do bezpiecznej platnosci';
-    button.disabled = method === 'card' && (quoteLoading || !cartHasItems() || !hasValidQuote());
+    button.disabled = cancellationBusy || Boolean(currentPurchase()?.cancelRequestedAt) || (method === 'card' && (quoteLoading || !cartHasItems() || !hasValidQuote()));
   }
   const cookie = name => document.cookie.split('; ').find(row => row.startsWith(name + '='))?.split('=').slice(1).join('=');
   const csrf = () => decodeURIComponent(cookie('SHOP-XSRF-TOKEN') || '');
@@ -138,6 +145,18 @@
   }
   async function refreshCart() {
     cart = await json(await api('/api/cart'));
+    purchaseIdentity=await json(await api('/api/cart/purchase'));
+    const unfinished=currentPurchase();
+    $('pendingPurchase').hidden=!unfinished;
+    $('pendingPurchaseMessage').textContent=unfinished?.cancelRequestedAt?'Zapisano prośbę o rezygnację. Sprawdzamy wynik płatności; do potwierdzenia nie ponawiaj zapłaty.':'Możesz kontynuować płatność albo zrezygnować. Po potwierdzeniu rezygnacji produkty pozostaną w edytowalnym koszyku.';
+    $('resumePurchase').disabled=cancellationBusy||Boolean(unfinished?.cancelRequestedAt);
+    $('cancelPurchase').disabled=cancellationBusy||!unfinished;
+    $('bankPay').disabled=cancellationBusy||Boolean(unfinished?.cancelRequestedAt);
+    $('cancelPurchase').textContent=unfinished?.cancelRequestedAt?'Sprawdź rezygnację ponownie':'Zrezygnuj i wróć do koszyka';
+    $('purchaseIdentity').hidden=!(purchaseIdentity.requiresIndependentAcknowledgement || (purchaseIdentity.blocked&&purchaseIdentity.canStartIndependent));
+    $('purchaseStatus').textContent=purchaseIdentity.requiresIndependentAcknowledgement?'Koszyk pochodzi sprzed aktualizacji. Nie zostanie automatycznie ponownie wysłany. Rozpocznij jawnie niezależny zakup; nierozstrzygnięta historia może wymagać decyzji operatora.':purchaseIdentity.blocked?'Stara płatność wymaga uzgodnienia. Nowy niezależny zakup może wymagać decyzji operatora w CC.':
+      purchaseIdentity.orders.length?'Koszyk jest powiązany z zamówieniem. Ponowienie checkoutu wykorzysta ten sam zakup.':'Koszyk ma własną trwałą tożsamość zakupu.';
+    $('independentPurchase').disabled=!purchaseIdentity.canStartIndependent;
     renderCart();
     return cart;
   }
@@ -216,6 +235,29 @@
     catch (error) { await refreshCartAfterError(error); } finally { setCardPaymentState(); }
   }
   $('bankMethod').addEventListener('click', () => selectMethod('bank')); $('cardMethod').addEventListener('click', () => selectMethod('card')); $('currency').addEventListener('change', () => { resetQuote(); setCardPaymentState(); if (method === 'card') loadQuote(); }); $('bankPay').addEventListener('click', payBank); $('cardPay').addEventListener('click', payCard);
+  $('independentPurchase').addEventListener('click',async()=>{
+    if(!purchaseIdentity?.canStartIndependent||!window.confirm('Rozpocząć niezależny zakup? Obecny koszyk zostanie zarchiwizowany i opróżniony. Stara płatność NIE zostaje anulowana i nadal może zostać rozliczona.'))return;
+    $('independentPurchase').disabled=true;
+    try{await json(await api('/api/cart/independent-purchase',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({purchaseId:purchaseIdentity.purchaseId,acknowledged:true})}));resetQuote();await refreshCart();showMessage('Rozpoczęto nowy zakup. Dodaj produkty ponownie; stare zamówienie pozostaje w historii.','success');}
+    catch(error){await refreshCartAfterError(error);}
+  });
+  $('resumePurchase').addEventListener('click',async()=>{
+    const order=currentPurchase();if(!order||order.cancelRequestedAt||cancellationBusy)return;
+    if(order.provider==='BANK')await payBank();else{selectMethod('card');await payCard();}
+  });
+  $('cancelPurchase').addEventListener('click',async()=>{
+    const order=currentPurchase();if(!order||cancellationBusy)return;
+    if(!window.confirm('Zrezygnować z tego zamówienia? Produkty pozostaną w koszyku. Jeśli płatność została wysłana, najpierw sprawdzimy jej wynik.'))return;
+    if(!cancellationRequest||cancellationRequest.order!==order.id)cancellationRequest={order:order.id,id:crypto.randomUUID()};
+    cancellationBusy=true;$('cancelPurchase').disabled=true;$('resumePurchase').disabled=true;
+    try{
+      const result=await json(await api('/api/orders/'+encodeURIComponent(order.id)+'/cancel-purchase',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requestId:cancellationRequest.id,confirmed:true})}));
+      await refreshCart();$('cancellationFeedback').textContent=result.message;
+      if(result.status==='CANCELLED'){cancellationRequest=null;resetQuote();if(method==='card')await loadQuote();}
+      showMessage(result.message,result.status==='CANCELLED'?'success':'warning');
+    }catch(error){showMessage(error.message);}
+    finally{cancellationBusy=false;$('cancelPurchase').disabled=!currentPurchase();$('resumePurchase').disabled=Boolean(currentPurchase()?.cancelRequestedAt);$('bankPay').disabled=Boolean(currentPurchase()?.cancelRequestedAt);setCardPaymentState();}
+  });
   window.addEventListener('storage', event => { if (event.key === 'nova-shop-payment-completed') refreshCart().catch(error => showMessage(error.message)); });
   load().catch(error => showMessage(error.message));
 </script>

@@ -398,6 +398,11 @@
   }
   .close-btn:hover { background: rgba(255,255,255,0.2); }
   .cart-items { flex: 1; overflow-y: auto; padding: 1rem 1.5rem; }
+  .cart-purchase-notice { margin: 1rem 1.5rem 0; padding: 1rem; border: 1px solid #BFDBFE; border-radius: 12px; background: #EFF6FF; color: #1E3A5F; font-size: 13px; line-height: 1.6; }
+  .cart-purchase-notice[hidden] { display: none; }
+  .cart-purchase-notice strong, .cart-purchase-notice a { display: block; }
+  .cart-purchase-notice a { margin-top: .5rem; color: #1D4ED8; font-weight: 700; }
+  .cart-purchase-notice p { margin: .4rem 0 0; }
   .cart-empty { text-align: center; padding: 3rem 1rem; color: var(--muted); }
   .cart-empty .empty-icon { font-size: 48px; margin-bottom: 1rem; }
   .cart-item {
@@ -730,6 +735,11 @@
     <div class="cart-header-title">🛒 Koszyk <span style="background:rgba(255,255,255,0.15);border-radius:6px;padding:2px 8px;font-size:13px;" id="cartCountBig">0</span></div>
     <button class="close-btn" id="closeCartBtn" aria-label="Zamknij koszyk">✕</button>
   </div>
+  <div class="cart-purchase-notice" id="cartPurchaseNotice" hidden role="status">
+    <strong>Niedokończony zakup</strong>
+    <p id="cartPurchaseMessage"></p>
+    <a href="/checkout.html">Przejdź do obsługi zakupu →</a>
+  </div>
   <div class="cart-items" id="cartItems">
     <div class="cart-empty">
       <div class="empty-icon">🛒</div>
@@ -816,6 +826,7 @@
   let searchTimer  = null;
   let allProducts  = [];          // cache from last API call
   let cartItems    = [];          // [{productId, sku, name, unitPrice, currency, quantity, lineTotal, emoji}]
+  let cartPurchaseLocked = false;
   let currentUser  = null;
   let csrfBootstrap = null;
 
@@ -1247,6 +1258,7 @@
 
       const minusBtn = document.createElement('button');
       minusBtn.className = 'qty-btn';
+      minusBtn.disabled = cartPurchaseLocked;
       minusBtn.textContent = '−';
       minusBtn.setAttribute('aria-label', 'Zmniejsz ilość');
       minusBtn.addEventListener('click', () => changeQty(item.productId, item.quantity - 1));
@@ -1257,6 +1269,7 @@
 
       const plusBtn = document.createElement('button');
       plusBtn.className = 'qty-btn';
+      plusBtn.disabled = cartPurchaseLocked;
       plusBtn.textContent = '+';
       plusBtn.setAttribute('aria-label', 'Zwiększ ilość');
       plusBtn.addEventListener('click', () => changeQty(item.productId, item.quantity + 1));
@@ -1266,6 +1279,7 @@
 
       const removeBtn = document.createElement('button');
       removeBtn.className = 'ci-remove';
+      removeBtn.disabled = cartPurchaseLocked;
       removeBtn.textContent = '✕';
       removeBtn.setAttribute('aria-label', 'Usuń z koszyka');
       removeBtn.addEventListener('click', () => removeFromCart(item.productId));
@@ -1721,9 +1735,31 @@
   }
 
   /* ── CATEGORY FILTER ─────────────────────────────────────────────────────── */
+  async function syncPurchaseNotice() {
+    if (!currentUser) return false;
+    const response = await apiFetch('/api/cart/purchase');
+    const purchase = await response.json();
+    const orders = purchase.orders || [];
+    cartPurchaseLocked = orders.length > 0 || purchase.blocked === true || purchase.requiresIndependentAcknowledgement === true;
+    document.getElementById('cartPurchaseNotice').hidden = !cartPurchaseLocked;
+    document.getElementById('cartPurchaseMessage').textContent = orders.some(order => order.cancelRequestedAt)
+      ? 'Rezygnacja czeka na potwierdzenie operatora. Sprawdź stan zakupu; brak odpowiedzi nie oznacza anulowania.'
+      : 'Ten koszyk należy do zapisanego zakupu. Możesz kontynuować płatność albo poprosić o rezygnację. Po potwierdzonym anulowaniu produkty pozostaną w koszyku.';
+    if (cartPurchaseLocked && orders.length === 0) document.getElementById('cartPurchaseMessage').textContent = 'Poprzedni zakup wymaga wyjaśnienia. Otwórz obsługę zakupu, aby sprawdzić dostępne działania; nowa płatność nie jest wysyłana automatycznie.';
+    document.getElementById('checkoutBtn').textContent = cartPurchaseLocked ? 'Kontynuuj lub zrezygnuj z zakupu' : 'Przejdź do kasy';
+    return cartPurchaseLocked;
+  }
+
+  async function cartNeedsPurchaseReview() {
+    if (!await syncPurchaseNotice()) return false;
+    openCart();
+    return true;
+  }
+
   async function changeQty(productId, newQty) {
     if (!requireAuth()) return;
     try {
+      if (await cartNeedsPurchaseReview()) return;
       let response;
       if (newQty < 1) {
         response = await apiFetch('/api/cart/items/' + productId, { method: 'DELETE' });
@@ -1749,6 +1785,7 @@
     btn.classList.add('loading');
     if (prog) prog.style.width = '100%';
     try {
+      if (await cartNeedsPurchaseReview()) return;
       const response = await apiFetch('/api/cart/items', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1771,6 +1808,7 @@
   async function removeFromCart(productId) {
     if (!requireAuth()) return;
     try {
+      if (await cartNeedsPurchaseReview()) return;
       const response = await apiFetch('/api/cart/items/' + productId, { method: 'DELETE' });
       if (!response.ok) throw new Error('Nie udało się usunąć produktu.');
       await syncCart();
@@ -1803,6 +1841,7 @@
         quantity: item.quantity,
         emoji: productMap[item.productId]?.emoji || '📦'
       }));
+      await syncPurchaseNotice();
       updateCartUI();
     } catch (error) {
       console.warn('Cart API unreachable', error);

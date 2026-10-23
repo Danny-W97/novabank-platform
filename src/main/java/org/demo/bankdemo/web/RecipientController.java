@@ -95,6 +95,8 @@ public class RecipientController {
         if (!bindingResult.hasErrors()) {
             try {
                 recipientService.update(authentication.getName(), id, recipientForm);
+            } catch (org.demo.bankdemo.recipient.RecipientNotFoundException missing) {
+                throw missing;
             } catch (RecipientException exception) {
                 reject(bindingResult, exception);
             }

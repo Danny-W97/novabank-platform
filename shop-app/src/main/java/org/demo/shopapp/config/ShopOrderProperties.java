@@ -6,6 +6,17 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class ShopOrderProperties {
 
     private String merchantAccountNumber = "";
+    private String merchantId = "";
+
+    public String getMerchantId() { return merchantId; }
+    public void setMerchantId(String value) { merchantId = value; }
+
+    public String requireMerchantId() {
+        if (merchantId == null || !merchantId.matches("[A-Za-z0-9_-]{1,64}"))
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE, "Shop merchant identity is not configured.");
+        return merchantId;
+    }
     private boolean reconciliationEnabled = true;
     private long reconciliationIntervalMs = 30000;
     private long reconciliationInitialDelayMs = 10000;

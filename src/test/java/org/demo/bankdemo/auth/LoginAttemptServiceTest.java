@@ -36,11 +36,15 @@ class LoginAttemptServiceTest {
     @Test
     void givesFirstFailureA15MinuteTtl() {
         var key = LoginAttemptService.key("anna.nowak@example.pl");
-        when(valueOperations.increment(key)).thenReturn(1L);
+        when(redisTemplate.execute(org.mockito.ArgumentMatchers.<org.springframework.data.redis.core.script.RedisScript<Long>>any(),
+                org.mockito.ArgumentMatchers.eq(java.util.List.of(key)),org.mockito.ArgumentMatchers.eq("900000"))).thenReturn(1L);
 
         service.recordFailure("Anna.Nowak@Example.pl");
 
-        verify(redisTemplate).expire(key, LoginAttemptService.BLOCK_DURATION);
+        verify(redisTemplate).execute(org.mockito.ArgumentMatchers.<org.springframework.data.redis.core.script.RedisScript<Long>>any(),
+                org.mockito.ArgumentMatchers.eq(java.util.List.of(key)),org.mockito.ArgumentMatchers.eq("900000"));
+        org.mockito.Mockito.verify(redisTemplate,org.mockito.Mockito.never()).expire(org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.any(java.time.Duration.class));
     }
 
     @Test

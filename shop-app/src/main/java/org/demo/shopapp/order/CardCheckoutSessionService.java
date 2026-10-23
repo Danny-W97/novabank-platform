@@ -32,17 +32,23 @@ public class CardCheckoutSessionService {
     private final CartService cartService;
     private final BankAuthorizationClient bankClient;
     private final ShopPaymentProperties paymentProperties;
+    private final OrderRepository orderRepository;
+    private final PaymentAttemptRepository attempts;
 
     public CardCheckoutSessionService(
             OrderService orderService,
             CartService cartService,
             BankAuthorizationClient bankClient,
-            ShopPaymentProperties paymentProperties
+            ShopPaymentProperties paymentProperties,
+            OrderRepository orderRepository,
+            PaymentAttemptRepository attempts
     ) {
         this.orderService = orderService;
         this.cartService = cartService;
         this.bankClient = bankClient;
         this.paymentProperties = paymentProperties;
+        this.orderRepository = orderRepository;
+        this.attempts = attempts;
     }
 
     public CardCheckoutSessionResponse start(
@@ -57,7 +63,7 @@ public class CardCheckoutSessionService {
                     "Wewnętrzny formularz jest dostępny tylko dla operatora bank-demo.");
         }
         var order = orderService.get(orderId, customerId);
-        if (!OrderStatus.PENDING.name().equals(order.status())) {
+        if (!OrderStatus.PENDING.name().equals(order.status()) && !OrderStatus.UNKNOWN.name().equals(order.status()) && !OrderStatus.FAILED.name().equals(order.status())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "To zamowienie nie jest gotowe do platnosci.");
         }
@@ -65,7 +71,13 @@ public class CardCheckoutSessionService {
         var quote = bankClient.cardQuote(new BankCardQuoteRequest(order.total(), normalizedCurrency));
         validateQuote(quote, amount, normalizedCurrency);
 
-        return createSession(order, amount, normalizedCurrency, session);
+        var pendingKey = orderRepository.findById(orderId, customerId).paymentIdempotencyKey();
+        var active = attempts.active(orderId);
+        if (active.isPresent() && !"CARD".equals(active.get().provider())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Inna płatność tego zamówienia wymaga wyjaśnienia.");
+        }
+        return createSession(order, amount, normalizedCurrency, pendingKey, session);
     }
 
     public CardCheckoutSessionResponse startFromCart(
@@ -85,24 +97,25 @@ public class CardCheckoutSessionService {
         if (!"PLN".equals(cart.currency())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Kasa sklepu oczekuje cen w PLN.");
         }
-
         var normalizedCurrency = normalizeCurrency(currency);
         var quote = bankClient.cardQuote(new BankCardQuoteRequest(cart.total(), normalizedCurrency));
         validateQuote(quote, amount, normalizedCurrency);
 
         // Create the order only after the current cart and currency quote are valid.
         var order = orderService.create(customerId);
-        return createSession(order, amount, normalizedCurrency, session);
+        return start(order.id(),customerId,normalizedCurrency,amount,session);
     }
 
     private CardCheckoutSessionResponse createSession(
             OrderResponse order,
             BigDecimal amount,
             String currency,
+            String existingKey,
             HttpSession session
     ) {
         var expiresAt = Instant.now().plus(SESSION_TTL);
-        var idempotencyKey = ShopInput.idempotencyKey("card-" + UUID.randomUUID());
+        var idempotencyKey = existingKey == null
+                ? ShopInput.idempotencyKey("card-" + UUID.randomUUID()) : existingKey;
         session.setAttribute(ORDER_ID, order.id());
         session.setAttribute(ORDER_NUMBER, order.orderNumber());
         session.setAttribute(AMOUNT, amount.toPlainString());
@@ -146,6 +159,10 @@ public class CardCheckoutSessionService {
         session.removeAttribute(CURRENCY);
         session.removeAttribute(IDEMPOTENCY_KEY);
         session.removeAttribute(EXPIRES_AT);
+    }
+
+    public void clearForOrder(long order,HttpSession session){
+        if(session.getAttribute(ORDER_ID) instanceof Number id && id.longValue()==order)clear(session);
     }
 
     private static CardCheckoutSessionResponse response(

@@ -41,7 +41,7 @@
   const MAX_VISIBLE_ORDERS = 15;
 
   function statusLabel(status) {
-    return ({ PENDING: 'Oczekuje na płatność', PAID: 'Opłacone', FAILED: 'Nieudane' })[status] || status;
+    return ({ PENDING: 'Oczekuje na płatność', PAID: 'Opłacone', FAILED: 'Odrzucone', CANCELLED:'Zrezygnowano z zakupu', UNKNOWN: 'Wynik niepotwierdzony — trwa uzgadnianie' })[status] || status;
   }
 
   function renderOrders(orders) {
@@ -97,6 +97,17 @@
         details.appendChild(reason);
       }
       row.append(summary, details);
+      if(!['PAID','CANCELLED'].includes(order.status)){
+        const cancel=document.createElement('button');cancel.type='button';cancel.textContent='Zrezygnuj z zakupu';
+        const requestId=crypto.randomUUID();
+        cancel.addEventListener('click',async()=>{
+          if(!window.confirm('Zrezygnować z zakupu? Nie wymusza to anulowania płatności o nieznanym wyniku. Produkty bieżącego koszyka zostaną zachowane.'))return;
+          cancel.disabled=true;
+          try{const response=await shopAccountFetch('/api/orders/'+encodeURIComponent(order.id)+'/cancel-purchase',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requestId,confirmed:true})});
+            if(!response.ok)throw new Error(await shopAccountReadError(response));const result=await response.json();ordersMessage.textContent=result.message;await loadOrders();
+          }catch(error){ordersMessage.textContent=error.message;}finally{cancel.disabled=false;}
+        });details.appendChild(cancel);
+      }
       ordersList.appendChild(row);
     });
   }

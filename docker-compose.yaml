@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_DB: "${POSTGRES_DB:-bankdb}"
       POSTGRES_USER: "${POSTGRES_USER:-bankuser}"
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Ustaw POSTGRES_PASSWORD w .novabank/env/project.env}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Ustaw POSTGRES_PASSWORD w .novabank/env/dev.env i wczytaj oba pliki env}"
     ports:
       - "127.0.0.1:${POSTGRES_PORT:-5300}:5432"
     volumes:
@@ -26,7 +26,7 @@ services:
     environment:
       POSTGRES_DB: "${SHOP_POSTGRES_DB:-shopdb}"
       POSTGRES_USER: "${SHOP_POSTGRES_USER:-shopuser}"
-      POSTGRES_PASSWORD: "${SHOP_POSTGRES_PASSWORD:?Ustaw SHOP_POSTGRES_PASSWORD w .novabank/env/project.env}"
+      POSTGRES_PASSWORD: "${SHOP_POSTGRES_PASSWORD:?Ustaw SHOP_POSTGRES_PASSWORD w .novabank/env/dev.env i wczytaj oba pliki env}"
     ports:
       - "127.0.0.1:${SHOP_POSTGRES_PORT:-5400}:5432"
     volumes:

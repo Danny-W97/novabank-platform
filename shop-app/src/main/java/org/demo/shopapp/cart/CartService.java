@@ -15,14 +15,17 @@ public class CartService {
 
     private final CartRepository cartRepository;
     private final ProductRepository productRepository;
+    private final PurchaseIdentityService purchases;
 
-    public CartService(CartRepository cartRepository, ProductRepository productRepository) {
+    public CartService(CartRepository cartRepository, ProductRepository productRepository, PurchaseIdentityService purchases) {
         this.cartRepository = cartRepository;
         this.productRepository = productRepository;
+        this.purchases=purchases;
     }
 
     @Transactional
     public void addItem(String customerId, long productId, int quantity) {
+        purchases.requireEditable(customerId);
         productRepository.findActiveById(productId);
         var cartId = cartRepository.ensureCart(customerId);
         cartRepository.addItem(cartId, productId, quantity);
@@ -30,6 +33,7 @@ public class CartService {
 
     @Transactional
     public void setItemQuantity(String customerId, long productId, int quantity) {
+        purchases.requireEditable(customerId);
         productRepository.findActiveById(productId);
         var cartId = cartRepository.ensureCart(customerId);
         cartRepository.setItemQuantity(cartId, productId, quantity);
@@ -41,11 +45,13 @@ public class CartService {
 
     @Transactional
     public void removeItem(String customerId, long productId) {
+        purchases.requireEditable(customerId);
         cartRepository.removeItem(customerId, productId);
     }
 
     @Transactional
     public void clear(String customerId) {
+        purchases.requireEditable(customerId);
         cartRepository.clear(customerId);
     }
 

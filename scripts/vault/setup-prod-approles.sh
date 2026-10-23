@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-POLICY_DIR="$SCRIPT_DIR/policies"
+POLICY_DIR="$SCRIPT_DIR/../../infra/vault/policies"
 
 : "${VAULT_ADDR:?Ustaw VAULT_ADDR przed uruchomieniem skryptu}"
 : "${VAULT_CACERT:?Ustaw VAULT_CACERT przed uruchomieniem skryptu}"

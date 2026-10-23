@@ -38,12 +38,9 @@ public class DistributedRateLimitService {
         var windowNumber = now.getEpochSecond() / windowSeconds;
         var key = "bank:rate-limit:" + scope + ":" + sha256(subject) + ":" + windowNumber;
         try {
-            var count = redisTemplate.opsForValue().increment(key);
-            if (count != null && count == 1) {
-                redisTemplate.expire(key, Duration.ofSeconds(windowSeconds + 5));
-            }
+            var count = AtomicRedisCounter.increment(redisTemplate,key,Duration.ofSeconds(windowSeconds + 5));
             var remaining = windowSeconds - (now.getEpochSecond() % windowSeconds);
-            return result(scope, count != null && count <= limit, Math.max(1, remaining), true);
+            return result(scope, count <= limit, Math.max(1, remaining), true);
         } catch (DataAccessException exception) {
             log.error("Rate limiting Redis is unavailable for scope {}.", scope, exception);
             return result(scope, false, 30, false);

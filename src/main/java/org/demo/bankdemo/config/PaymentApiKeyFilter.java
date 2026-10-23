@@ -19,7 +19,6 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class PaymentApiKeyFilter extends OncePerRequestFilter {
 
-    private static final String PAYMENT_API_PATH = "/api/payments";
     private static final String AUTHORIZATION_API_PATH = "/api/payment-authorizations";
     private static final String REFUND_API_PATH = "/api/payments/refunds";
     private static final String CARD_PAYMENT_API_PATH = "/api/card-payments";
@@ -81,6 +80,13 @@ public class PaymentApiKeyFilter extends OncePerRequestFilter {
                     "API key does not have the required scope.");
             return;
         }
+        try {
+            request.setAttribute(org.demo.bankdemo.payment.MerchantIdentity.REQUEST_ATTRIBUTE,
+                    properties.merchantForKey(selectedKey.id()));
+        } catch (IllegalStateException exception) {
+            response.sendError(503, "Payment merchant mapping is not configured or invalid.");
+            return;
+        }
         var rateDecision = allowRequest(selectedKey.id(), request.getRemoteAddr());
         if (!rateDecision.backendAvailable()) {
             response.setHeader("Retry-After", Long.toString(rateDecision.retryAfterSeconds()));
@@ -98,10 +104,8 @@ public class PaymentApiKeyFilter extends OncePerRequestFilter {
 
     private static String requiredScope(String method, String path) {
         if (HttpMethod.GET.matches(method) && isStatusPath(path)) {
-            return "payments:status";
-        }
-        if (PAYMENT_API_PATH.equals(path)) {
-            return "payments:write";
+            return path.startsWith(CARD_PAYMENT_API_PATH + "/status/")
+                    ? "payments:card" : "payments:status";
         }
         if (REFUND_API_PATH.equals(path)) {
             return "payments:refund";
@@ -110,14 +114,15 @@ public class PaymentApiKeyFilter extends OncePerRequestFilter {
             return "payments:card";
         }
         if (AUTHORIZATION_API_PATH.equals(path)
-                || (path.startsWith(AUTHORIZATION_API_PATH + "/") && path.endsWith("/redeem"))) {
+                || (path.startsWith(AUTHORIZATION_API_PATH + "/") && (path.endsWith("/redeem") || path.endsWith("/cancel")))) {
             return "payments:authorize";
         }
         return null;
     }
 
     private static boolean isStatusPath(String path) {
-        return path.startsWith(AUTHORIZATION_API_PATH + "/") && path.endsWith("/status");
+        return (path.startsWith(AUTHORIZATION_API_PATH + "/") && path.endsWith("/status"))
+                || path.startsWith(CARD_PAYMENT_API_PATH + "/status/");
     }
 
     private static boolean sameKey(String providedKey, String expectedKey) {

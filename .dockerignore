@@ -1,4 +1,11 @@
 .git
+.novabank
+**/.novabank
+.codex
+.agents
+**/*.jks
+**/*.p12
+**/*.key
 .github
 .idea
 .idea.backup-*

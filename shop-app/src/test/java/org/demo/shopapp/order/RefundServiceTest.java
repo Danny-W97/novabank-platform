@@ -28,7 +28,7 @@ class RefundServiceTest {
         var orderRepository = mock(OrderRepository.class);
         var refundRepository = mock(RefundRepository.class);
         var bankClient = mock(BankAuthorizationClient.class);
-        var service = new RefundService(orderRepository, refundRepository, bankClient);
+        var service = new RefundService(orderRepository, refundRepository, bankClient, mock(org.springframework.transaction.PlatformTransactionManager.class));
         var order = order(OrderStatus.PAID);
         var pending = refund("PENDING", null, "timeout");
         var completed = refund("COMPLETED", "TRX-REFUND-1", null);
@@ -44,9 +44,9 @@ class RefundServiceTest {
         when(bankClient.refund(any(BankRefundRequest.class), eq(KEY)))
                 .thenThrow(new RuntimeException("Bank timeout"))
                 .thenReturn(new BankAuthorizationRedeemResponse(
-                        "order-1", BigDecimal.TEN, "PLN", "COMPLETED", "TRX-REFUND-1", CUSTOMER_ACCOUNT
+                        "refund:order-1", BigDecimal.TEN, "PLN", "COMPLETED", "TRX-REFUND-1", CUSTOMER_ACCOUNT
                 ));
-        when(refundRepository.markPending(eq(KEY), eq("Bank timeout"))).thenReturn(pending);
+        when(refundRepository.markPending(eq(KEY), eq("Wynik zwrotu niepotwierdzony. Ponów wyłącznie z tym samym kluczem."))).thenReturn(pending);
         when(refundRepository.markCompleted(KEY, "TRX-REFUND-1")).thenReturn(completed);
 
         var first = service.refund(7L, "customer-1", KEY, "Customer request");
@@ -62,7 +62,7 @@ class RefundServiceTest {
         var orderRepository = mock(OrderRepository.class);
         var refundRepository = mock(RefundRepository.class);
         var bankClient = mock(BankAuthorizationClient.class);
-        var service = new RefundService(orderRepository, refundRepository, bankClient);
+        var service = new RefundService(orderRepository, refundRepository, bankClient, mock(org.springframework.transaction.PlatformTransactionManager.class));
         var completed = refund("COMPLETED", "TRX-REFUND-1", null);
 
         when(orderRepository.findByIdForUpdate(7L, "customer-1")).thenReturn(order(OrderStatus.PAID));

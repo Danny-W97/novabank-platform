@@ -1,88 +1,52 @@
 package org.demo.shopapp.order;
-
-import org.demo.shopapp.payment.BankAuthorizationClient;
-import org.demo.shopapp.payment.BankAuthorizationResponse;
+import org.demo.shopapp.payment.*;
 import org.junit.jupiter.api.Test;
-
-import java.math.BigDecimal;
-import java.util.List;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.*;
 
 class OrderPaymentServiceTest {
-
-    @Test
-    void retryAfterPaidDoesNotCallBankAgain() {
-        var stateService = mock(OrderStateService.class);
-        var bankClient = mock(BankAuthorizationClient.class);
-        var service = new OrderPaymentService(stateService, bankClient);
-        var paid = row(OrderStatus.PAID, "bank-ref", null);
-        when(stateService.preparePayment(7L, "customer-1", "payment-1"))
-                .thenReturn(paid);
-
-        var response = service.pay(7L, "customer-1", "payment-1");
-
-        assertThat(response.status()).isEqualTo("PAID");
-        assertThat(response.replayed()).isTrue();
-        verify(bankClient, never()).create(any());
+    @Test void lostCreateReplyStaysUnknownAndDoesNotWriteFailed() {
+        var states=mock(OrderStateService.class);
+        var attempts=mock(PaymentAttemptService.class);
+        var bank=mock(BankAuthorizationClient.class);
+        var attempt=PaymentFixtures.attempt("BANK");
+        when(attempts.begin(7L,"customer","key","BANK",null,null))
+                .thenReturn(new PaymentAttemptService.Prepared(PaymentFixtures.order(OrderStatus.PENDING),attempt,true));
+        when(bank.create(any())).thenThrow(new IllegalStateException("lost response"));
+        when(attempts.order(attempt)).thenReturn(PaymentFixtures.order(OrderStatus.UNKNOWN));
+        var result=new OrderPaymentService(states,bank,attempts).pay(7L,"customer","key");
+        assertThat(result.status()).isEqualTo("UNKNOWN");
+        verify(attempts).unknown(attempt);
+        verifyNoInteractions(states);
     }
-
-    @Test
-    void successfulBankResponseChangesPendingOrderToPaid() {
-        var stateService = mock(OrderStateService.class);
-        var bankClient = mock(BankAuthorizationClient.class);
-        var service = new OrderPaymentService(stateService, bankClient);
-        var pending = row(OrderStatus.PENDING, null, "payment-1");
-        var linked = row(OrderStatus.PENDING, null, "payment-1");
-        when(stateService.preparePayment(7L, "customer-1", "payment-1"))
-                .thenReturn(pending);
-        when(bankClient.create(any()))
-                .thenReturn(new BankAuthorizationResponse("auth-1", "http://localhost:8080/shop/authorize/auth-1", "state-1", null));
-        when(stateService.findByAuthorizationId("auth-1")).thenReturn(linked);
-
-        var response = service.pay(7L, "customer-1", "payment-1");
-
-        assertThat(response.status()).isEqualTo("PENDING");
-        assertThat(response.authorizationUrl()).endsWith("auth-1");
-        verify(stateService).attachAuthorization(eq(7L), eq("customer-1"), eq("auth-1"), anyString());
+    @Test void repeatedUnknownDoesNotCreateAnotherAuthorization() {
+        var attempts=mock(PaymentAttemptService.class);
+        var bank=mock(BankAuthorizationClient.class);
+        when(attempts.begin(7L,"customer","key","BANK",null,null))
+                .thenReturn(new PaymentAttemptService.Prepared(PaymentFixtures.order(OrderStatus.UNKNOWN),PaymentFixtures.attempt("BANK"),false));
+        var result=new OrderPaymentService(mock(OrderStateService.class),bank,attempts).pay(7L,"customer","key");
+        assertThat(result.replayed()).isTrue();
+        verifyNoInteractions(bank);
     }
-
-    @Test
-    void bankFailureIsPersistedAsFailedAndCanBeRetriedLater() {
-        var stateService = mock(OrderStateService.class);
-        var bankClient = mock(BankAuthorizationClient.class);
-        var service = new OrderPaymentService(stateService, bankClient);
-        var pending = row(OrderStatus.PENDING, null, "payment-1");
-        var failed = row(OrderStatus.FAILED, null, "payment-1");
-        when(stateService.preparePayment(7L, "customer-1", "payment-1"))
-                .thenReturn(pending);
-        when(bankClient.create(any())).thenThrow(new RuntimeException("Bank unavailable"));
-        when(stateService.markFailed(eq(7L), eq("Bank unavailable"))).thenReturn(failed);
-
-        var response = service.pay(7L, "customer-1", "payment-1");
-
-        assertThat(response.status()).isEqualTo("FAILED");
-        verify(stateService).markFailed(7L, "Bank unavailable");
+    @Test void successfulCreateAttachesTheDurableCorrelation() {
+        var attempts=mock(PaymentAttemptService.class);
+        var bank=mock(BankAuthorizationClient.class);
+        var attempt=PaymentFixtures.attempt("BANK");
+        when(attempts.begin(7L,"customer","key","BANK",null,null))
+                .thenReturn(new PaymentAttemptService.Prepared(PaymentFixtures.order(OrderStatus.PENDING),attempt,true));
+        when(bank.create(any())).thenReturn(new BankAuthorizationResponse("auth","http://localhost:8080/shop/authorize/auth","state",null,"merchant"));
+        when(attempts.order(attempt)).thenReturn(PaymentFixtures.order(OrderStatus.PENDING));
+        var result=new OrderPaymentService(mock(OrderStateService.class),bank,attempts).pay(7L,"customer","key");
+        verify(attempts).attachAuthorization(attempt,"auth","http://localhost:8080/shop/authorize/auth");
+        assertThat(result.authorizationUrl()).contains("/auth");
     }
-
-    private static OrderRepository.OrderRow row(
-            OrderStatus status,
-            String bankReference,
-            String idempotencyKey
-    ) {
-        return new OrderRepository.OrderRow(
-                7L, "order-1", "customer-1",
-                "11111111111111111111111111",
-                "22222222222222222222222222",
-                BigDecimal.TEN, "PLN", status, idempotencyKey,
-                null, null, bankReference, null, List.of()
-        );
+    @Test void alreadyPaidDoesNotContactBank() {
+        var attempts=mock(PaymentAttemptService.class);
+        var bank=mock(BankAuthorizationClient.class);
+        when(attempts.begin(7L,"customer","key","BANK",null,null))
+                .thenReturn(new PaymentAttemptService.Prepared(PaymentFixtures.order(OrderStatus.PAID),null,false));
+        assertThat(new OrderPaymentService(mock(OrderStateService.class),bank,attempts).pay(7L,"customer","key").replayed()).isTrue();
+        verifyNoInteractions(bank);
     }
 }

@@ -84,14 +84,14 @@ public class EmailTokenService {
 
     @Transactional
     public boolean verifyEmail(String rawToken) {
-        var token = verificationRepository.findByTokenHash(hash(rawToken))
+        var tokenHash = hash(rawToken);
+        var token = verificationRepository.findByTokenHash(tokenHash)
                 .orElseThrow(() -> new IllegalArgumentException("Link potwierdzający jest nieprawidłowy."));
         var now = Instant.now(clock);
-        if (!token.isUsable(now)) {
+        if (verificationRepository.consumeUnused(tokenHash, now) != 1) {
             throw new IllegalArgumentException("Link potwierdzający wygasł albo został już użyty.");
         }
         token.getUser().verifyEmail(now);
-        token.markUsed(now);
         return true;
     }
 
@@ -119,15 +119,15 @@ public class EmailTokenService {
 
     @Transactional
     public void resetPassword(String rawToken, String newPassword) {
-        var token = resetRepository.findByTokenHash(hash(rawToken))
+        var tokenHash = hash(rawToken);
+        var token = resetRepository.findByTokenHash(tokenHash)
                 .orElseThrow(() -> new IllegalArgumentException("Link resetowania hasła jest nieprawidłowy."));
         var now = Instant.now(clock);
-        if (!token.isUsable(now)) {
+        if (resetRepository.consumeUnused(tokenHash, now) != 1) {
             throw new IllegalArgumentException("Link resetowania hasła wygasł albo został już użyty.");
         }
         var user = token.getUser();
         user.changePassword(passwordEncoder.encode(newPassword), now);
-        token.markUsed(now);
         userSessionService.invalidateAllSessions(user.getEmail());
         if (notificationService != null) {
             notificationService.securityEvent(

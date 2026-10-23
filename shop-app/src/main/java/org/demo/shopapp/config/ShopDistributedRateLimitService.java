@@ -38,10 +38,11 @@ public class ShopDistributedRateLimitService {
         var windowNumber = now.getEpochSecond() / windowSeconds;
         var key = "shop:rate-limit:" + scope + ":" + sha256(subject) + ":" + windowNumber;
         try {
-            var count = redisTemplate.opsForValue().increment(key);
-            if (count != null && count == 1) {
-                redisTemplate.expire(key, Duration.ofSeconds(windowSeconds + 5));
-            }
+            var count = redisTemplate.execute(new org.springframework.data.redis.core.script.DefaultRedisScript<>("""
+                    local count=redis.call('INCR',KEYS[1])
+                    if redis.call('PTTL',KEYS[1])<0 then redis.call('PEXPIRE',KEYS[1],ARGV[1]) end
+                    return count
+                    """,Long.class),java.util.List.of(key),Long.toString((windowSeconds+5)*1000));
             var remaining = windowSeconds - (now.getEpochSecond() % windowSeconds);
             return result(scope, count != null && count <= limit, Math.max(1, remaining), true);
         } catch (DataAccessException exception) {

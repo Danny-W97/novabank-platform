@@ -68,3 +68,9 @@ infra/monitoring/prometheus/prometheus.yml
 *.log
 hs_err_pid*
 replay_pid*
+
+### Control Center Python bytecode ###
+/scripts/control-center/web/__pycache__/
+
+### Isolated CI tool dependencies ###
+**/node_modules/

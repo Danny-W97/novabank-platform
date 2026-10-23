@@ -26,6 +26,7 @@ public class OrderController {
     private final ExternalCardPaymentService externalCardPaymentService;
     private final CardCheckoutSessionService cardCheckoutSessionService;
     private final RefundService refundService;
+    private final PurchaseCancellationService cancellations;
 
     public OrderController(
             OrderService orderService,
@@ -33,7 +34,8 @@ public class OrderController {
             RefundService refundService,
             CardOrderPaymentService cardOrderPaymentService,
             ExternalCardPaymentService externalCardPaymentService,
-            CardCheckoutSessionService cardCheckoutSessionService
+            CardCheckoutSessionService cardCheckoutSessionService,
+            PurchaseCancellationService cancellations
     ) {
         this.orderService = orderService;
         this.orderPaymentService = orderPaymentService;
@@ -41,6 +43,7 @@ public class OrderController {
         this.externalCardPaymentService = externalCardPaymentService;
         this.cardCheckoutSessionService = cardCheckoutSessionService;
         this.refundService = refundService;
+        this.cancellations=cancellations;
     }
 
     @PostMapping
@@ -80,6 +83,17 @@ public class OrderController {
         );
     }
 
+    public record CancelPurchase(java.util.UUID requestId,boolean confirmed){}
+    @PostMapping("/{orderId}/cancel-purchase")
+    Object cancelPurchase(@AuthenticationPrincipal ShopUserDetails user,@PathVariable long orderId,@RequestBody CancelPurchase request,HttpSession session){
+        if(!request.confirmed())throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST,"Potwierdź rezygnację z zakupu.");
+        var result=cancellations.cancel(orderId,user.getCustomerId(),request.requestId(),"CUSTOMER","Klient potwierdził rezygnację z niedokończonego zakupu.");
+        if("CANCELLED".equals(result.status()))cardCheckoutSessionService.clearForOrder(orderId,session);
+        return result;
+    }
+    @PostMapping("/{orderId}/refresh-payment")
+    Object refreshPayment(@AuthenticationPrincipal ShopUserDetails user,@PathVariable long orderId){return cancellations.refresh(orderId,user.getCustomerId());}
+
     @PostMapping("/{orderId}/refund")
     RefundResponse refund(
             @AuthenticationPrincipal ShopUserDetails user,
@@ -97,6 +111,7 @@ public class OrderController {
             @Valid @RequestBody CardOrderPaymentRequest request,
             HttpSession session
     ) {
+        orderService.get(orderId, user.getCustomerId());
         cardCheckoutSessionService.requireMatches(orderId, request.currency(), request.amount(), session);
         var paymentSession = cardCheckoutSessionService.current(session);
         var paid = cardOrderPaymentService.pay(
@@ -118,6 +133,7 @@ public class OrderController {
             @PathVariable long orderId,
             @Valid @RequestBody ExternalCardCheckoutRequest request
     ) {
+        orderService.get(orderId, user.getCustomerId());
         return externalCardPaymentService.createCheckout(orderId, user.getCustomerId(), idempotencyKey, request);
     }
 }

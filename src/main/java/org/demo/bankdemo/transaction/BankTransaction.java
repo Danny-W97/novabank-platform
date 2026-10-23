@@ -10,6 +10,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import org.demo.bankdemo.account.Account;
@@ -33,6 +34,20 @@ public class BankTransaction {
 
     @Column(name = "payment_order_id", length = 100)
     private String paymentOrderId;
+
+    @Column(name = "merchant_id", length = 64)
+    private String merchantId;
+
+    public String getMerchantId() { return merchantId; }
+    public void assignMerchant(String merchantId) {
+        if (this.merchantId != null && !java.util.Objects.equals(this.merchantId, merchantId))
+            throw new IllegalStateException("Financial merchant identity cannot change.");
+        this.merchantId = merchantId;
+    }
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "refund_original_id", unique = true)
+    private BankTransaction refundOriginal;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "source_account_id")
@@ -189,6 +204,14 @@ public class BankTransaction {
 
     public String getPaymentOrderId() {
         return paymentOrderId;
+    }
+
+    public BankTransaction getRefundOriginal() {
+        return refundOriginal;
+    }
+
+    public void markRefundOf(BankTransaction original) {
+        this.refundOriginal = original;
     }
 
     public Account getSourceAccount() {

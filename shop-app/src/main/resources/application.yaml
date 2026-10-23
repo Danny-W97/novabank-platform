@@ -40,11 +40,14 @@ shop:
     api-key: "${BANK_API_KEY:}"
     api-key-id: "${BANK_API_KEY_ID:legacy}"
   orders:
+    merchant-id: "${SHOP_MERCHANT_ID:}"
     merchant-account-number: "${SHOP_MERCHANT_ACCOUNT_NUMBER:}"
     reconciliation-enabled: "${SHOP_PAYMENT_RECONCILIATION_ENABLED:true}"
     reconciliation-interval-ms: "${SHOP_PAYMENT_RECONCILIATION_INTERVAL_MS:30000}"
     reconciliation-initial-delay-ms: "${SHOP_PAYMENT_RECONCILIATION_INITIAL_DELAY_MS:10000}"
     reconciliation-batch-size: "${SHOP_PAYMENT_RECONCILIATION_BATCH_SIZE:50}"
+    abandoned-after-minutes: "${SHOP_ABANDONED_PURCHASE_MINUTES:30}"
+    abandoned-check-ms: "${SHOP_ABANDONED_PURCHASE_CHECK_MS:60000}"
   payment-provider:
     provider: "${SHOP_PAYMENT_PROVIDER:bank-demo}"
     api-base-url: "${SHOP_PAYMENT_API_BASE_URL:https://api.stripe.com}"

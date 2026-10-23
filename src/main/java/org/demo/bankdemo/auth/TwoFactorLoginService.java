@@ -26,6 +26,7 @@ public class TwoFactorLoginService {
     static final String ATTEMPTS_ATTRIBUTE = "BANK_TOTP_LOGIN_ATTEMPTS";
     static final int MAX_ATTEMPTS = 5;
     static final Duration CHALLENGE_LIFETIME = Duration.ofMinutes(5);
+    static final String CHALLENGE_ATTRIBUTE = "BANK_TOTP_LOGIN_CHALLENGE_ID";
 
     private final DatabaseUserDetailsService userDetailsService;
     private final LoginAttemptService loginAttemptService;
@@ -33,6 +34,7 @@ public class TwoFactorLoginService {
     private final SecurityContextRepository securityContextRepository;
     private final Clock clock;
     private final LoginHistoryService loginHistoryService;
+    private final LoginChallengeStore challenges;
 
     public TwoFactorLoginService(
             DatabaseUserDetailsService userDetailsService,
@@ -40,7 +42,8 @@ public class TwoFactorLoginService {
             LoginService loginService,
             SecurityContextRepository securityContextRepository,
             Clock clock,
-            LoginHistoryService loginHistoryService
+            LoginHistoryService loginHistoryService,
+            LoginChallengeStore challenges
     ) {
         this.userDetailsService = userDetailsService;
         this.loginAttemptService = loginAttemptService;
@@ -48,10 +51,15 @@ public class TwoFactorLoginService {
         this.securityContextRepository = securityContextRepository;
         this.clock = clock;
         this.loginHistoryService = loginHistoryService;
+        this.challenges = challenges;
     }
 
     public void start(HttpServletRequest request, String email, String target) {
         var session = request.getSession(true);
+        clear(session);
+        var id = java.util.UUID.randomUUID().toString();
+        challenges.start(id, email.strip().toLowerCase(Locale.ROOT), target, Instant.now(clock).plus(CHALLENGE_LIFETIME));
+        session.setAttribute(CHALLENGE_ATTRIBUTE, id);
         session.setAttribute(EMAIL_ATTRIBUTE, email.strip().toLowerCase(Locale.ROOT));
         session.setAttribute(TARGET_ATTRIBUTE, target);
         session.setAttribute(EXPIRES_ATTRIBUTE, Instant.now(clock)
@@ -60,55 +68,38 @@ public class TwoFactorLoginService {
     }
 
     public Optional<PendingLogin> pending(HttpSession session) {
-        if (session == null) {
-            return Optional.empty();
-        }
-        var email = (String) session.getAttribute(EMAIL_ATTRIBUTE);
-        var target = (String) session.getAttribute(TARGET_ATTRIBUTE);
-        var expiresAtValue = (String) session.getAttribute(EXPIRES_ATTRIBUTE);
-        if (email == null || target == null || expiresAtValue == null) {
-            return Optional.empty();
-        }
-        try {
-            var expiresAt = Instant.parse(expiresAtValue);
-            if (!Instant.now(clock).isBefore(expiresAt)) {
-                clear(session);
-                return Optional.empty();
-            }
-            var attempts = attempts(session);
-            if (attempts >= MAX_ATTEMPTS) {
-                clear(session);
-                return Optional.empty();
-            }
-            return Optional.of(new PendingLogin(email, target, attempts, expiresAt));
-        } catch (RuntimeException exception) {
-            clear(session);
-            return Optional.empty();
-        }
+        return challenges.read(challengeId(session), Instant.now(clock));
     }
 
     public boolean recordFailure(HttpSession session) {
-        var pending = pending(session);
-        if (pending.isEmpty()) {
-            return false;
-        }
-        var attempts = pending.get().attempts() + 1;
-        session.setAttribute(ATTEMPTS_ATTRIBUTE, attempts);
-        if (attempts >= MAX_ATTEMPTS) {
-            clear(session);
-            return false;
-        }
-        return true;
+        var allowed = challenges.failure(challengeId(session), Instant.now(clock));
+        if (!allowed) clear(session);
+        return allowed;
     }
 
     public String complete(
             HttpServletRequest request,
             HttpServletResponse response,
-            HttpSession session
+            HttpSession session,
+            String expectedChallengeId
     ) {
-        var pending = pending(session)
+        if (!java.util.Objects.equals(expectedChallengeId, challengeId(session)))
+            throw new IllegalStateException("Wyzwanie 2FA zmieniło się.");
+        var pending = challenges.read(expectedChallengeId, Instant.now(clock))
                 .orElseThrow(() -> new IllegalStateException("Sesja 2FA wygasła."));
-        UserDetails userDetails = userDetailsService.loadUserByUsername(pending.email());
+        UserDetails userDetails;
+        try {
+            userDetails = userDetailsService.loadUserByUsername(pending.email());
+            new org.springframework.security.authentication.AccountStatusUserDetailsChecker().check(userDetails);
+        } catch (org.springframework.security.core.AuthenticationException exception) {
+            clear(session);
+            SecurityContextHolder.clearContext();
+            securityContextRepository.saveContext(SecurityContextHolder.createEmptyContext(), request, response);
+            throw exception;
+        }
+        // Exactly one concurrent request can consume the shared challenge.
+        challenges.take(expectedChallengeId, Instant.now(clock))
+                .orElseThrow(() -> new IllegalStateException("Sesja 2FA została już wykorzystana lub wygasła."));
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(UsernamePasswordAuthenticationToken.authenticated(
                 userDetails,
@@ -128,17 +119,18 @@ public class TwoFactorLoginService {
         if (session == null) {
             return;
         }
+        challenges.delete(challengeId(session));
+        session.removeAttribute(CHALLENGE_ATTRIBUTE);
         session.removeAttribute(EMAIL_ATTRIBUTE);
         session.removeAttribute(TARGET_ATTRIBUTE);
         session.removeAttribute(EXPIRES_ATTRIBUTE);
         session.removeAttribute(ATTEMPTS_ATTRIBUTE);
     }
 
-    private static int attempts(HttpSession session) {
-        var value = session.getAttribute(ATTEMPTS_ATTRIBUTE);
-        return value instanceof Number number ? number.intValue() : 0;
+    private static String challengeId(HttpSession session) {
+        return session == null ? null : (String) session.getAttribute(CHALLENGE_ATTRIBUTE);
     }
 
-    public record PendingLogin(String email, String target, int attempts, Instant expiresAt) {
+    public record PendingLogin(String challengeId, String email, String target, int attempts, Instant expiresAt) {
     }
 }

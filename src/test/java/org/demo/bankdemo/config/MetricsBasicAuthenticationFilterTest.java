@@ -26,15 +26,16 @@ class MetricsBasicAuthenticationFilterTest {
         var properties = new MetricsAccessProperties();
         properties.setUsername("metrics-reader");
         properties.setPassword("secret");
-        var chain = new MockFilterChain();
+        var seen = new java.util.concurrent.atomic.AtomicReference<org.springframework.security.core.Authentication>();
         var response = new MockHttpServletResponse();
 
         new MetricsBasicAuthenticationFilter(properties).doFilter(
-                request("metrics-reader", "secret"), response, chain);
+                request("metrics-reader", "secret"), response,
+                (request, output) -> seen.set(SecurityContextHolder.getContext().getAuthentication()));
 
         assertThat(response.getStatus()).isEqualTo(200);
-        assertThat(chain.getRequest()).isNotNull();
-        assertThat(SecurityContextHolder.getContext().getAuthentication().getAuthorities())
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+        assertThat(seen.get().getAuthorities())
                 .extracting(Object::toString)
                 .containsExactly("ROLE_METRICS");
     }

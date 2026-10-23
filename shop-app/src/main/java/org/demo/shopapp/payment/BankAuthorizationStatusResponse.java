@@ -12,6 +12,7 @@ public record BankAuthorizationStatusResponse(
         String referenceNumber,
         String customerAccountNumber,
         String failureReason,
-        Instant expiresAt
+        Instant expiresAt,
+        String merchantId
 ) {
 }

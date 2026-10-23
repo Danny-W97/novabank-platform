@@ -4,6 +4,7 @@ import org.demo.shopapp.common.ShopInput;
 import org.demo.shopapp.payment.BankAuthorizationClient;
 import org.demo.shopapp.payment.BankCardPaymentRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class CardOrderPaymentService {
@@ -11,15 +12,18 @@ public class CardOrderPaymentService {
     private final OrderStateService orderStateService;
     private final BankAuthorizationClient bankClient;
     private final OrderCartCleanupService cartCleanupService;
+    private final PaymentAttemptService attempts;
 
     public CardOrderPaymentService(
             OrderStateService orderStateService,
             BankAuthorizationClient bankClient,
-            OrderCartCleanupService cartCleanupService
+            OrderCartCleanupService cartCleanupService,
+            PaymentAttemptService attempts
     ) {
         this.orderStateService = orderStateService;
         this.bankClient = bankClient;
         this.cartCleanupService = cartCleanupService;
+        this.attempts = attempts;
     }
 
     public OrderResponse pay(
@@ -29,14 +33,17 @@ public class CardOrderPaymentService {
             CardOrderPaymentRequest request
     ) {
         var key = ShopInput.idempotencyKey(idempotencyKey);
-        var prepared = orderStateService.preparePayment(orderId, customerId, key);
+        var preparation = attempts.begin(orderId, customerId, key, "CARD", request.amount(), request.currency());
+        var prepared = preparation.order();
         if (prepared.status() == OrderStatus.PAID) {
             cleanupCart(prepared);
             return OrderResponse.from(prepared).withReplayed(true);
         }
+        var attempt = preparation.attempt();
+        if (!preparation.dispatch()) return OrderResponse.from(prepared).withReplayed(true);
         if (!"PLN".equals(prepared.currency())) {
-            var failed = orderStateService.markFailed(orderId, "Zamówienie musi być rozliczane bazowo w PLN.");
-            return OrderResponse.from(failed);
+            attempts.decline(attempt, "Zamówienie kartowe musi być rozliczane bazowo w PLN.");
+            return OrderResponse.from(attempts.order(attempt));
         }
         try {
             var bankResponse = bankClient.payCard(
@@ -48,19 +55,23 @@ public class CardOrderPaymentService {
                     ),
                     key
             );
-            if (!"COMPLETED".equals(bankResponse.status())) {
-                var failed = orderStateService.markFailed(orderId,
+            if (bankResponse==null || !attempt.merchantId().equals(bankResponse.merchantId()) || !prepared.orderNumber().equals(bankResponse.orderId())
+                    || bankResponse.amountInPln()==null || prepared.total().compareTo(bankResponse.amountInPln())!=0
+                    || bankResponse.amount()==null || attempt.chargedAmount().compareTo(bankResponse.amount())!=0
+                    || !attempt.chargedCurrency().equals(bankResponse.currency()))
+                throw new IllegalStateException("Bank card response does not match the attempt.");
+            if ("DECLINED".equals(bankResponse.status())) {
+                attempts.decline(attempt,
                         bankResponse.reason() == null ? "Płatność kartą została odrzucona." : bankResponse.reason());
-                return OrderResponse.from(failed);
+                return OrderResponse.from(attempts.order(attempt));
             }
-            var paid = orderStateService.markPaid(
-                    orderId, key, bankResponse.referenceNumber(), bankResponse.sourceAccountNumber()
-            );
+            if (!"COMPLETED".equals(bankResponse.status())) throw new IllegalStateException("Unknown bank card status.");
+            var paid = attempts.succeed(attempt, bankResponse.referenceNumber(), bankResponse.sourceAccountNumber());
             cleanupCart(paid);
             return OrderResponse.from(paid);
         } catch (RuntimeException exception) {
-            var failed = orderStateService.markFailed(orderId, failureMessage(exception));
-            return OrderResponse.from(failed);
+            attempts.unknown(attempt);
+            return OrderResponse.from(attempts.order(attempt));
         }
     }
 
@@ -72,11 +83,5 @@ public class CardOrderPaymentService {
         }
     }
 
-    private static String failureMessage(RuntimeException exception) {
-        var message = exception.getMessage();
-        if (message == null || message.isBlank()) {
-            return "Nie udało się wykonać płatności kartą.";
-        }
-        return message.length() > 500 ? message.substring(0, 500) : message;
-    }
+
 }

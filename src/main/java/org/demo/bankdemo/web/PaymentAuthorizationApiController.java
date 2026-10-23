@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestAttribute;
+import org.demo.bankdemo.payment.MerchantIdentity;
 
 @RestController
 @RequestMapping("/api/payment-authorizations")
@@ -26,20 +28,36 @@ public class PaymentAuthorizationApiController {
     }
 
     @PostMapping
-    PaymentAuthorizationResponse create(@Valid @RequestBody PaymentAuthorizationRequest request) {
-        return service.create(request);
+    PaymentAuthorizationResponse create(@RequestAttribute(MerchantIdentity.REQUEST_ATTRIBUTE) MerchantIdentity merchant,
+                                        @Valid @RequestBody PaymentAuthorizationRequest request) {
+        return service.create(merchant, request);
     }
 
     @PostMapping("/{authorizationId}/redeem")
     PaymentAuthorizationRedeemResponse redeem(
+            @RequestAttribute(MerchantIdentity.REQUEST_ATTRIBUTE) MerchantIdentity merchant,
             @PathVariable String authorizationId,
             @Valid @RequestBody PaymentAuthorizationRedeemRequest request
     ) {
-        return service.redeem(authorizationId, request);
+        return service.redeem(merchant, authorizationId, request);
     }
 
     @GetMapping("/{authorizationId}/status")
-    PaymentAuthorizationStatusResponse status(@PathVariable String authorizationId) {
-        return service.status(authorizationId);
+    PaymentAuthorizationStatusResponse status(@RequestAttribute(MerchantIdentity.REQUEST_ATTRIBUTE) MerchantIdentity merchant,
+                                              @PathVariable String authorizationId) {
+        return service.status(merchant, authorizationId);
+    }
+
+    @GetMapping("/by-key/{key}/status")
+    PaymentAuthorizationStatusResponse statusByKey(
+            @RequestAttribute(MerchantIdentity.REQUEST_ATTRIBUTE) MerchantIdentity merchant,
+            @PathVariable String key) {
+        return service.statusByKey(merchant, key);
+    }
+
+    @PostMapping("/by-key/{key}/cancel")
+    PaymentAuthorizationStatusResponse cancelByKey(
+            @RequestAttribute(MerchantIdentity.REQUEST_ATTRIBUTE) MerchantIdentity merchant,@PathVariable String key) {
+        return service.cancelByKey(merchant,key);
     }
 }

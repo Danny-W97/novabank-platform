@@ -12,6 +12,20 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 @RestControllerAdvice
 public class PaymentApiExceptionHandler {
 
+    @ExceptionHandler({org.springframework.dao.TransientDataAccessException.class,
+            org.springframework.transaction.TransactionException.class,
+            org.springframework.dao.DataAccessResourceFailureException.class,
+            org.springframework.orm.jpa.JpaSystemException.class})
+    org.springframework.http.ResponseEntity<ErrorResponse> temporarilyUnavailable(RuntimeException exception) {
+        // Invoked after the service transaction exits. A lost commit acknowledgement is not a decline.
+        return org.springframework.http.ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .header(org.springframework.http.HttpHeaders.RETRY_AFTER, "1")
+                .body(new ErrorResponse("PAYMENT_OUTCOME_UNCONFIRMED",
+                        "Wynik operacji wymaga sprawdzenia. Odczytaj status istniejącej próby; "
+                                + "ponawiaj wyłącznie te same dane z tym samym Idempotency-Key. "
+                                + "Nie rozpoczynaj nowej płatności."));
+    }
+
     @ExceptionHandler(PaymentException.class)
     @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
     ErrorResponse paymentError(PaymentException exception) {

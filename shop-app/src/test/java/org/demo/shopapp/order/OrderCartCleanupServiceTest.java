@@ -21,10 +21,20 @@ class OrderCartCleanupServiceTest {
         var service = new OrderCartCleanupService(orderRepository, cartService);
         var order = paidOrder();
         when(orderRepository.claimCartCleanup(7L)).thenReturn(true);
+        when(orderRepository.ownsCurrentCart(7L,"customer-1")).thenReturn(true);
 
         service.cleanupPaidOrder(order);
 
         verify(cartService).removePurchasedQuantities("customer-1", Map.of(101L, 3, 102L, 1));
+        verify(orderRepository).finishPurchase(7L,"customer-1");
+    }
+
+    @Test void oldSuccessCannotCleanAnIndependentCart(){
+        var repository=mock(OrderRepository.class);var cart=mock(CartService.class);
+        when(repository.claimCartCleanup(7L)).thenReturn(true);
+        when(repository.ownsCurrentCart(7L,"customer-1")).thenReturn(false);
+        new OrderCartCleanupService(repository,cart).cleanupPaidOrder(paidOrder());
+        org.mockito.Mockito.verifyNoInteractions(cart);
     }
 
     @Test

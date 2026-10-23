@@ -20,6 +20,9 @@ import static org.mockito.Mockito.mock;
 @Import(ShopAppApplicationIT.TestBeans.class)
 class ShopAppApplicationIT {
 
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    org.springframework.transaction.PlatformTransactionManager transactionManager;
+
     @Test
     void contextLoads() {
     }

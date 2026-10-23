@@ -79,13 +79,27 @@ else {
     $totpAction = "uzyto istniejacego"
 }
 
-$lines = @(
-    "SPRING_PROFILES_ACTIVE=dev",
-    "BANK_API_KEY=$secret",
-    "BANK_API_KEY_ID=legacy",
-    "BANK_API_KEYS=",
-    "TOTP_ENCRYPTION_KEY=$totpEncryptionKey"
-)
+$updates = [ordered]@{
+    SPRING_PROFILES_ACTIVE = "dev"
+    BANK_API_KEY = $secret
+    BANK_API_KEY_ID = $(if ($null -ne (Get-ExistingValue "BANK_API_KEY_ID")) { Get-ExistingValue "BANK_API_KEY_ID" } else { "legacy" })
+    BANK_API_KEYS = $(if ($null -ne (Get-ExistingValue "BANK_API_KEYS")) { Get-ExistingValue "BANK_API_KEYS" } else { "" })
+    TOTP_ENCRYPTION_KEY = $totpEncryptionKey
+}
+# Preserve database passwords, Stripe, metrics, comments and every unrelated setting.
+$lines = [System.Collections.Generic.List[string]]::new()
+$seen = [System.Collections.Generic.HashSet[string]]::new()
+if (Test-Path -LiteralPath $envFile) {
+    foreach ($line in (Get-Content -LiteralPath $envFile -Encoding UTF8)) {
+        if ($line -match '^\s*([A-Z][A-Z0-9_]*)\s*=' -and $updates.Contains($Matches[1])) {
+            $key = $Matches[1]
+            if ($seen.Add($key)) { $lines.Add("$key=$($updates[$key])") }
+        } else { $lines.Add($line) }
+    }
+}
+foreach ($key in $updates.Keys) {
+    if ($seen.Add($key)) { $lines.Add("$key=$($updates[$key])") }
+}
 [System.IO.File]::WriteAllLines(
     $envFile,
     $lines,

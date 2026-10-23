@@ -78,33 +78,33 @@ Najprostsza ścieżka korzysta z NovaBank Control Center. Uruchom ją z katalogu
 ### Linux, WSL lub macOS
 
 ```bash
-bash scripts/control-center/control-center.sh
+bash ./scripts/start.sh
 ```
 
-### Windows PowerShell
+Panel otwiera się pod `http://127.0.0.1:18110`. Zalecany sposób pracy to WSL/Bash; skrypty Windows pozostają tylko dla zgodności. Stare menu terminalowe: `bash ./scripts/start.sh --cli`.
 
-```powershell
-.\scripts\control-center\start.ps1
-```
+W **Operacje → Salda DEV** można dodać lub odjąć testowe środki na aktywnych kontach PLN. Każda korekta wymaga wyboru konta, kwoty i potwierdzenia, jest audytowana i chroniona przed powtórzeniem tym samym UUID. TEST/PROD nie udostępniają korekt.
 
-Wybierz opcję pierwszego uruchomienia. Centrala przygotuje lokalny katalog `.novabank`, pliki środowiskowe, wymagane sekrety developerskie i pomoże uruchomić PostgreSQL oraz Redis.
+**Powiadomienia** zbiera ostrzeżenia/błędy banku, sklepu i zadań panelu, z licznikiem oraz przewijaną historią. Scheduler sprawdzania płatności w sklepie zawiesza dalsze odpytywanie po trzech kolejnych błędach, bez oznaczania nierozstrzygniętej płatności jako odrzuconej. Po aktualizacji kodu uruchom ponownie panel i obie aplikacje DEV (migracje V25/V12 i zapis logów). Szczegóły: [instrukcja panelu](docs/control-center-web.md).
+
+Pierwszy start wykonasz z **Konfiguracja DEV**; zaawansowane ustawienia edytujesz w **Pliki i sekrety**. Panel uruchamia lokalne bazy/Redis, buildy i aplikacje DEV bez zatrzymywania IDE. **Operacje → Vault** obejmuje status, pojedynczy udział Shamir, AppRole oraz rotację/finalizację Secret ID. Dodano bootstrap, buildy PROD i lokalne keystore TLS. Każde zadanie PROD wymaga ostrzeżenia i wpisania PROD; tylko lokalny HTTPS Vault z CA projektu i token operatora, nie root. Panel nie inicjalizuje Vault, nie edytuje biznesowych KV i nie wdraża aplikacji PROD. Jest też przewodnik, raport IntelliJ, ograniczone porządkowanie artefaktów i PL/EN dla nawigacji/nazw operacji. Pełne wymagania: [instrukcja panelu](docs/control-center-web.md).
 
 Nie dodawaj katalogu `.novabank` do repozytorium. Może zawierać lokalne hasła, klucze, certyfikaty, tokeny i logi.
 
 ## Uruchomienie ręczne
 
-1. Przygotuj lokalną konfigurację na podstawie [.env.example](.env.example). Wartości `change-me-*`, `replace-with-*` i `generate-*` zastąp własnymi wartościami.
-2. Utwórz `.novabank/env/project.env` oraz `.novabank/env/dev.env`. Do generowania środowiska developerskiego można użyć:
+1. Użyj `bash ./scripts/start.sh` → **Konfiguracja DEV**. Nie kopiuj mieszanego, historycznego `.env.example` w całości do `project.env`.
+2. `project.env` przechowuje niewrażliwe ustawienia infrastruktury, a `dev.env` — hasła, klucze i ustawienia DEV. Alternatywny generator WSL:
 
-   ```powershell
-   .\scripts\generate-dev-env.ps1
+   ```bash
+   python3 -B scripts/control-center/web/dev_env_layout.py prepare
    ```
 
 3. Uruchom infrastrukturę:
 
    ```bash
-   docker compose --env-file .novabank/env/project.env up -d postgres shop-postgres redis
-   docker compose --env-file .novabank/env/project.env ps
+    docker compose --env-file .novabank/env/project.env --env-file .novabank/env/dev.env up -d postgres shop-postgres redis
+    docker compose --env-file .novabank/env/project.env --env-file .novabank/env/dev.env ps
    ```
 
 4. Uruchom obie aplikacje w profilu `dev`, najlepiej przez IntelliJ IDEA albo gotowy skrypt:

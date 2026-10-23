@@ -1,7 +1,6 @@
 package org.demo.bankdemo.web;
 
 import jakarta.validation.Valid;
-import org.demo.bankdemo.payment.PaymentRequest;
 import org.demo.bankdemo.payment.PaymentResponse;
 import org.demo.bankdemo.payment.PaymentService;
 import org.demo.bankdemo.payment.RefundRequest;
@@ -17,15 +16,17 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/payments/refunds")
 public class RefundApiController {
 
-    private final PaymentService paymentService;
+    private final org.demo.bankdemo.payment.MerchantPaymentService paymentService;
 
-    public RefundApiController(PaymentService paymentService) {
+    public RefundApiController(org.demo.bankdemo.payment.MerchantPaymentService paymentService) {
         this.paymentService = paymentService;
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.OK)
     PaymentResponse refund(
+            @org.springframework.web.bind.annotation.RequestAttribute(org.demo.bankdemo.payment.MerchantIdentity.REQUEST_ATTRIBUTE)
+            org.demo.bankdemo.payment.MerchantIdentity merchant,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             @Valid @RequestBody RefundRequest request
     ) {
@@ -33,32 +34,11 @@ public class RefundApiController {
         if (title.length() > 140) {
             title = title.substring(0, 140);
         }
-        if (request.customerAccountNumber() != null && !request.customerAccountNumber().isBlank()) {
-            return paymentService.execute(
-                    idempotencyKey,
-                    new PaymentRequest(
-                            request.merchantAccountNumber(),
-                            request.customerAccountNumber(),
-                            "refund:" + request.orderId(),
-                            request.amount(),
-                            request.currency(),
-                            title
-                    )
-            );
-        }
         if (request.originalReferenceNumber() == null || request.originalReferenceNumber().isBlank()) {
             throw new org.demo.bankdemo.payment.PaymentException(
-                    "Brak rachunku klienta lub referencji oryginalnej platnosci."
+                    "Zwrot wymaga referencji oryginalnej platnosci."
             );
         }
-        return paymentService.refundByReference(
-                idempotencyKey,
-                request.originalReferenceNumber(),
-                request.merchantAccountNumber(),
-                request.orderId(),
-                request.amount(),
-                request.currency(),
-                title
-        );
+        return paymentService.refund(merchant, idempotencyKey, request, title);
     }
 }

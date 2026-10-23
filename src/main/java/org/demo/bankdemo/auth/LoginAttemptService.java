@@ -45,11 +45,8 @@ public class LoginAttemptService {
             return 0;
         }
         var key = key(email);
-        var attempts = redisTemplate.opsForValue().increment(key);
-        if (attempts != null && attempts == 1) {
-            redisTemplate.expire(key, BLOCK_DURATION);
-        }
-        return attempts == null ? 0 : attempts.intValue();
+        var attempts = org.demo.bankdemo.config.AtomicRedisCounter.increment(redisTemplate,key,BLOCK_DURATION);
+        return (int)Math.min(attempts,Integer.MAX_VALUE);
     }
 
     public void clear(String email) {

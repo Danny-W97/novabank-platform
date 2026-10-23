@@ -27,6 +27,9 @@ public class PaymentAuthorization {
     @Column(name = "merchant_account_number", nullable = false, length = 26)
     private String merchantAccountNumber;
 
+    @Column(name = "merchant_id", length = 64)
+    private String merchantId;
+
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal amount;
 
@@ -106,6 +109,12 @@ public class PaymentAuthorization {
     }
 
     public String getId() { return id; }
+    public String getMerchantId() { return merchantId; }
+    public void assignMerchant(String merchantId) {
+        if (this.merchantId != null && !this.merchantId.equals(merchantId))
+            throw new IllegalStateException("Payment merchant cannot change.");
+        this.merchantId = java.util.Objects.requireNonNull(merchantId);
+    }
     public String getShopOrderId() { return shopOrderId; }
     public String getShopCustomerId() { return shopCustomerId; }
     public String getMerchantAccountNumber() { return merchantAccountNumber; }
@@ -127,6 +136,7 @@ public class PaymentAuthorization {
     }
 
     public void complete(String sourceAccountNumber, String authorizationCodeHash, String bankReference, Instant completedAt) {
+        if (status != AuthorizationStatus.PENDING) throw new IllegalStateException("Authorization is terminal.");
         this.sourceAccountNumber = sourceAccountNumber;
         this.authorizationCodeHash = authorizationCodeHash;
         this.bankReference = bankReference;
@@ -135,11 +145,13 @@ public class PaymentAuthorization {
     }
 
     public void fail(String reason) {
+        if (status != AuthorizationStatus.PENDING) throw new IllegalStateException("Authorization is terminal.");
         this.failureReason = reason;
         this.status = AuthorizationStatus.FAILED;
     }
 
     public void markRedeemed(Instant redeemedAt) {
+        if (status != AuthorizationStatus.COMPLETED) throw new IllegalStateException("Authorization cannot be redeemed.");
         this.redeemedAt = redeemedAt;
         this.status = AuthorizationStatus.REDEEMED;
     }

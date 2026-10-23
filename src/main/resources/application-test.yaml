@@ -31,8 +31,12 @@ app:
   certificate-monitor:
     enabled: false
   security:
+    totp-encryption-keys: "${TEST_TOTP_ENCRYPTION_KEYS:}"
+    totp-encryption-active-id: "${TEST_TOTP_ENCRYPTION_ACTIVE_ID:current}"
     totp-encryption-key: "${TEST_TOTP_ENCRYPTION_KEY:MDEyMzQ1Njc4OUFCQ0RFRjAxMjM0NTY3ODlBQkNERUY=}"
   payment-api:
+    key-merchants: "legacy=${TEST_SHOP_MERCHANT_ID:synthetic-merchant},test=${TEST_SHOP_MERCHANT_ID:synthetic-merchant}"
+    merchants: "${TEST_SHOP_MERCHANT_ID:synthetic-merchant}=${TEST_SHOP_MERCHANT_ACCOUNT:00000000000000000000000000}"
     api-key: "${TEST_BANK_API_KEY:test-api-key}"
     api-keys: ""
   rate-limit:

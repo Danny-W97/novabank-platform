@@ -5,6 +5,9 @@ spring:
     vault:
       enabled: false
   datasource:
+    hikari:
+      # PostgreSQL lock hints with positive JPA timeouts are not sufficient on every dialect.
+      connection-init-sql: "SET lock_timeout = '${DB_LOCK_TIMEOUT:3s}'"
     url: "jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5300}/${POSTGRES_DB:bankdb}"
     username: "${POSTGRES_USER:bankuser}"
     password: "${POSTGRES_PASSWORD:}"
@@ -30,16 +33,24 @@ spring:
     enabled: true
 
 app:
+  history:
+    export-max-rows: "${HISTORY_EXPORT_MAX_ROWS:1000}"
+  database:
+    transaction-timeout-seconds: "${DB_TRANSACTION_TIMEOUT_SECONDS:15}"
   email:
     mode: "${EMAIL_MODE:log}"
     from: "${EMAIL_FROM:no-reply@novabank.local}"
     base-url: "${APP_PUBLIC_BASE_URL:http://localhost:8080}"
   security:
+    totp-encryption-keys: "${TOTP_ENCRYPTION_KEYS:}"
+    totp-encryption-active-id: "${TOTP_ENCRYPTION_ACTIVE_ID:current}"
     totp-encryption-key: "${TOTP_ENCRYPTION_KEY:}"
   metrics-access:
     username: "${METRICS_USERNAME:}"
     password: "${METRICS_PASSWORD:}"
   payment-api:
+    key-merchants: "${BANK_API_KEY_MERCHANTS:}"
+    merchants: "${BANK_PAYMENT_MERCHANTS:}"
     api-key: "${BANK_API_KEY:}"
     api-keys: "${BANK_API_KEYS:}"
     rate-limit-per-minute: "${BANK_API_RATE_LIMIT_PER_MINUTE:60}"
@@ -55,6 +66,7 @@ app:
     rate-limit-per-minute: "${TRANSFER_RATE_LIMIT_PER_MINUTE:10}"
     totp-required-above: "${TRANSFER_TOTP_REQUIRED_ABOVE:5000.00}"
     scheduler-delay-ms: "${TRANSFER_SCHEDULER_DELAY_MS:60000}"
+    scheduler-batch-size: "${TRANSFER_SCHEDULER_BATCH_SIZE:100}"
   rate-limit:
     login-window-seconds: "${LOGIN_RATE_LIMIT_WINDOW_SECONDS:900}"
     login-ip-per-window: "${LOGIN_RATE_LIMIT_IP_PER_WINDOW:20}"

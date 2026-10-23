@@ -57,6 +57,9 @@ class TransferControllerTest {
     private OperationAuditService auditService;
 
     @Mock
+    private org.demo.bankdemo.transfer.TransferConfirmationWorkflow confirmationWorkflow;
+
+    @Mock
     private Authentication authentication;
 
     @Mock
@@ -72,7 +75,8 @@ class TransferControllerTest {
                 draftStore,
                 recipientService,
                 transactionPinService,
-                auditService
+                auditService,
+                confirmationWorkflow
         );
     }
 
@@ -84,8 +88,10 @@ class TransferControllerTest {
         when(draftStore.find(session, command.idempotencyKey()))
                 .thenReturn(Optional.of(command));
         doThrow(new TransferException("pin", "Podano zły pin transakcyjny"))
-                .when(transactionPinService)
-                .verifyForTransfer(EMAIL, "9999");
+                .when(confirmationWorkflow)
+                .execute(EMAIL, command, "9999", null, session);
+        when(confirmationWorkflow.prepare(EMAIL, command, session)).thenReturn(
+                new org.demo.bankdemo.transfer.TransferConfirmationWorkflow.Preparation(false, "", false));
         when(transferService.preview(EMAIL, command)).thenReturn(preview);
         when(transactionPinService.isConfigured(EMAIL)).thenReturn(true);
         when(dashboardService.dashboardFor(EMAIL)).thenReturn(dashboard());

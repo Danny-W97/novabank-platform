@@ -91,10 +91,10 @@ class TransferServiceTest {
         var command = command("125.50");
         when(transactionRepository.findByIdempotencyKey(KEY))
                 .thenReturn(Optional.empty(), Optional.empty());
-        when(accountRepository.findByOwnerEmail("sender@example.pl"))
-                .thenReturn(Optional.of(source));
-        when(accountRepository.findByAccountNumber(DESTINATION_NUMBER))
-                .thenReturn(Optional.of(destination));
+        when(accountRepository.findIdByOwnerEmail("sender@example.pl"))
+                .thenReturn(Optional.of(source.getId()));
+        when(accountRepository.findIdByAccountNumber(DESTINATION_NUMBER))
+                .thenReturn(Optional.of(destination.getId()));
         when(accountRepository.findAllByIdForUpdate(List.of(3L, 9L)))
                 .thenReturn(List.of(destination, source));
         when(referenceGenerator.generate()).thenReturn("TRX-1234567890123456789012345678");
@@ -125,10 +125,12 @@ class TransferServiceTest {
     void rejectsInsufficientFundsBeforeChangingBalances() {
         var command = command("1200.00");
         when(transactionRepository.findByIdempotencyKey(KEY)).thenReturn(Optional.empty());
-        when(accountRepository.findByOwnerEmail("sender@example.pl"))
-                .thenReturn(Optional.of(source));
-        when(accountRepository.findByAccountNumber(DESTINATION_NUMBER))
-                .thenReturn(Optional.of(destination));
+        when(accountRepository.findIdByOwnerEmail("sender@example.pl"))
+                .thenReturn(Optional.of(source.getId()));
+        when(accountRepository.findIdByAccountNumber(DESTINATION_NUMBER))
+                .thenReturn(Optional.of(destination.getId()));
+        when(accountRepository.findAllByIdForUpdate(List.of(3L, 9L)))
+                .thenReturn(List.of(destination, source));
 
         assertThatThrownBy(() -> transferService.execute("sender@example.pl", command))
                 .isInstanceOf(TransferException.class)
@@ -136,7 +138,7 @@ class TransferServiceTest {
 
         assertThat(source.getBalance()).isEqualByComparingTo("1000.00");
         assertThat(destination.getBalance()).isEqualByComparingTo("100.00");
-        verify(accountRepository, never()).findAllByIdForUpdate(any());
+        verify(accountRepository).findAllByIdForUpdate(List.of(3L, 9L));
         verify(transactionRepository, never()).saveAndFlush(any());
     }
 
@@ -150,10 +152,10 @@ class TransferServiceTest {
                 "Próba przelewu własnego"
         );
         when(transactionRepository.findByIdempotencyKey(KEY)).thenReturn(Optional.empty());
-        when(accountRepository.findByOwnerEmail("sender@example.pl"))
-                .thenReturn(Optional.of(source));
-        when(accountRepository.findByAccountNumber(SOURCE_NUMBER))
-                .thenReturn(Optional.of(source));
+        when(accountRepository.findIdByOwnerEmail("sender@example.pl"))
+                .thenReturn(Optional.of(source.getId()));
+        when(accountRepository.findIdByAccountNumber(SOURCE_NUMBER))
+                .thenReturn(Optional.of(source.getId()));
 
         assertThatThrownBy(() -> transferService.execute("sender@example.pl", command))
                 .isInstanceOf(TransferException.class)
@@ -184,10 +186,10 @@ class TransferServiceTest {
         var existing = existingTransaction(command);
         when(transactionRepository.findByIdempotencyKey(KEY))
                 .thenReturn(Optional.empty(), Optional.of(existing));
-        when(accountRepository.findByOwnerEmail("sender@example.pl"))
-                .thenReturn(Optional.of(source));
-        when(accountRepository.findByAccountNumber(DESTINATION_NUMBER))
-                .thenReturn(Optional.of(destination));
+        when(accountRepository.findIdByOwnerEmail("sender@example.pl"))
+                .thenReturn(Optional.of(source.getId()));
+        when(accountRepository.findIdByAccountNumber(DESTINATION_NUMBER))
+                .thenReturn(Optional.of(destination.getId()));
         when(accountRepository.findAllByIdForUpdate(List.of(3L, 9L)))
                 .thenReturn(List.of(destination, source));
 

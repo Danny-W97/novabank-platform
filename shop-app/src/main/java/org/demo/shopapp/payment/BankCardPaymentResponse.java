@@ -11,6 +11,7 @@ public record BankCardPaymentResponse(
         String status,
         String reason,
         String sourceAccountNumber,
-        boolean replayed
+        boolean replayed,
+        String merchantId
 ) {
 }

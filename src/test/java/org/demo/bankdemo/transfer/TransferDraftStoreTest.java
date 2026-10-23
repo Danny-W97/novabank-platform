@@ -10,8 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class TransferDraftStoreTest {
 
     @Test
-    void storesConfirmedCommandInHttpSession() {
-        var store = new TransferDraftStore();
+    void encodesAllFieldsWithoutJavaDeserialization() {
         var session = new MockHttpSession();
         var command = new TransferCommand(
                 "550e8400-e29b-41d4-a716-446655440000",
@@ -21,9 +20,6 @@ class TransferDraftStoreTest {
                 "Test"
         );
 
-        store.save(session, command);
-
-        assertThat(store.find(session, command.idempotencyKey()))
-                .contains(command);
+        assertThat(TransferDraftStore.decode(TransferDraftStore.encode(command))).isEqualTo(command);
     }
 }

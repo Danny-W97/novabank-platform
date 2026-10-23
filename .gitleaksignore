@@ -1,0 +1,5 @@
+# Immutable historical findings: the publicly specified, synthetic TOTP fixture key.
+# No file/path-wide exceptions. Current fixtures generate or encode their key at runtime.
+6950b2c257cc517cdabb006ab4a8da44a6a60133:.github/workflows/ci.yml:generic-api-key:134
+6950b2c257cc517cdabb006ab4a8da44a6a60133:scripts/backup/backup.sh:generic-api-key:776
+6950b2c257cc517cdabb006ab4a8da44a6a60133:src/test/java/org/demo/bankdemo/profile/TwoFactorServiceTest.java:generic-api-key:28

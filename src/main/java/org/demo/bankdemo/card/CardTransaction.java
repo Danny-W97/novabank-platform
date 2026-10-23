@@ -44,6 +44,18 @@ public class CardTransaction {
     @Column(name = "idempotency_key", nullable = false, length = 64, unique = true)
     private String idempotencyKey;
 
+    @Column(name = "merchant_account_number", length = 26)
+    private String merchantAccountNumber;
+
+    @Column(name = "order_id", length = 100)
+    private String orderId;
+
+    @Column(name = "payment_title", length = 140)
+    private String paymentTitle;
+
+    @Column(name = "bank_reference", length = 32)
+    private String bankReference;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private CardTransactionStatus status;
@@ -92,6 +104,16 @@ public class CardTransaction {
     public BigDecimal getAmount() { return amount; }
     public BigDecimal getAmountInPln() { return amountInPln; }
     public String getIdempotencyKey() { return idempotencyKey; }
+    public String getMerchantAccountNumber() { return merchantAccountNumber; }
+    public String getOrderId() { return orderId; }
+    public String getPaymentTitle() { return paymentTitle; }
+    public String getBankReference() { return bankReference; }
+    public void setOnlinePaymentDetails(String merchantAccountNumber, String orderId, String paymentTitle) {
+        this.merchantAccountNumber = merchantAccountNumber;
+        this.orderId = orderId;
+        this.paymentTitle = paymentTitle;
+    }
+    public void setBankReference(String bankReference) { this.bankReference = bankReference; }
     public CardPaymentChannel getChannel() { return channel; }
     public CardTransactionStatus getStatus() { return status; }
     public String getReason() { return reason; }

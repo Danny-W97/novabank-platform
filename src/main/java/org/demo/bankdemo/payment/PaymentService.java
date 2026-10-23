@@ -21,6 +21,9 @@ import java.util.List;
 @Service
 public class PaymentService {
 
+    @jakarta.persistence.PersistenceContext
+    private jakarta.persistence.EntityManager entityManager;
+
     private final AccountRepository accountRepository;
     private final TransactionRepository transactionRepository;
     private final TransactionReferenceGenerator referenceGenerator;
@@ -57,19 +60,28 @@ public class PaymentService {
     }
 
     @Transactional
-    public PaymentResponse execute(String idempotencyKey, PaymentRequest request) {
+    public PaymentResponse execute(String merchantId, String idempotencyKey, PaymentRequest request) {
+        if (merchantId == null || !merchantId.matches("[A-Za-z0-9_-]{1,64}"))
+            throw new IllegalArgumentException("A stable merchant identity is required.");
+        return executePayment(idempotencyKey, request, null, merchantId);
+    }
+
+    private PaymentResponse executePayment(String idempotencyKey, PaymentRequest request,
+                                           BankTransaction refundOriginal, String merchantId) {
         var normalizedKey = normalizeKey(idempotencyKey);
         var existing = transactionRepository.findByIdempotencyKey(normalizedKey);
         if (existing.isPresent()) {
-            return existingPayment(existing.get(), request);
+            validateRefundLink(existing.get(), refundOriginal);
+            return existingPayment(existing.get(), request, merchantId);
         }
 
-        var sourceCandidate = account(request.customerAccountNumber());
-        var destinationCandidate = account(request.merchantAccountNumber());
-        validateAccounts(sourceCandidate, destinationCandidate, request);
-        validateLimits(sourceCandidate, request);
+        var sourceId = accountRepository.findIdByAccountNumber(request.customerAccountNumber())
+                .orElseThrow(() -> new PaymentException("Nie znaleziono rachunku klienta."));
+        var destinationId = accountRepository.findIdByAccountNumber(request.merchantAccountNumber())
+                .orElseThrow(() -> new PaymentException("Nie znaleziono rachunku sklepu."));
+        if (sourceId.equals(destinationId)) throw new PaymentException("Rachunki musza byc rozne.");
 
-        var accountIds = List.of(sourceCandidate.getId(), destinationCandidate.getId())
+        var accountIds = List.of(sourceId, destinationId)
                 .stream()
                 .sorted()
                 .toList();
@@ -80,12 +92,15 @@ public class PaymentService {
 
         existing = transactionRepository.findByIdempotencyKey(normalizedKey);
         if (existing.isPresent()) {
-            return existingPayment(existing.get(), request);
+            validateRefundLink(existing.get(), refundOriginal);
+            return existingPayment(existing.get(), request, merchantId);
         }
 
-        var source = accountById(lockedAccounts, sourceCandidate.getId());
-        var destination = accountById(lockedAccounts, destinationCandidate.getId());
+        lockedAccounts.forEach(account -> entityManager.refresh(account, jakarta.persistence.LockModeType.PESSIMISTIC_WRITE));
+        var source = accountById(lockedAccounts, sourceId);
+        var destination = accountById(lockedAccounts, destinationId);
         validateAccounts(source, destination, request);
+        validateLimits(source, request);
 
         source.debit(request.amount());
         destination.credit(request.amount());
@@ -103,6 +118,10 @@ public class PaymentService {
                 request.title(),
                 completedAt
         );
+        if (refundOriginal != null) {
+            transaction.markRefundOf(refundOriginal);
+        }
+        transaction.assignMerchant(merchantId);
         transactionRepository.saveAndFlush(transaction);
         notificationService.paymentCompleted(
                 source.getOwner(),
@@ -118,36 +137,54 @@ public class PaymentService {
             String idempotencyKey,
             String originalReferenceNumber,
             String merchantAccountNumber,
+            String customerAccountNumber,
             String orderId,
             BigDecimal amount,
             String currency,
             String title
     ) {
-        var original = transactionRepository.findByReferenceNumber(originalReferenceNumber)
+        var original = transactionRepository.findByReferenceNumberForUpdate(originalReferenceNumber)
                 .orElseThrow(() -> new PaymentException("Nie znaleziono oryginalnej platnosci."));
         if (original.getType() != TransactionType.PAYMENT
+                || original.getRefundOriginal() != null
                 || original.getSourceAccount() == null
                 || !original.getDestinationAccount().getAccountNumber().equals(merchantAccountNumber)
-                || !original.getPaymentOrderId().equals(orderId)
+                || !orderId.equals(original.getPaymentOrderId())
+                || (customerAccountNumber != null && !customerAccountNumber.isBlank()
+                    && !original.getSourceAccount().getAccountNumber().equals(customerAccountNumber))
                 || original.getAmount().compareTo(amount) != 0
                 || !original.getCurrency().equals(currency)) {
             throw new PaymentException("Referencja nie pasuje do zwracanej platnosci.");
         }
-        return execute(
-                idempotencyKey,
-                new PaymentRequest(
-                        merchantAccountNumber,
-                        original.getSourceAccount().getAccountNumber(),
-                        "refund:" + orderId,
-                        amount,
-                        currency,
-                        title
-                )
+        var request = new PaymentRequest(
+                merchantAccountNumber,
+                original.getSourceAccount().getAccountNumber(),
+                "refund:" + orderId,
+                amount,
+                currency,
+                title
         );
+        var priorRefund = transactionRepository.findByRefundOriginalId(original.getId());
+        if (priorRefund.isPresent()) {
+            if (!priorRefund.get().getIdempotencyKey().equals(normalizeKey(idempotencyKey))) {
+                throw new PaymentException("Ta platnosc zostala juz zwrocona.");
+            }
+            return existingPayment(priorRefund.get(), request, original.getMerchantId());
+        }
+        return executePayment(idempotencyKey, request, original, original.getMerchantId());
     }
 
-    private PaymentResponse existingPayment(BankTransaction transaction, PaymentRequest request) {
+    private static void validateRefundLink(BankTransaction existing, BankTransaction refundOriginal) {
+        var existingOriginal = existing.getRefundOriginal();
+        if (refundOriginal == null ? existingOriginal != null
+                : existingOriginal == null || !existingOriginal.getId().equals(refundOriginal.getId())) {
+            throw new PaymentException("Klucz operacji zostal juz wykorzystany dla innej platnosci.");
+        }
+    }
+
+    private PaymentResponse existingPayment(BankTransaction transaction, PaymentRequest request, String merchantId) {
         if (transaction.getType() != TransactionType.PAYMENT
+                || !java.util.Objects.equals(transaction.getMerchantId(), merchantId)
                 || transaction.getSourceAccount() == null
                 || !transaction.getSourceAccount().getAccountNumber().equals(request.customerAccountNumber())
                 || !transaction.getDestinationAccount().getAccountNumber().equals(request.merchantAccountNumber())
@@ -161,10 +198,7 @@ public class PaymentService {
         return response(transaction, true);
     }
 
-    private Account account(String accountNumber) {
-        return accountRepository.findByAccountNumber(accountNumber)
-                .orElseThrow(() -> new PaymentException("Nie znaleziono rachunku."));
-    }
+
 
     private void validateLimits(Account source, PaymentRequest request) {
         if (request.amount().compareTo(bankLimits.getSingleLimit()) > 0) {

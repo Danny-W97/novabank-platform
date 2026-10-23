@@ -18,9 +18,11 @@ import java.util.UUID;
 public class OrderRepository {
 
     private final JdbcTemplate jdbcTemplate;
+    private final org.demo.shopapp.config.ShopOrderProperties properties;
 
-    public OrderRepository(JdbcTemplate jdbcTemplate) {
+    public OrderRepository(JdbcTemplate jdbcTemplate, org.demo.shopapp.config.ShopOrderProperties properties) {
         this.jdbcTemplate = jdbcTemplate;
+        this.properties = properties;
     }
 
     public OrderRow create(
@@ -37,8 +39,8 @@ public class OrderRepository {
                     """
                     INSERT INTO shop_orders (
                         order_number, customer_id, customer_account_number,
-                        merchant_account_number, total, currency, status
-                    ) VALUES (?, ?, NULL, ?, ?, ?, 'PENDING')
+                        merchant_account_number, total, currency, status, merchant_id
+                    ) VALUES (?, ?, NULL, ?, ?, ?, 'PENDING', ?)
                     """,
                     new String[]{"id"}
             );
@@ -47,6 +49,7 @@ public class OrderRepository {
             statement.setString(3, merchantAccountNumber);
             statement.setBigDecimal(4, total);
             statement.setString(5, currency);
+            statement.setString(6, properties.requireMerchantId());
             return statement;
         }, keyHolder);
         var orderId = keyHolder.getKey().longValue();
@@ -116,56 +119,27 @@ public class OrderRepository {
                 .toList();
     }
 
-    public List<OrderRow> findReconciliationCandidates(int batchSize, Instant staleBefore) {
-        return jdbcTemplate.query(
-                        """
-                        SELECT id
-                        FROM shop_orders
-                        WHERE bank_authorization_id IS NOT NULL
-                          AND status IN ('PENDING', 'PAID', 'FAILED')
-                          AND (payment_reconciled_at IS NULL OR payment_reconciled_at < ?)
-                        ORDER BY COALESCE(payment_reconciled_at, updated_at), id
-                        LIMIT ?
-                        """,
-                        (rs, rowNum) -> rs.getLong(1),
-                        Timestamp.from(staleBefore), batchSize
-                ).stream()
-                .map(this::findByIdWithoutCustomer)
-                .toList();
+
+
+
+
+    public boolean hasUnresolvedCardPayment(String customerId) {
+        return org.demo.shopapp.cart.PurchaseIdentityService.blocked(jdbcTemplate,customerId);
     }
 
-    public OrderRow preparePayment(long orderId, String customerId, String idempotencyKey) {
-        var row = find(
-                """
-                SELECT id, order_number, customer_id, customer_account_number,
-                       merchant_account_number, total, currency, status,
-                       payment_idempotency_key, bank_authorization_id, payment_state,
-                       bank_reference, failure_reason, payment_provider,
-                       external_payment_id, external_checkout_url
-                FROM shop_orders
-                WHERE id = ? AND customer_id = ?
-                FOR UPDATE
-                """,
-                orderId, customerId
-        );
-        if (row.status() == OrderStatus.PAID) {
-            return row;
-        }
-        if (row.status() == OrderStatus.PENDING
-                && row.paymentIdempotencyKey() != null
-                && !row.paymentIdempotencyKey().equals(idempotencyKey)) {
-            throw new IllegalStateException("Another payment is already pending for this order.");
-        }
-        jdbcTemplate.update(
-                """
-                UPDATE shop_orders
-                SET status = 'PENDING', payment_idempotency_key = ?,
-                    failure_reason = NULL, updated_at = CURRENT_TIMESTAMP
-                WHERE id = ?
-                """,
-                idempotencyKey, orderId
-        );
-        return findById(orderId, customerId);
+    public java.util.Optional<OrderRow> byPurchase(String customer,java.util.UUID purchase){
+        var ids=jdbcTemplate.queryForList("SELECT id FROM shop_orders WHERE customer_id=? AND purchase_id=?",Long.class,customer,purchase);
+        return ids.isEmpty()?java.util.Optional.empty():java.util.Optional.of(findById(ids.getFirst(),customer));
+    }
+    public void bindPurchase(long order,java.util.UUID purchase){
+        if(jdbcTemplate.update("UPDATE shop_orders SET purchase_id=? WHERE id=? AND purchase_id IS NULL",purchase,order)!=1)
+            throw new IllegalStateException("Purchase identity conflict.");
+    }
+    public boolean ownsCurrentCart(long order,String customer){
+        return Boolean.TRUE.equals(jdbcTemplate.queryForObject("SELECT EXISTS(SELECT 1 FROM shop_carts c JOIN shop_orders o ON o.customer_id=c.customer_id AND o.purchase_id=c.purchase_id WHERE o.id=? AND c.customer_id=? FOR UPDATE OF c)",Boolean.class,order,customer));
+    }
+    public void finishPurchase(long order,String customer){
+        jdbcTemplate.update("UPDATE shop_carts c SET purchase_id=gen_random_uuid(),updated_at=CURRENT_TIMESTAMP FROM shop_orders o WHERE o.id=? AND o.customer_id=? AND c.customer_id=o.customer_id AND c.purchase_id=o.purchase_id",order,customer);
     }
 
     public void attachAuthorization(long orderId, String customerId, String authorizationId, String state) {
@@ -192,20 +166,7 @@ public class OrderRepository {
         );
     }
 
-    public OrderRow findByAuthorizationId(String authorizationId) {
-        return find(
-                """
-                SELECT id, order_number, customer_id, customer_account_number,
-                       merchant_account_number, total, currency, status,
-                       payment_idempotency_key, bank_authorization_id, payment_state,
-                       bank_reference, failure_reason, payment_provider,
-                       external_payment_id, external_checkout_url
-                FROM shop_orders
-                WHERE bank_authorization_id = ?
-                """,
-                authorizationId
-        );
-    }
+
 
     public OrderRow findByOrderNumber(String orderNumber) {
         return find(
@@ -222,84 +183,19 @@ public class OrderRepository {
         );
     }
 
-    public OrderRow findByExternalPaymentId(String externalPaymentId) {
-        return find(
-                """
-                SELECT id, order_number, customer_id, customer_account_number,
-                       merchant_account_number, total, currency, status,
-                       payment_idempotency_key, bank_authorization_id, payment_state,
-                       bank_reference, failure_reason, payment_provider,
-                       external_payment_id, external_checkout_url
-                FROM shop_orders
-                WHERE external_payment_id = ?
-                """,
-                externalPaymentId
-        );
-    }
 
-    public OrderRow markPaid(
-            long orderId,
-            String idempotencyKey,
-            String bankReference,
-            String customerAccountNumber
-    ) {
-        jdbcTemplate.update(
-                """
-                UPDATE shop_orders
-                SET status = 'PAID', customer_account_number = ?, bank_reference = ?,
-                    payment_idempotency_key = ?, failure_reason = NULL,
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE id = ?
-                """,
-                customerAccountNumber,
-                bankReference, idempotencyKey, orderId
-        );
-        return findByIdWithoutCustomer(orderId);
-    }
 
-    public OrderRow markPaidExternal(long orderId, String paymentId) {
-        jdbcTemplate.update(
-                """
-                UPDATE shop_orders
-                SET status = 'PAID', payment_state = 'PAID',
-                    failure_reason = NULL, updated_at = CURRENT_TIMESTAMP
-                WHERE id = ? AND external_payment_id = ? AND status <> 'PAID'
-                """,
-                orderId, paymentId
-        );
-        return findByIdWithoutCustomer(orderId);
-    }
 
-    public OrderRow markFailed(long orderId, String reason) {
-        jdbcTemplate.update(
-                """
-                UPDATE shop_orders
-                SET status = 'FAILED', failure_reason = ?, updated_at = CURRENT_TIMESTAMP
-                WHERE id = ? AND status <> 'PAID'
-                """,
-                reason, orderId
-        );
-        return findByIdWithoutCustomer(orderId);
-    }
 
-    public OrderRow markPending(long orderId, String reason) {
-        jdbcTemplate.update(
-                """
-                UPDATE shop_orders
-                SET status = 'PENDING', failure_reason = ?, updated_at = CURRENT_TIMESTAMP
-                WHERE id = ? AND status <> 'PAID'
-                """,
-                reason, orderId
-        );
-        return findByIdWithoutCustomer(orderId);
-    }
 
-    public void markPaymentReconciled(long orderId) {
-        jdbcTemplate.update(
-                "UPDATE shop_orders SET payment_reconciled_at = CURRENT_TIMESTAMP WHERE id = ?",
-                orderId
-        );
-    }
+
+
+
+
+
+
+
+
 
     public boolean claimCartCleanup(long orderId) {
         return jdbcTemplate.update(
@@ -309,25 +205,13 @@ public class OrderRepository {
                 WHERE id = ?
                   AND status = 'PAID'
                   AND cart_cleanup_completed_at IS NULL
+                  AND historical_imported_at IS NULL
                 """,
                 orderId
         ) == 1;
     }
 
-    private OrderRow findByIdWithoutCustomer(long orderId) {
-        return find(
-                """
-                SELECT id, order_number, customer_id, customer_account_number,
-                       merchant_account_number, total, currency, status,
-                       payment_idempotency_key, bank_authorization_id, payment_state,
-                       bank_reference, failure_reason, payment_provider,
-                       external_payment_id, external_checkout_url
-                FROM shop_orders
-                WHERE id = ?
-                """,
-                orderId
-        );
-    }
+
 
     private OrderRow find(String sql, Object... arguments) {
         var rows = jdbcTemplate.query(sql, (rs, rowNum) -> new OrderRow(

@@ -111,7 +111,8 @@ public class BankRateLimitFilter extends OncePerRequestFilter {
     }
 
     private static boolean isTransfer(String path) {
-        return "/transfer/confirm".equals(path) || "/transfer/execute".equals(path);
+        return "/transfer/confirm".equals(path) || "/transfer/execute".equals(path)
+                || "/scheduled-transfers".equals(path);
     }
 
     private static boolean allow(

@@ -6,6 +6,8 @@ import org.demo.bankdemo.account.AccountStatus;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.scheduling.annotation.Scheduled;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -19,6 +21,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Optional;
 
 @Service
 public class ExchangeService {
@@ -34,6 +37,7 @@ public class ExchangeService {
     private final CurrencyBalanceRepository balanceRepository;
     private final ExchangeRateRepository rateRepository;
     private final ExchangeTransactionRepository exchangeRepository;
+    private final ExchangeQuoteRepository quoteRepository;
     private final Clock clock;
 
     public ExchangeService(
@@ -41,12 +45,14 @@ public class ExchangeService {
             CurrencyBalanceRepository balanceRepository,
             ExchangeRateRepository rateRepository,
             ExchangeTransactionRepository exchangeRepository,
+            ExchangeQuoteRepository quoteRepository,
             Clock clock
     ) {
         this.accountRepository = accountRepository;
         this.balanceRepository = balanceRepository;
         this.rateRepository = rateRepository;
         this.exchangeRepository = exchangeRepository;
+        this.quoteRepository = quoteRepository;
         this.clock = clock;
     }
 
@@ -106,9 +112,49 @@ public class ExchangeService {
         );
     }
 
-    @Transactional
-    public ExchangeResult execute(String email, Quote quote, String idempotencyKey) {
+    @Transactional(timeoutString = "${app.database.transaction-timeout-seconds:15}")
+    public PreparedQuote prepareQuote(String email, CurrencyCode source, CurrencyCode target, BigDecimal amount) {
+        var quote = quote(source, target, amount);
         validateQuote(quote);
+        var key = UUID.randomUUID().toString();
+        quoteRepository.saveAndFlush(new ExchangeQuote(key, normalize(email), quote));
+        return new PreparedQuote(key, quote);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<Quote> pendingQuoteFor(String email, String key) {
+        return quoteRepository.findById(normalizeKey(key))
+                .filter(quote -> quote.getOwnerEmail().equals(normalize(email)))
+                .map(ExchangeQuote::toQuote)
+                .filter(quote -> !quote.createdAt().plus(QUOTE_LIFETIME).isBefore(Instant.now(clock)));
+    }
+
+    @Transactional(isolation = Isolation.READ_COMMITTED, timeoutString = "${app.database.transaction-timeout-seconds:15}")
+    public ExchangeResult executePrepared(String email, String idempotencyKey) {
+        var key = normalizeKey(idempotencyKey);
+        var owner = normalize(email);
+        var existing = exchangeRepository.findByIdempotencyKey(key);
+        if (existing.isPresent()) {
+            if (!existing.get().getAccount().getOwner().getEmail().equals(owner)) {
+                throw new ExchangeException("Nie znaleziono wyceny dla tej operacji.");
+            }
+            return toResult(existing.get());
+        }
+        var prepared = quoteRepository.findById(key)
+                .filter(quote -> quote.getOwnerEmail().equals(owner))
+                .orElseThrow(() -> new ExchangeException("Wycena wygasła lub nie należy do tej operacji."));
+        return execute(owner, prepared.toQuote(), key);
+    }
+
+    @Scheduled(fixedDelayString = "${app.exchange.quote-cleanup-delay-ms:3600000}")
+    @Transactional(timeoutString = "${app.database.transaction-timeout-seconds:15}")
+    public void deleteExpiredQuotes() {
+        // Completed transactions retain their key and remain replayable even after quote cleanup.
+        quoteRepository.deleteCreatedBefore(Instant.now(clock).minus(Duration.ofDays(1)));
+    }
+
+    @Transactional(timeoutString = "${app.database.transaction-timeout-seconds:15}")
+    ExchangeResult execute(String email, Quote quote, String idempotencyKey) {
         var key = normalizeKey(idempotencyKey);
         var normalizedEmail = normalize(email);
         var existing = exchangeRepository.findByIdempotencyKey(key);
@@ -118,6 +164,11 @@ public class ExchangeService {
 
         var account = accountRepository.findByOwnerEmailForUpdate(normalizedEmail)
                 .orElseThrow(() -> new ExchangeException("Zalogowany użytkownik nie posiada rachunku."));
+        existing = exchangeRepository.findByIdempotencyKey(key);
+        if (existing.isPresent()) {
+            return resultForExisting(existing.get(), normalizedEmail, quote);
+        }
+        validateQuote(quote);
         if (account.getStatus() != AccountStatus.ACTIVE) {
             throw new ExchangeException("Rachunek nie jest aktywny.");
         }
@@ -127,8 +178,14 @@ public class ExchangeService {
                 : balanceRepository.findByAccountIdAndCurrencyForUpdate(account.getId(), quote.sourceCurrency())
                 .orElseThrow(() -> new ExchangeException("Brak subkonta w walucie źródłowej."));
         if (sourceBalance != null) {
+            if (sourceBalance.getBalance().compareTo(quote.sourceAmount()) < 0) {
+                throw new ExchangeException("amount", "Brak wystarczających środków w walucie źródłowej.");
+            }
             sourceBalance.debit(quote.sourceAmount());
         } else {
+            if (account.getBalance().compareTo(quote.sourceAmount()) < 0) {
+                throw new ExchangeException("amount", "Brak wystarczających środków.");
+            }
             account.debit(quote.sourceAmount());
         }
 
@@ -176,7 +233,9 @@ public class ExchangeService {
         if (!transaction.getAccount().getOwner().getEmail().equals(email)
                 || transaction.getSourceCurrency() != quote.sourceCurrency()
                 || transaction.getTargetCurrency() != quote.targetCurrency()
-                || transaction.getSourceAmount().compareTo(quote.sourceAmount()) != 0) {
+                || transaction.getSourceAmount().compareTo(quote.sourceAmount()) != 0
+                || transaction.getTargetAmount().compareTo(quote.targetAmount()) != 0
+                || transaction.getAppliedRate().compareTo(quote.appliedRate()) != 0) {
             throw new ExchangeException("Klucz operacji został już wykorzystany dla innej wymiany.");
         }
         return toResult(transaction);
@@ -222,6 +281,12 @@ public class ExchangeService {
         }
         validateCurrencies(quote.sourceCurrency(), quote.targetCurrency());
         validateAmount(quote.sourceAmount());
+        if (quote.targetAmount() == null || quote.targetAmount().signum() <= 0
+                || quote.targetAmount().scale() > 2 || quote.targetAmount().precision() > 19
+                || quote.appliedRate() == null || quote.appliedRate().signum() <= 0
+                || quote.appliedRate().scale() > 8 || quote.appliedRate().precision() > 19) {
+            throw new ExchangeException("Wycena ma niepoprawną kwotę docelową lub kurs.");
+        }
     }
 
     private static String normalize(String email) {
@@ -248,6 +313,8 @@ public class ExchangeService {
             Instant createdAt
     ) implements java.io.Serializable {
     }
+
+    public record PreparedQuote(String idempotencyKey, Quote quote) {}
 
     public record BalanceView(CurrencyCode currency, BigDecimal amount) {
     }

@@ -13,22 +13,27 @@ public class OrderPaymentService {
 
     private final OrderStateService orderStateService;
     private final BankAuthorizationClient bankAuthorizationClient;
+    private final PaymentAttemptService attempts;
 
-    public OrderPaymentService(OrderStateService orderStateService, BankAuthorizationClient bankAuthorizationClient) {
+    public OrderPaymentService(OrderStateService orderStateService, BankAuthorizationClient bankAuthorizationClient,
+                                PaymentAttemptService attempts) {
         this.orderStateService = orderStateService;
         this.bankAuthorizationClient = bankAuthorizationClient;
+        this.attempts = attempts;
     }
 
     public OrderResponse pay(long orderId, String customerId, String idempotencyKey) {
         var key = ShopInput.idempotencyKey(idempotencyKey);
-        var prepared = orderStateService.preparePayment(orderId, customerId, key);
+        var preparation = attempts.begin(orderId, customerId, key, "BANK", null, null);
+        var prepared = preparation.order();
         if (prepared.status() == OrderStatus.PAID) {
             return OrderResponse.from(prepared).withReplayed(true);
         }
 
-        var state = prepared.paymentState() == null
-                ? UUID.randomUUID().toString()
-                : prepared.paymentState();
+        var attempt = preparation.attempt();
+        if (!preparation.dispatch())
+            return OrderResponse.from(prepared).withAuthorizationUrl(attempt.authorizationUrl()).withReplayed(true);
+        var state = attempt.correlation();
         try {
             var bankResponse = bankAuthorizationClient.create(new BankAuthorizationRequest(
                     prepared.orderNumber(),
@@ -40,23 +45,17 @@ public class OrderPaymentService {
                     key,
                     state
             ));
-            orderStateService.attachAuthorization(orderId, customerId, bankResponse.authorizationId(), state);
-            var linked = orderStateService.findByAuthorizationId(bankResponse.authorizationId());
+            if(bankResponse==null || !attempt.merchantId().equals(bankResponse.merchantId()) || !state.equals(bankResponse.state())
+                    || bankResponse.authorizationId()==null || bankResponse.authorizationUrl()==null)
+                throw new IllegalStateException("Invalid bank authorization response.");
+            attempts.attachAuthorization(attempt, bankResponse.authorizationId(), bankResponse.authorizationUrl());
+            var linked = attempts.order(attempt);
             return OrderResponse.from(linked).withAuthorizationUrl(bankResponse.authorizationUrl());
         } catch (RuntimeException exception) {
-            var failed = orderStateService.markFailed(orderId, failureMessage(exception));
-            return OrderResponse.from(failed);
+            attempts.unknown(attempt);
+            return OrderResponse.from(attempts.order(attempt));
         }
     }
 
-    private static String failureMessage(RuntimeException exception) {
-        var message = exception.getMessage();
-        if (exception instanceof ResponseStatusException statusException) {
-            message = statusException.getReason();
-        }
-        if (message == null || message.isBlank()) {
-            message = "Bank payment failed.";
-        }
-        return message.length() > 500 ? message.substring(0, 500) : message;
-    }
+
 }

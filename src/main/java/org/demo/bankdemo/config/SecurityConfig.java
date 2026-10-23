@@ -74,19 +74,26 @@ public class SecurityConfig {
                 ).permitAll()
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers("/actuator/prometheus").hasAnyRole("ADMIN", "METRICS")
-                        .requestMatchers("/actuator/**").hasRole("ADMIN")
+                        .requestMatchers("/actuator/**").access(clientRoles("ADMIN"))
+                        .requestMatchers(HttpMethod.POST, "/api/payments").denyAll()
                         .requestMatchers(
                         HttpMethod.POST,
-                                "/api/payments",
                                 "/api/payments/refunds",
                                 "/api/card-payments",
                                 "/api/card-payments/quote",
                                 "/api/payment-authorizations",
-                                "/api/payment-authorizations/**"
+                                "/api/payment-authorizations/*/redeem",
+                                "/api/payment-authorizations/by-key/*/cancel"
                         ).permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/payment-authorizations/*/status").permitAll()
-                        .requestMatchers("/admin/**").hasRole("ADMIN")
-                        .anyRequest().authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/payment-authorizations/*/status",
+                                "/api/payment-authorizations/by-key/*/status").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/card-payments/status/*").permitAll()
+                        .requestMatchers("/api/**").denyAll()
+                        .requestMatchers("/admin/**").access(clientRoles("ADMIN"))
+                        .requestMatchers("/dashboard", "/transfer/**", "/scheduled-transfers/**", "/exchange/**",
+                                "/history/**", "/recipients/**", "/notifications/**", "/profile/**", "/card/**", "/shop/authorize/**")
+                        .access(clientRoles("USER", "ADMIN"))
+                        .anyRequest().denyAll()
                 )
                 .formLogin(form -> form
                         .loginPage("/login")
@@ -94,14 +101,15 @@ public class SecurityConfig {
                         .failureHandler(loginFailureHandler)
                         .permitAll()
                 )
-                .httpBasic(Customizer.withDefaults())
+                .httpBasic(basic -> basic.disable())
                 .logout(logout -> logout
                         .logoutSuccessUrl("/login?logout")
                         .invalidateHttpSession(true)
                         .deleteCookies("BANK_SESSION")
                         .permitAll()
                 )
-                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**"))
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/payments/refunds", "/api/card-payments",
+                        "/api/card-payments/quote", "/api/payment-authorizations", "/api/payment-authorizations/*/redeem", "/api/payment-authorizations/by-key/*/cancel"))
                 .sessionManagement(session -> session
                         .sessionFixation(fixation -> fixation.migrateSession())
                         .invalidSessionUrl("/login?expired")
@@ -161,6 +169,18 @@ public class SecurityConfig {
                 .addFilterBefore(bankRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(metricsBasicAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
+    }
+
+    private static org.springframework.security.authorization.AuthorizationManager<org.springframework.security.web.access.intercept.RequestAuthorizationContext>
+    clientRoles(String... roles) {
+        return (supplier, context) -> {
+            var authentication = supplier.get();
+            boolean active = authentication.getPrincipal() instanceof org.springframework.security.core.userdetails.UserDetails user
+                    && user.isEnabled() && user.isAccountNonLocked() && user.isAccountNonExpired() && user.isCredentialsNonExpired();
+            boolean role = authentication.getAuthorities().stream().anyMatch(authority ->
+                    java.util.Arrays.stream(roles).anyMatch(expected -> authority.getAuthority().equals("ROLE_" + expected)));
+            return new org.springframework.security.authorization.AuthorizationDecision(authentication.isAuthenticated() && active && role);
+        };
     }
 
     @Bean

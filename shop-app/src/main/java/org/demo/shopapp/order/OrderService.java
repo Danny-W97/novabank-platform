@@ -17,19 +17,28 @@ public class OrderService {
     private final CartRepository cartRepository;
     private final OrderRepository orderRepository;
     private final ShopOrderProperties properties;
+    private final org.demo.shopapp.cart.PurchaseIdentityService purchases;
 
     public OrderService(
             CartRepository cartRepository,
             OrderRepository orderRepository,
-            ShopOrderProperties properties
+            ShopOrderProperties properties,
+            org.demo.shopapp.cart.PurchaseIdentityService purchases
     ) {
         this.cartRepository = cartRepository;
         this.orderRepository = orderRepository;
         this.properties = properties;
+        this.purchases=purchases;
     }
 
     @Transactional
     public OrderResponse create(String customerId) {
+        var purchase=purchases.lock(customerId);
+        var existing=orderRepository.byPurchase(customerId,purchase);
+        if(existing.isPresent())return OrderResponse.from(existing.get());
+        if (orderRepository.hasUnresolvedCardPayment(customerId))
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Poprzednia płatność wymaga uzgodnienia. Sprawdź istniejące zamówienie w Moich zamówieniach.");
         var merchantAccount = properties.getMerchantAccountNumber();
         if (merchantAccount == null || !merchantAccount.matches("\\d{26}")) {
             throw new ResponseStatusException(
@@ -49,6 +58,7 @@ public class OrderService {
                 customerId, merchantAccount,
                 total, currency, items
         );
+        orderRepository.bindPurchase(order.id(),purchase);
         return OrderResponse.from(order);
     }
 

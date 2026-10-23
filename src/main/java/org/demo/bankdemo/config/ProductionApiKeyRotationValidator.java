@@ -17,10 +17,6 @@ public class ProductionApiKeyRotationValidator {
             throw new IllegalStateException(
                     "BANK_API_KEYS musi zawierac co najmniej jeden niewygasly klucz.");
         }
-        if (keys.stream().noneMatch(key -> key.isUsableAt(now) && key.allows("payments:write"))) {
-            throw new IllegalStateException(
-                    "BANK_API_KEYS musi zawierac aktywny zakres payments:write.");
-        }
         if (keys.stream().noneMatch(key -> key.isUsableAt(now) && key.allows("payments:authorize"))) {
             throw new IllegalStateException(
                     "BANK_API_KEYS musi zawierac aktywny zakres payments:authorize.");

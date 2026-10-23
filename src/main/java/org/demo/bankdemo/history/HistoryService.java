@@ -34,13 +34,19 @@ public class HistoryService {
 
     private final AccountRepository accountRepository;
     private final TransactionRepository transactionRepository;
+    private final int exportMaxRows;
 
     public HistoryService(
             AccountRepository accountRepository,
-            TransactionRepository transactionRepository
+            TransactionRepository transactionRepository,
+            @org.springframework.beans.factory.annotation.Value("${app.history.export-max-rows:1000}") int exportMaxRows
     ) {
         this.accountRepository = accountRepository;
         this.transactionRepository = transactionRepository;
+        if (exportMaxRows < 1 || exportMaxRows > 10000) {
+            throw new IllegalArgumentException("History export limit must be between 1 and 10000.");
+        }
+        this.exportMaxRows = exportMaxRows;
     }
 
     @Transactional(readOnly = true)
@@ -136,13 +142,18 @@ public class HistoryService {
                 .orElseThrow(HistoryNotFoundException::new);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, timeoutString = "${app.database.transaction-timeout-seconds:15}")
     public List<ExportRow> exportRowsFor(String authenticatedEmail, HistoryFilter filter) {
         var account = accountFor(authenticatedEmail);
-        return transactionRepository.findAll(
+        var page = transactionRepository.findAll(
                         HistorySpecifications.visibleTo(account.getId(), filter),
-                        Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))
-                ).stream()
+                        PageRequest.of(0, exportMaxRows + 1,
+                                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")))
+                );
+        if (page.getNumberOfElements() > exportMaxRows || page.hasNext()) {
+            throw new HistoryExportLimitException();
+        }
+        return page.stream()
                 .map(transaction -> {
                     var outgoing = isOutgoing(transaction, account.getId());
                     var initialCredit = transaction.getType() == TransactionType.INITIAL_CREDIT;

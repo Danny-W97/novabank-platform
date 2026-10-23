@@ -9,6 +9,8 @@
     <section class="app-card scheduled-transfer-card">
         <form th:action="@{/scheduled-transfers}" th:object="${scheduledTransferForm}" method="post" class="app-form-field scheduled-transfer-form">
             <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+            <input type="hidden" th:field="*{idempotencyKey}">
+            <p class="field-error" th:errors="*{idempotencyKey}"></p>
             <div class="form-alert form-alert-error" th:if="${#fields.hasGlobalErrors()}"><span th:each="error : ${#fields.globalErrors()}" th:text="${error}">Błąd</span></div>
             <label for="recipientName">Odbiorca</label><input id="recipientName" th:field="*{recipientName}" required>
             <p class="field-error" th:errors="*{recipientName}"></p>
@@ -23,8 +25,15 @@
                 <option value="ONCE">Jednorazowo</option><option value="DAILY">Codziennie</option>
                 <option value="WEEKLY">Co tydzień</option><option value="MONTHLY">Co miesiąc</option>
             </select>
-            <label for="firstExecution">Pierwsze wykonanie</label><input id="firstExecution" type="datetime-local" th:field="*{firstExecution}" required>
+            <label for="firstExecution">Pierwsze wykonanie (czas Polski)</label><input id="firstExecution" type="datetime-local" th:field="*{firstExecution}" required>
             <p class="field-error" th:errors="*{firstExecution}"></p>
+            <div th:if="${pinRequired}">
+                <label for="pin">PIN transakcyjny</label><input id="pin" name="pin" type="password" autocomplete="off" required>
+            </div>
+            <div th:if="${totpEnabled}">
+                <label for="totpCode">Kod TOTP (wymagany dla przelewów podlegających 2FA)</label>
+                <input id="totpCode" name="totpCode" type="text" inputmode="numeric" autocomplete="one-time-code">
+            </div>
             <button class="btn app-btn-primary" type="submit">Zaplanuj przelew <i class="bi bi-calendar-check"></i></button>
         </form>
     </section>

@@ -9,6 +9,9 @@ public interface DemoCardRepository extends JpaRepository<DemoCard, Long> {
 
     Optional<DemoCard> findByAccountId(Long accountId);
 
+    @Query("select card.account.id from DemoCard card where card.onlineNumber = :onlineNumber")
+    Optional<Long> findAccountIdByOnlineNumber(String onlineNumber);
+
     @Query("select card from DemoCard card join fetch card.account account join fetch account.owner where card.onlineNumber = :onlineNumber")
     Optional<DemoCard> findByOnlineNumber(String onlineNumber);
 }

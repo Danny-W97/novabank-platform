@@ -41,25 +41,8 @@ public class ProfileService {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.clock = clock;
-        this.notificationService = notificationService;
-        this.userSessionService = userSessionService;
-    }
-
-    public ProfileService(
-            UserRepository userRepository,
-            PasswordEncoder passwordEncoder,
-            Clock clock,
-            NotificationService notificationService
-    ) {
-        this(userRepository, passwordEncoder, clock, notificationService, null);
-    }
-
-    public ProfileService(
-            UserRepository userRepository,
-            PasswordEncoder passwordEncoder,
-            Clock clock
-    ) {
-        this(userRepository, passwordEncoder, clock, null, null);
+        this.notificationService = java.util.Objects.requireNonNull(notificationService);
+        this.userSessionService = java.util.Objects.requireNonNull(userSessionService);
     }
 
     @Transactional(readOnly = true)
@@ -113,15 +96,11 @@ public class ProfileService {
             throw new ProfileException("newPassword", "Nowe hasło musi różnić się od obecnego.");
         }
         user.changePassword(passwordEncoder.encode(newPassword), Instant.now(clock));
-        if (userSessionService != null) {
-            userSessionService.invalidateAllSessions(user.getEmail());
-        }
-        if (notificationService != null) {
-            notificationService.securityEvent(
+        userSessionService.invalidateAllSessions(user.getEmail());
+        notificationService.securityEvent(
                     user.getEmail(),
                     "Haslo do konta zostalo zmienione. Jezeli to nie Ty wykonales te operacje, skontaktuj sie z bankiem."
             );
-        }
     }
 
     private User userFor(String authenticatedEmail) {

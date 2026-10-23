@@ -14,18 +14,21 @@ public class RefundService {
     private final OrderRepository orderRepository;
     private final RefundRepository refundRepository;
     private final BankAuthorizationClient bankClient;
+    private final org.springframework.transaction.support.TransactionTemplate transactions;
 
     public RefundService(
             OrderRepository orderRepository,
             RefundRepository refundRepository,
-            BankAuthorizationClient bankClient
+            BankAuthorizationClient bankClient,
+            org.springframework.transaction.PlatformTransactionManager transactionManager
     ) {
         this.orderRepository = orderRepository;
         this.refundRepository = refundRepository;
         this.bankClient = bankClient;
+        this.transactions = new org.springframework.transaction.support.TransactionTemplate(transactionManager);
     }
 
-    @Transactional
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
     public RefundResponse refund(
             long orderId,
             String customerId,
@@ -33,13 +36,41 @@ public class RefundService {
             String reason
     ) {
         var key = ShopInput.idempotencyKey(idempotencyKey);
+        var prepared = transactions.execute(status -> prepare(orderId, customerId, key, reason));
+        if (!"PENDING".equals(prepared.refund().status())) return RefundResponse.from(prepared.refund(), true);
+        var order = prepared.order();
+        try {
+            var bankResponse = bankClient.refund(new BankRefundRequest(
+                    order.merchantAccountNumber(), order.customerAccountNumber(), order.orderNumber(),
+                    order.total(), order.currency(), prepared.refund().reason(), order.bankReference()), key);
+            if (bankResponse == null || !("refund:" + order.orderNumber()).equals(bankResponse.orderId())
+                    || bankResponse.amount() == null || order.total().compareTo(bankResponse.amount()) != 0
+                    || !order.currency().equals(bankResponse.currency()) || !"COMPLETED".equals(bankResponse.status())
+                    || bankResponse.referenceNumber() == null)
+                throw new IllegalStateException("Refund response does not match the reserved operation.");
+            var completed = transactions.execute(status -> {
+                orderRepository.findByIdForUpdate(orderId, customerId);
+                refundRepository.findByIdempotencyKeyForUpdate(key).orElseThrow();
+                return refundRepository.markCompleted(key, bankResponse.referenceNumber());
+            });
+            return RefundResponse.from(completed, false);
+        } catch (RuntimeException exception) {
+            var pending = transactions.execute(status -> refundRepository.markPending(key,
+                    "Wynik zwrotu niepotwierdzony. Ponów wyłącznie z tym samym kluczem."));
+            return RefundResponse.from(pending, false);
+        }
+    }
+
+    private PreparedRefund prepare(long orderId, String customerId, String key, String reason) {
         var order = orderRepository.findByIdForUpdate(orderId, customerId);
+        if ("STRIPE".equalsIgnoreCase(order.paymentProvider()))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Stripe refund requires the Stripe-specific procedure.");
         var normalizedReason = reason.strip();
         var existing = refundRepository.findByIdempotencyKeyForUpdate(key);
         if (existing.isPresent()) {
             validateSameRefund(existing.get(), order, normalizedReason);
             if (!"PENDING".equals(existing.get().status())) {
-                return RefundResponse.from(existing.get(), true);
+                return new PreparedRefund(order, existing.get());
             }
         }
 
@@ -54,8 +85,8 @@ public class RefundService {
                     "Customer bank account is not available for this order."
             );
         }
-        if (existing.isEmpty() && refundRepository.existsCompletedForOrder(order.id())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "This order has already been refunded.");
+        if (existing.isEmpty() && refundRepository.existsUnresolvedOrCompletedForOrder(order.id())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This order already has a pending or completed refund; reuse its key.");
         }
 
         if (existing.isEmpty()) {
@@ -63,44 +94,14 @@ public class RefundService {
                     order.id(), order.orderNumber(), key, order.total(), order.currency(), normalizedReason
             ));
         }
-        try {
-            var bankResponse = bankClient.refund(new BankRefundRequest(
-                    order.merchantAccountNumber(),
-                    order.customerAccountNumber(),
-                    order.orderNumber(),
-                    order.total(),
-                    order.currency(),
-                    normalizedReason,
-                    order.bankReference()
-            ), key);
-            var completed = refundRepository.markCompleted(key, bankResponse.referenceNumber());
-            return RefundResponse.from(completed, false);
-        } catch (RuntimeException exception) {
-            if (isDefinitiveFailure(exception)) {
-                var failed = refundRepository.markFailed(key, failureMessage(exception));
-                return RefundResponse.from(failed, false);
-            }
-            var pending = refundRepository.markPending(key, failureMessage(exception));
-            return RefundResponse.from(pending, false);
-        }
+        return new PreparedRefund(order, existing.orElseThrow());
     }
 
-    private static boolean isDefinitiveFailure(RuntimeException exception) {
-        return exception instanceof ResponseStatusException statusException
-                && statusException.getStatusCode().is4xxClientError();
-    }
+    private record PreparedRefund(OrderRepository.OrderRow order, RefundRepository.RefundRow refund) { }
 
-    private static String failureMessage(RuntimeException exception) {
-        if (exception instanceof ResponseStatusException statusException
-                && statusException.getReason() != null
-                && !statusException.getReason().isBlank()) {
-            return statusException.getReason();
-        }
-        if (exception.getMessage() != null && !exception.getMessage().isBlank()) {
-            return exception.getMessage();
-        }
-        return "Nie można potwierdzić wyniku zwrotu. Ponów próbę z tym samym kluczem idempotencji.";
-    }
+
+
+
 
     private static void validateSameRefund(
             RefundRepository.RefundRow existing,

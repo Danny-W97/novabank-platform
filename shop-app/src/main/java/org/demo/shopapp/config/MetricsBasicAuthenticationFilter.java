@@ -50,8 +50,16 @@ public class MetricsBasicAuthenticationFilter extends OncePerRequestFilter {
                 null,
                 List.of(new SimpleGrantedAuthority("ROLE_METRICS"))
         );
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        filterChain.doFilter(request, response);
+        var previous = SecurityContextHolder.getContext();
+        var metricsContext = SecurityContextHolder.createEmptyContext();
+        metricsContext.setAuthentication(authentication);
+        SecurityContextHolder.setContext(metricsContext);
+        try {
+            filterChain.doFilter(request, response);
+        } finally {
+            // Never mutate or persist a bank/shop user's session context with a metrics principal.
+            SecurityContextHolder.setContext(previous);
+        }
     }
 
     private boolean matches(String username, String password) {

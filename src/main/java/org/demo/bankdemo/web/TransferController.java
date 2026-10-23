@@ -3,7 +3,6 @@ package org.demo.bankdemo.web;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import org.demo.bankdemo.audit.OperationAuditService;
-import org.demo.bankdemo.profile.TwoFactorService;
 import org.demo.bankdemo.dashboard.DashboardService;
 import org.demo.bankdemo.profile.TransactionPinService;
 import org.demo.bankdemo.recipient.RecipientService;
@@ -12,8 +11,6 @@ import org.demo.bankdemo.transfer.TransferCommand;
 import org.demo.bankdemo.transfer.TransferException;
 import org.demo.bankdemo.transfer.TransferForm;
 import org.demo.bankdemo.transfer.TransferService;
-import org.demo.bankdemo.transfer.TransferSecurityService;
-import org.demo.bankdemo.transfer.TransferTotpChallengeService;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -38,9 +35,7 @@ public class TransferController {
     private final RecipientService recipientService;
     private final TransactionPinService transactionPinService;
     private final OperationAuditService auditService;
-    private final TwoFactorService twoFactorService;
-    private final TransferSecurityService transferSecurityService;
-    private final TransferTotpChallengeService totpChallengeService;
+    private final org.demo.bankdemo.transfer.TransferConfirmationWorkflow confirmationWorkflow;
 
     @org.springframework.beans.factory.annotation.Autowired
     public TransferController(
@@ -50,9 +45,7 @@ public class TransferController {
             RecipientService recipientService,
             TransactionPinService transactionPinService,
             OperationAuditService auditService,
-            TwoFactorService twoFactorService,
-            TransferSecurityService transferSecurityService,
-            TransferTotpChallengeService totpChallengeService
+            org.demo.bankdemo.transfer.TransferConfirmationWorkflow confirmationWorkflow
     ) {
         this.dashboardService = dashboardService;
         this.transferService = transferService;
@@ -60,21 +53,7 @@ public class TransferController {
         this.recipientService = recipientService;
         this.transactionPinService = transactionPinService;
         this.auditService = auditService;
-        this.twoFactorService = twoFactorService;
-        this.transferSecurityService = transferSecurityService;
-        this.totpChallengeService = totpChallengeService;
-    }
-
-    public TransferController(
-            DashboardService dashboardService,
-            TransferService transferService,
-            TransferDraftStore draftStore,
-            RecipientService recipientService,
-            TransactionPinService transactionPinService,
-            OperationAuditService auditService
-    ) {
-        this(dashboardService, transferService, draftStore, recipientService,
-                transactionPinService, auditService, null, null, null);
+        this.confirmationWorkflow = java.util.Objects.requireNonNull(confirmationWorkflow);
     }
 
     @GetMapping
@@ -170,29 +149,10 @@ public class TransferController {
         }
 
         try {
-            transactionPinService.verifyForTransfer(authentication.getName(), pin);
-            if (transferSecurityService != null) {
-                var requirement = transferSecurityService.evaluate(authentication.getName(), command.get(), session);
-                if (requirement.required()) {
-                    if (!twoFactorService.isEnabled(authentication.getName())) {
-                        return renderTotpRequired(authentication, command.get(), session, model,
-                                "Dla tego przelewu wymagane jest 2FA. Wlacz Google Authenticator w profilu.");
-                    }
-                    var verification = totpChallengeService.verify(
-                            session, authentication.getName(), command.get(), totpCode
-                    );
-                    if (verification != TransferTotpChallengeService.VerificationResult.VERIFIED) {
-                        auditService.recordFailure(authentication.getName(), "TRANSFER_TOTP", verification.name());
-                        return renderTotpRequired(authentication, command.get(), session, model,
-                                totpMessage(verification));
-                    }
-                    session.removeAttribute(org.demo.bankdemo.audit.LoginHistoryService.NEW_DEVICE_ATTRIBUTE);
-                    auditService.recordSuccess(authentication.getName(), "TRANSFER_TOTP",
-                            "Poprawnie potwierdzono przelew kodem TOTP.");
-                }
-            }
-            var result = transferService.execute(authentication.getName(), command.get());
-            return "redirect:/transfer/success/" + result.referenceNumber();
+            var outcome = confirmationWorkflow.execute(authentication.getName(), command.get(), pin, totpCode, session);
+            if (outcome.result() == null) return renderTotpRequired(authentication, command.get(), session, model,
+                    outcome.confirmationMessage());
+            return "redirect:/transfer/success/" + outcome.result().referenceNumber();
         } catch (TransferException exception) {
             auditService.recordFailure(
                     authentication.getName(),
@@ -222,16 +182,10 @@ public class TransferController {
 
     private void prepareTotp(String email, TransferCommand command,
                              HttpSession session, Model model) {
-        if (transferSecurityService == null) {
-            return;
-        }
-        var requirement = transferSecurityService.evaluate(email, command, session);
-        model.addAttribute("totpRequired", requirement.required());
-        model.addAttribute("totpReason", requirement.reason());
-        model.addAttribute("totpEnabled", twoFactorService.isEnabled(email));
-        if (requirement.required() && twoFactorService.isEnabled(email)) {
-            totpChallengeService.start(session, email, command, requirement.reason());
-        }
+        var preparation = confirmationWorkflow.prepare(email, command, session);
+        model.addAttribute("totpRequired", preparation.required());
+        model.addAttribute("totpReason", preparation.reason());
+        model.addAttribute("totpEnabled", preparation.enabled());
     }
 
     private String renderTotpRequired(Authentication authentication, TransferCommand command,
@@ -245,26 +199,17 @@ public class TransferController {
         return "transfer/confirm";
     }
 
-    private static String totpMessage(TransferTotpChallengeService.VerificationResult result) {
-        return switch (result) {
-            case INVALID_CODE -> "Kod TOTP jest nieprawidlowy lub wygasl.";
-            case EXPIRED -> "Wyzwanie TOTP wygaslo. Wygenerowano nowe wyzwanie.";
-            case MISMATCH -> "Dane przelewu zmienily sie. Potwierdz przelew ponownie.";
-            case TOO_MANY_ATTEMPTS -> "Przekroczono liczbe prob kodu TOTP. Potwierdz przelew ponownie.";
-            case VERIFIED -> "";
-        };
-    }
-
     @GetMapping("/success/{referenceNumber}")
     String success(
             @PathVariable String referenceNumber,
             Authentication authentication,
             Model model
     ) {
-        model.addAttribute(
-                "transfer",
-                transferService.resultFor(referenceNumber, authentication.getName())
-        );
+        try {
+            model.addAttribute("transfer", transferService.resultFor(referenceNumber, authentication.getName()));
+        } catch (org.demo.bankdemo.transfer.TransferException unavailable) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND,"Nie znaleziono przelewu.");
+        }
         addCommonModel(authentication, model);
         return "transfer/success";
     }

@@ -59,6 +59,30 @@ public class BankAuthorizationClient {
         }
     }
 
+    public BankAuthorizationStatusResponse statusByKey(String key) {
+        ensureConfigured();
+        try {
+            var spec=bankRestClient.get().uri("/api/payment-authorizations/by-key/{key}/status",key)
+                    .header("X-API-Key",properties.getApiKey());
+            addKeyId(spec);
+            return spec.retrieve().body(BankAuthorizationStatusResponse.class);
+        } catch (RestClientResponseException exception) { throw rejected(exception); }
+    }
+
+    public String authorizationUrl(String id) {
+        if (id == null || !id.matches("[A-Za-z0-9_-]{1,64}"))
+            throw new IllegalArgumentException("Invalid bank authorization ID.");
+        return properties.getBaseUrl().replaceAll("/+$", "") + "/shop/authorize/" + id;
+    }
+
+    public BankAuthorizationStatusResponse cancelByKey(String key) {
+        ensureConfigured();
+        var spec=bankRestClient.post().uri("/api/payment-authorizations/by-key/{key}/cancel",key)
+                .header("X-API-Key",properties.getApiKey());
+        addKeyId(spec);
+        return spec.retrieve().body(BankAuthorizationStatusResponse.class);
+    }
+
     public BankAuthorizationRedeemResponse refund(BankRefundRequest request, String idempotencyKey) {
         ensureConfigured();
         try {
@@ -96,6 +120,23 @@ public class BankAuthorizationClient {
                     .header("X-API-Key", properties.getApiKey())
                     .header("Idempotency-Key", idempotencyKey)
                     .body(request);
+            addKeyId(spec);
+            return spec.retrieve().body(BankCardPaymentResponse.class);
+        } catch (RestClientResponseException exception) {
+            throw rejected(exception);
+        }
+    }
+
+    public BankCardPaymentResponse cardStatus(String idempotencyKey,
+                                              String merchantAccountNumber, String orderId) {
+        ensureConfigured();
+        try {
+            var spec = bankRestClient.get()
+                    .uri(builder -> builder.path("/api/card-payments/status/{key}")
+                            .queryParam("merchantAccountNumber", merchantAccountNumber)
+                            .queryParam("orderId", orderId)
+                            .build(idempotencyKey))
+                    .header("X-API-Key", properties.getApiKey());
             addKeyId(spec);
             return spec.retrieve().body(BankCardPaymentResponse.class);
         } catch (RestClientResponseException exception) {

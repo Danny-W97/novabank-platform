@@ -11,6 +11,7 @@ import org.demo.bankdemo.transaction.TransactionType;
 import org.demo.bankdemo.config.TransferLimitsProperties;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Isolation;
 
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
@@ -72,7 +73,7 @@ public class TransferService {
         );
     }
 
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED, timeoutString = "${app.database.transaction-timeout-seconds:15}")
     public TransferResult execute(String authenticatedEmail, TransferCommand command) {
         validateCommand(command);
         var normalizedEmail = normalizeEmail(authenticatedEmail);
@@ -92,25 +93,17 @@ public class TransferService {
                             + limitsProperties.getSingleLimit().toPlainString() + " PLN."
             );
         }
-        var dailyTotal = transactionRepository.sumOutgoingByEmailSince(
-                normalizedEmail,
-                List.of(TransactionType.TRANSFER, TransactionType.PAYMENT),
-                Instant.now(clock).minusSeconds(24 * 60 * 60)
-        );
-        if (dailyTotal.add(command.amount()).compareTo(limitsProperties.getDailyLimit()) > 0) {
-            throw new TransferException(
-                    "amount",
-                    "Przekroczono dzienny limit przelewów: "
-                            + limitsProperties.getDailyLimit().toPlainString() + " PLN."
-            );
+        // Load only scalar IDs before locking: managed Account snapshots could otherwise be stale
+        // after another transfer commits while this transaction waits for its pessimistic lock.
+        var sourceId = accountRepository.findIdByOwnerEmail(normalizedEmail)
+                .orElseThrow(() -> new TransferException(null, "Zalogowany użytkownik nie posiada rachunku."));
+        var destinationId = accountRepository.findIdByAccountNumber(command.destinationAccountNumber())
+                .orElseThrow(() -> new TransferException("destinationAccountNumber", "Nie znaleziono rachunku odbiorcy."));
+        if (sourceId.equals(destinationId)) {
+            throw new TransferException("destinationAccountNumber", "Nie można wykonać przelewu na własny rachunek.");
         }
 
-        var sourceCandidate = sourceAccount(normalizedEmail);
-        validateUserTransferLimits(sourceCandidate, command, normalizedEmail);
-        var destinationCandidate = destinationAccount(command.destinationAccountNumber());
-        validateAccounts(sourceCandidate, destinationCandidate, command.amount());
-
-        var accountIds = List.of(sourceCandidate.getId(), destinationCandidate.getId()).stream()
+        var accountIds = List.of(sourceId, destinationId).stream()
                 .sorted()
                 .toList();
         var lockedAccounts = accountRepository.findAllByIdForUpdate(accountIds);
@@ -123,12 +116,25 @@ public class TransferService {
             return resultForExisting(existing.get(), normalizedEmail, command);
         }
 
-        var source = accountById(lockedAccounts, sourceCandidate.getId());
-        var destination = accountById(lockedAccounts, destinationCandidate.getId());
+        var source = accountById(lockedAccounts, sourceId);
+        var destination = accountById(lockedAccounts, destinationId);
         if (!source.getOwner().getEmail().equals(normalizedEmail)) {
             throw new TransferException(null, "Rachunek źródłowy nie należy do zalogowanego użytkownika.");
         }
         validateAccounts(source, destination, command.amount());
+        var dailyTotal = transactionRepository.sumOutgoingByEmailSince(
+                normalizedEmail,
+                List.of(TransactionType.TRANSFER, TransactionType.PAYMENT),
+                Instant.now(clock).minusSeconds(24 * 60 * 60)
+        );
+        if (safeTotal(dailyTotal).add(command.amount()).compareTo(limitsProperties.getDailyLimit()) > 0) {
+            throw new TransferException(
+                    "amount",
+                    "Przekroczono dzienny limit przelewów: "
+                            + limitsProperties.getDailyLimit().toPlainString() + " PLN."
+            );
+        }
+        validateUserTransferLimits(source, command, normalizedEmail);
 
         source.debit(command.amount());
         destination.credit(command.amount());
@@ -153,6 +159,14 @@ public class TransferService {
                 transaction.getReferenceNumber()
         );
         return toResult(transaction);
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.Optional<TransferResult> findCompleted(String authenticatedEmail, TransferCommand command) {
+        validateCommand(command);
+        var email = normalizeEmail(authenticatedEmail);
+        return transactionRepository.findByIdempotencyKey(command.idempotencyKey())
+                .map(transaction -> resultForExisting(transaction, email, command));
     }
 
     @Transactional(readOnly = true)

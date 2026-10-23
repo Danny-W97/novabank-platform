@@ -14,13 +14,16 @@ public class EmailDeliveryService {
 
     private final EmailProperties properties;
     private final ObjectProvider<JavaMailSender> mailSenderProvider;
+    private final org.springframework.core.env.Environment environment;
 
     public EmailDeliveryService(
             EmailProperties properties,
-            ObjectProvider<JavaMailSender> mailSenderProvider
+            ObjectProvider<JavaMailSender> mailSenderProvider,
+            org.springframework.core.env.Environment environment
     ) {
         this.properties = properties;
         this.mailSenderProvider = mailSenderProvider;
+        this.environment = environment;
     }
 
     public void sendVerification(String email, String token) {
@@ -44,7 +47,11 @@ public class EmailDeliveryService {
     }
 
     private void deliver(String email, String subject, String body) {
-        if (!"smtp".equalsIgnoreCase(properties.getMode())) {
+        if ("LOG".equals(properties.getMode())) {
+            if (environment.acceptsProfiles(org.springframework.core.env.Profiles.of("prod"))
+                    || !environment.acceptsProfiles(org.springframework.core.env.Profiles.of("dev", "test"))) {
+                throw new IllegalStateException("Logowanie treści email jest dozwolone wyłącznie w izolowanym DEV/TEST.");
+            }
             System.out.printf("[EMAIL-DEV] to=%s subject=%s%n%s%n", email, subject, body);
             return;
         }

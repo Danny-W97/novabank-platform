@@ -7,6 +7,9 @@ import org.demo.bankdemo.card.CardService;
 import org.demo.bankdemo.currency.CurrencyCode;
 import org.demo.bankdemo.currency.ExchangeService;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,10 +24,13 @@ public class CardPaymentApiController {
 
     private final CardService cardService;
     private final ExchangeService exchangeService;
+    private final org.demo.bankdemo.payment.MerchantPaymentService merchantPayments;
 
-    public CardPaymentApiController(CardService cardService, ExchangeService exchangeService) {
+    public CardPaymentApiController(CardService cardService, ExchangeService exchangeService,
+                                    org.demo.bankdemo.payment.MerchantPaymentService merchantPayments) {
         this.cardService = cardService;
         this.exchangeService = exchangeService;
+        this.merchantPayments = merchantPayments;
     }
 
     @PostMapping("/quote")
@@ -46,22 +52,21 @@ public class CardPaymentApiController {
 
     @PostMapping
     CardPaymentResponse pay(
+            @org.springframework.web.bind.annotation.RequestAttribute(org.demo.bankdemo.payment.MerchantIdentity.REQUEST_ATTRIBUTE)
+            org.demo.bankdemo.payment.MerchantIdentity merchant,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             @Valid @RequestBody CardPaymentRequest request
     ) {
-        var result = cardService.payOnline(
-                request.cardNumber(),
-                request.cvv(),
-                request.expiry(),
-                request.merchantAccountNumber(),
-                request.orderId(),
-                request.currencyCode(),
-                request.amountPln(),
-                request.amount(),
-                request.title(),
-                idempotencyKey
-        );
-        return CardPaymentResponse.from(request.orderId(), result);
+        return merchantPayments.payCard(merchant, idempotencyKey, request);
+    }
+
+    @GetMapping("/status/{idempotencyKey}")
+    CardPaymentResponse status(@org.springframework.web.bind.annotation.RequestAttribute(org.demo.bankdemo.payment.MerchantIdentity.REQUEST_ATTRIBUTE)
+                               org.demo.bankdemo.payment.MerchantIdentity merchant,
+                               @PathVariable String idempotencyKey,
+                               @RequestParam String merchantAccountNumber,
+                               @RequestParam String orderId) {
+        return merchantPayments.cardStatus(merchant, idempotencyKey, merchantAccountNumber, orderId);
     }
 
     public record CardPaymentQuoteRequest(

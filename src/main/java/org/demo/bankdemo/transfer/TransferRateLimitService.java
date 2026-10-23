@@ -24,11 +24,8 @@ public class TransferRateLimitService {
         }
         var window = Instant.now().getEpochSecond() / 60;
         var key = "bank:transfer-rate:" + sha256(email) + ":" + window;
-        var count = redisTemplate.opsForValue().increment(key);
-        if (count != null && count == 1) {
-            redisTemplate.expire(key, Duration.ofMinutes(2));
-        }
-        return count != null && count <= maxRequests;
+        var count = org.demo.bankdemo.config.AtomicRedisCounter.increment(redisTemplate,key,Duration.ofMinutes(2));
+        return count <= maxRequests;
     }
 
     private static String sha256(String value) {

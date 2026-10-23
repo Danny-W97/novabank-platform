@@ -53,8 +53,10 @@ class ShopBankPaymentFlowIT {
     private static final AtomicReference<String> CREATED_AMOUNT = new AtomicReference<>();
     private static final AtomicReference<String> CREATED_PAYMENT_KEY = new AtomicReference<>();
     private static final AtomicReference<String> CREATED_AUTHORIZATION_ID = new AtomicReference<>();
+    private static final AtomicReference<String> CREATED_STATE = new AtomicReference<>();
     private static final AtomicInteger AUTHORIZATION_SEQUENCE = new AtomicInteger();
     private static final AtomicInteger CREATE_REQUEST_COUNT = new AtomicInteger();
+    private static final AtomicInteger REFUND_REQUEST_COUNT = new AtomicInteger();
     private static final AtomicBoolean CREATE_REQUEST_RECEIVED = new AtomicBoolean();
     private static final AtomicBoolean REDEEM_REQUEST_RECEIVED = new AtomicBoolean();
 
@@ -68,6 +70,7 @@ class ShopBankPaymentFlowIT {
             BANK_SERVER = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
             BANK_SERVER.createContext("/api/payment-authorizations",
                     ShopBankPaymentFlowIT::handleBankRequest);
+            BANK_SERVER.createContext("/api/payments/refunds", ShopBankPaymentFlowIT::handleBankRequest);
             BANK_SERVER.start();
         } catch (IOException exception) {
             POSTGRES.stop();
@@ -107,6 +110,7 @@ class ShopBankPaymentFlowIT {
         CREATED_PAYMENT_KEY.set(null);
         CREATED_AUTHORIZATION_ID.set(null);
         CREATE_REQUEST_COUNT.set(0);
+        REFUND_REQUEST_COUNT.set(0);
         CREATE_REQUEST_RECEIVED.set(false);
         REDEEM_REQUEST_RECEIVED.set(false);
     }
@@ -118,7 +122,7 @@ class ShopBankPaymentFlowIT {
     }
 
     @Test
-    void completesPaymentOverHttpAndClearsCart() throws Exception {
+    void completesPaymentAndLinkedRefundOverHttpWithoutDoubleRefund() throws Exception {
         var client = new ShopHttpClient("http://127.0.0.1:" + shopPort, TEST_EMAIL, TEST_PASSWORD);
         var productId = jdbcTemplate.queryForObject(
                 "SELECT id FROM shop_products WHERE sku = 'HTTP-IT-001'", Long.class);
@@ -150,7 +154,7 @@ class ShopBankPaymentFlowIT {
                 jsonString(paymentResponse.body(), "authorizationUrl"),
                 jsonString(repeatedPaymentResponse.body(), "authorizationUrl")
         );
-        assertEquals(2, CREATE_REQUEST_COUNT.get());
+        assertEquals(1, CREATE_REQUEST_COUNT.get());
 
         var authorization = jdbcTemplate.queryForMap(
                 "SELECT bank_authorization_id, payment_state FROM shop_orders WHERE id = ?", orderId);
@@ -173,10 +177,21 @@ class ShopBankPaymentFlowIT {
         var cartAfterPayment = client.get("/api/cart");
         assertEquals(200, cartAfterPayment.statusCode());
         assertTrue(jsonArrayIsEmpty(cartAfterPayment.body(), "items"));
+
+        var refund = client.refund(csrf, orderId, "linked-http-refund");
+        assertEquals(200, refund.statusCode());
+        assertEquals("COMPLETED", jsonString(refund.body(), "status"));
+        assertEquals("BANK-IT-REFUND", jsonString(refund.body(), "bankReference"));
+        var repeatedRefund = client.refund(csrf, orderId, "linked-http-refund");
+        assertEquals(200, repeatedRefund.statusCode());
+        assertEquals("COMPLETED", jsonString(repeatedRefund.body(), "status"));
+        assertEquals(1, REFUND_REQUEST_COUNT.get());
+        assertEquals(409, client.refund(csrf, orderId, "other-refund-key").statusCode());
+        assertEquals(1, REFUND_REQUEST_COUNT.get());
     }
 
     @Test
-    void marksOrderFailedWhenBankReportsInsufficientFunds() throws Exception {
+    void marksOrderFailedOnlyAfterAuthoritativeBankStatus() throws Exception {
         var client = new ShopHttpClient(
                 "http://127.0.0.1:" + shopPort,
                 FAILURE_EMAIL,
@@ -208,7 +223,7 @@ class ShopBankPaymentFlowIT {
         assertTrue(callback.headers().firstValue("location").orElse("").contains("payment=failed"));
         var failedOrder = client.get("/api/orders/" + orderId);
         assertEquals("FAILED", jsonString(failedOrder.body(), "status"));
-        assertTrue(jsonString(failedOrder.body(), "failureReason").contains("rodk"));
+        assertTrue(jsonString(failedOrder.body(), "failureReason").contains("terminal refusal"));
         assertTrue(!REDEEM_REQUEST_RECEIVED.get());
     }
 
@@ -222,9 +237,20 @@ class ShopBankPaymentFlowIT {
 
             var body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
             var path = exchange.getRequestURI().getPath();
+            if ("/api/payments/refunds".equals(path)) {
+                assertEquals(CREATED_ORDER_ID.get(), jsonString(body, "orderId"));
+                assertEquals("BANK-IT-REFERENCE", jsonString(body, "originalReferenceNumber"));
+                REFUND_REQUEST_COUNT.incrementAndGet();
+                respond(exchange, 200, """
+                        {"orderId":"refund:%s","amount":%s,"currency":"PLN","status":"COMPLETED",
+                         "referenceNumber":"BANK-IT-REFUND","replayed":false}
+                        """.formatted(CREATED_ORDER_ID.get(), CREATED_AMOUNT.get()));
+                return;
+            }
             if ("/api/payment-authorizations".equals(path)) {
                 CREATED_ORDER_ID.set(jsonString(body, "shopOrderId"));
                 CREATED_AMOUNT.set(jsonNumber(body, "amount"));
+                CREATED_STATE.set(jsonString(body, "state"));
                 var paymentKey = jsonString(body, "paymentIdempotencyKey");
                 if (!paymentKey.equals(CREATED_PAYMENT_KEY.get())) {
                     CREATED_PAYMENT_KEY.set(paymentKey);
@@ -235,8 +261,8 @@ class ShopBankPaymentFlowIT {
                 }
                 CREATE_REQUEST_RECEIVED.set(true);
                 respond(exchange, 200, """
-                        {"authorizationId":"%s","authorizationUrl":"http://bank.test/authorize/%s","state":"bank-state","expiresAt":"2099-01-01T00:00:00Z"}
-                        """.formatted(CREATED_AUTHORIZATION_ID.get(), CREATED_AUTHORIZATION_ID.get()));
+                        {"authorizationId":"%s","authorizationUrl":"http://bank.test/authorize/%s","state":"%s","expiresAt":"2099-01-01T00:00:00Z","merchantId":"synthetic-merchant"}
+                        """.formatted(CREATED_AUTHORIZATION_ID.get(), CREATED_AUTHORIZATION_ID.get(), CREATED_STATE.get()));
                 return;
             }
 
@@ -250,6 +276,15 @@ class ShopBankPaymentFlowIT {
                 return;
             }
 
+            if (("/api/payment-authorizations/" + CREATED_AUTHORIZATION_ID.get() + "/status").equals(path)) {
+                var terminalFailure = CREATED_PAYMENT_KEY.get().startsWith("payment-failure");
+                var status = terminalFailure ? "FAILED" : REDEEM_REQUEST_RECEIVED.get() ? "COMPLETED" : "PENDING";
+                respond(exchange,200,"""
+                        {"authorizationId":"%s","shopOrderId":"%s","amount":%s,"currency":"PLN","status":"%s", "merchantId":"synthetic-merchant",
+                        "referenceNumber":"BANK-IT-REFERENCE","customerAccountNumber":"11111111111111111111111111"}
+                        """.formatted(CREATED_AUTHORIZATION_ID.get(),CREATED_ORDER_ID.get(),CREATED_AMOUNT.get(),status));
+                return;
+            }
             respond(exchange, 404, "{\"error\":\"not found\"}");
         }
     }
@@ -350,6 +385,11 @@ class ShopBankPaymentFlowIT {
 
         private HttpResponse<String> pay(String csrf, long orderId, String idempotencyKey) throws Exception {
             return send("POST", "/api/orders/" + orderId + "/pay", null, csrf, null, idempotencyKey);
+        }
+
+        private HttpResponse<String> refund(String csrf, long orderId, String idempotencyKey) throws Exception {
+            return send("POST", "/api/orders/" + orderId + "/refund", "{\"reason\":\"Synthetic refund\"}",
+                    csrf, "application/json", idempotencyKey);
         }
 
         private HttpResponse<String> get(String path) throws Exception {

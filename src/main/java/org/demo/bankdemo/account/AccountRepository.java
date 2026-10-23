@@ -15,6 +15,15 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
 
     Optional<Account> findByOwnerEmail(String email);
 
+    @Query("select a.id from Account a where a.owner.email = :email")
+    Optional<Long> findIdByOwnerEmail(@Param("email") String email);
+
+    @Query("select a.accountNumber from Account a where a.owner.email = :email")
+    Optional<String> findAccountNumberByOwnerEmail(@Param("email") String email);
+
+    @Query("select a.id from Account a where a.accountNumber = :number")
+    Optional<Long> findIdByAccountNumber(@Param("number") String number);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select account from Account account

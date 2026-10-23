@@ -17,6 +17,7 @@ public class ProductionConfigurationValidator {
     }
 
     private static void validate(Environment environment) {
+        validateEmailMode(environment);
         requireEnv(environment, "POSTGRES_HOST");
         requireEnv(environment, "POSTGRES_PORT");
         requireEnv(environment, "POSTGRES_DB");
@@ -39,6 +40,13 @@ public class ProductionConfigurationValidator {
         if (!environment.getProperty("server.servlet.session.cookie.secure", Boolean.class, false)) {
             throw new IllegalStateException(
                     "Profil prod wymaga server.servlet.session.cookie.secure=true.");
+        }
+    }
+
+    static void validateEmailMode(Environment environment) {
+        var mode = environment.getProperty("app.email.mode", environment.getProperty("EMAIL_MODE", "log"));
+        if (!"smtp".equalsIgnoreCase(mode.strip())) {
+            throw new IllegalStateException("Profil prod wymaga app.email.mode=SMTP (EMAIL_MODE=SMTP); treść email nie może trafiać do logów.");
         }
     }
 

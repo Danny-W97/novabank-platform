@@ -4,7 +4,13 @@ set -Eeuo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 ENV_FILE="${ENV_FILE:-$REPO_DIR/.novabank/env/project.env}"
-if [[ ! -f "$ENV_FILE" && -f "$REPO_DIR/.env" ]]; then
+if [[ "${NOVABANK_WEB_MODE:-}" == 1 ]]; then
+  ENV_FILE="$REPO_DIR/.novabank/env/project.env"
+  for entry in .novabank .novabank/env .novabank/env/project.env .novabank/env/dev.env .novabank/backups .novabank/backups/dev; do
+    [[ ! -L "$REPO_DIR/$entry" ]] || { echo 'Dowiązania konfiguracji/backupu panelu są niedozwolone.' >&2; exit 1; }
+  done
+fi
+if [[ "${NOVABANK_WEB_MODE:-}" != 1 && ! -f "$ENV_FILE" && -f "$REPO_DIR/.env" ]]; then
   ENV_FILE="$REPO_DIR/.env"
 fi
 
@@ -14,7 +20,26 @@ CALLER_SHOP_DUMP="${SHOP_DUMP:-}"
 CALLER_BANK_CONTAINER="${BANK_POSTGRES_CONTAINER:-}"
 CALLER_SHOP_CONTAINER="${SHOP_POSTGRES_CONTAINER:-}"
 
-if [[ -f "$ENV_FILE" ]]; then
+if [[ "${NOVABANK_WEB_MODE:-}" == 1 || "$ENV_FILE" == "$REPO_DIR/.novabank/env/project.env" ]]; then
+  # Default DEV reads infrastructure + profile credentials as DATA, never shell code.
+  for config_file in "$ENV_FILE" "$REPO_DIR/.novabank/env/dev.env"; do
+    [[ -f "$config_file" ]] || continue
+    while IFS='=' read -r key value || [[ -n "$key" ]]; do
+      value="${value%$'\r'}"
+      if [[ "$value" == \"*\" || "$value" == \'*\' ]]; then value="${value:1:${#value}-2}"; fi
+      case "$key" in
+        POSTGRES_DB|POSTGRES_USER|SHOP_POSTGRES_DB|SHOP_POSTGRES_USER)
+          [[ "$value" =~ ^[a-zA-Z][a-zA-Z0-9_]{0,62}$ ]] || { echo 'Nieprawidłowa tożsamość lokalnej bazy.' >&2; exit 1; }
+          export "$key=$value" ;;
+        POSTGRES_PASSWORD|SHOP_POSTGRES_PASSWORD) export "$key=$value" ;;
+        BACKUP_DIR|DEFAULT_BACKUP_DIR|BACKUP_RETENTION_DAYS|BACKUP_DELETE_OLD|BANK_POSTGRES_CONTAINER|SHOP_POSTGRES_CONTAINER)
+          export "$key=$value" ;;
+        SHOP_MERCHANT_ACCOUNT_NUMBER)
+          [[ "$value" =~ ^[0-9]{26}$ ]] && export "$key=$value" ;;
+      esac
+    done < "$config_file"
+  done
+elif [[ -f "$ENV_FILE" ]]; then
   set -a
   # shellcheck disable=SC1090
   source "$ENV_FILE"
@@ -40,6 +65,25 @@ SYSTEMD_UNIT_NAME="novabank-backup"
 LAUNCHD_LABEL="com.novabank.backup"
 DR_SYSTEMD_UNIT_NAME="novabank-dr-test"
 DR_LAUNCHD_LABEL="com.novabank.dr-test"
+if [[ "${NOVABANK_WEB_MODE:-}" == 1 ]]; then
+  CALLER_BACKUP_DIR="${NOVABANK_WEB_BACKUP_DIRECTORY:-$REPO_DIR/.novabank/backups/dev}"
+  CONFIGURED_BACKUP_DIR="$CALLER_BACKUP_DIR"
+  DEFAULT_BACKUP_DIR="$CALLER_BACKUP_DIR"
+  CALLER_BANK_DUMP=""; CALLER_SHOP_DUMP=""
+  BANK_POSTGRES_CONTAINER=bank-postgres
+  SHOP_POSTGRES_CONTAINER=shop-postgres
+  BACKUP_RETENTION_DAYS="${NOVABANK_WEB_BACKUP_RETENTION_DAYS:-30}"
+  [[ "$BACKUP_RETENTION_DAYS" =~ ^[1-9][0-9]{0,3}$ && "$BACKUP_RETENTION_DAYS" -le 3650 ]] || { echo 'Nieprawidłowa retencja kopii panelu.' >&2; exit 1; }
+  python3 -B "$REPO_DIR/scripts/control-center/web/operator_settings.py" check-backup "$REPO_DIR" "$CALLER_BACKUP_DIR" >/dev/null
+  BACKUP_DELETE_OLD=false
+  SYSTEMD_UNIT_NAME=novabank-web-dev-backup
+  DR_SYSTEMD_UNIT_NAME=novabank-web-dev-dr-test
+  LAUNCHD_LABEL=com.novabank.web-dev-backup
+  DR_LAUNCHD_LABEL=com.novabank.web-dev-dr-test
+  # A web-mode timer must not inherit a remote Docker context or an external backup path.
+  endpoint="${DOCKER_HOST:-$(docker context inspect --format '{{.Endpoints.docker.Host}}')}"
+  case "$endpoint" in unix://*|npipe://*) ;; *) echo 'Wymagany lokalny Docker.' >&2; exit 1 ;; esac
+fi
 DR_NETWORK=""
 DR_LOG_DIR=""
 DR_CONTAINERS=()
@@ -270,6 +314,10 @@ select_backup_dir() {
     echo "Wybrano niedozwolony katalog zapisu: $requested" >&2
     return 2
   fi
+  if [[ "${NOVABANK_WEB_MODE:-}" == 1 ]]; then
+    [[ "$requested" == "$CALLER_BACKUP_DIR" ]] || { echo 'Katalog nie odpowiada ustawieniom operacji panelu.' >&2; return 2; }
+    python3 -B "$REPO_DIR/scripts/control-center/web/operator_settings.py" check-backup "$REPO_DIR" "$requested" >/dev/null || return $?
+  fi
   printf '%s\n' "$requested"
 }
 
@@ -349,6 +397,10 @@ restore_test_databases() {
   local bank_dump="$1" shop_dump="$2"
   local stamp bank_restore_db shop_restore_db result=0
   stamp="$(date -u +%Y%m%d%H%M%S)"
+  if [[ "${NOVABANK_WEB_MODE:-}" == 1 ]]; then
+    # Manual restore-test and a timer may run in the same second. Never share temporary DB names.
+    stamp="${stamp}_$(python3 -c 'import secrets; print(secrets.token_hex(8))')" || return 1
+  fi
   bank_restore_db="bank_restore_${stamp}"
   shop_restore_db="shop_restore_${stamp}"
 
@@ -773,7 +825,7 @@ dr_execute() {
     -e TEST_POSTGRES_USER="$bank_user" -e TEST_POSTGRES_PASSWORD="$bank_password" \
     -e TEST_REDIS_HOST="$redis" -e TEST_REDIS_PORT=6379 \
     -e TEST_BANK_API_KEY="$api_key" \
-    -e TEST_TOTP_ENCRYPTION_KEY="MDEyMzQ1Njc4OUFCQ0RFRjAxMjM0NTY3ODlBQkNERUY=" \
+    -e TEST_TOTP_ENCRYPTION_KEY="$(head -c 32 /dev/urandom | base64 | tr -d '\n')" \
     -e BANK_API_URL="http://${bank_app}:8080" \
     -e SHOP_PAYMENT_CALLBACK_URL="http://${shop_app}:8081/payment/callback" \
     novabank-dr-bank:local \
@@ -994,9 +1046,9 @@ systemd_quote() {
 
 systemd_path_escape() {
   local value="$1"
+  # WorkingDirectory is a path, not a unit name or an ExecStart argument.
+  # systemd keeps \\x20 literally here; spaces must remain actual spaces.
   value="${value//%/%%}"
-  value="${value// /\\x20}"
-  value="${value//$'\t'/\\x09}"
   printf '%s' "$value"
 }
 
@@ -1018,6 +1070,18 @@ schedule_platform() {
   esac
 }
 
+render_web_environment() {
+  if [[ "${NOVABANK_WEB_MODE:-}" == 1 ]]; then
+    printf 'Environment=NOVABANK_WEB_MODE=1\n'
+    printf 'Environment=%s\n' "$(systemd_quote "NOVABANK_WEB_BACKUP_DIRECTORY=$CALLER_BACKUP_DIR")"
+    printf 'Environment=NOVABANK_WEB_BACKUP_RETENTION_DAYS=%s\n' "$BACKUP_RETENTION_DAYS"
+    if [[ -n "${NOVABANK_WEB_MIGRATION_ID:-}" ]]; then
+      [[ "$NOVABANK_WEB_MIGRATION_ID" =~ ^[a-f0-9]{32}$ ]] || return 2
+      printf '# NovaBank migration %s\n' "$NOVABANK_WEB_MIGRATION_ID"
+    fi
+  fi
+}
+
 render_systemd_service() {
   local backup_dir="$1" bash_path
   bash_path="$(command -v bash)"
@@ -1029,6 +1093,7 @@ After=network-online.target
 [Service]
 Type=oneshot
 WorkingDirectory=$(systemd_path_escape "$REPO_DIR")
+$(render_web_environment)
 ExecStart=$(systemd_quote "$bash_path") $(systemd_quote "$SCRIPT_DIR/backup.sh") prune --backup-dir $(systemd_quote "$backup_dir")
 UMask=0077
 TimeoutStartSec=30min
@@ -1040,6 +1105,7 @@ render_systemd_timer() {
   cat <<EOF
 [Unit]
 Description=Daily NovaBank PostgreSQL backup
+$(if [[ "${NOVABANK_WEB_MODE:-}" == 1 && "${NOVABANK_WEB_MIGRATION_ID:-}" =~ ^[a-f0-9]{32}$ ]]; then printf '# NovaBank migration %s\n' "$NOVABANK_WEB_MIGRATION_ID"; fi)
 
 [Timer]
 OnCalendar=*-*-* ${daily_at}:00
@@ -1146,6 +1212,7 @@ After=network-online.target docker.service
 [Service]
 Type=oneshot
 WorkingDirectory=$(systemd_path_escape "$REPO_DIR")
+$(render_web_environment)
 ExecStart=$(systemd_quote "$bash_path") $(systemd_quote "$SCRIPT_DIR/backup.sh") dr-test --backup-dir $(systemd_quote "$backup_dir")
 UMask=0077
 TimeoutStartSec=90min
@@ -1158,6 +1225,7 @@ render_dr_systemd_timer() {
   cat <<EOF
 [Unit]
 Description=Weekly NovaBank disaster recovery test
+$(if [[ "${NOVABANK_WEB_MODE:-}" == 1 && "${NOVABANK_WEB_MIGRATION_ID:-}" =~ ^[a-f0-9]{32}$ ]]; then printf '# NovaBank migration %s\n' "$NOVABANK_WEB_MIGRATION_ID"; fi)
 
 [Timer]
 OnCalendar=${systemd_day} *-*-* ${at}:00

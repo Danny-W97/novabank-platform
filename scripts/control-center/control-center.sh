@@ -54,7 +54,10 @@ migrate_runtime_layout() {
   migrate_runtime_file "$PROJECT_ROOT/.venv-pdf" "$PDF_VENV"
 }
 
-migrate_runtime_layout
+# The web API must not move legacy files merely to run a diagnostic.
+if [[ "${1:-}" != "--web-action" ]]; then
+  migrate_runtime_layout
+fi
 
 load_language() {
   local configured="${CONTROL_CENTER_LANGUAGE:-}"
@@ -806,37 +809,10 @@ upsert_env_value() {
 
 prepare_dev_env() {
   local rotate="${1:-false}"
-  local api_key totp_key
-
-  api_key="$(read_env_value "$DEV_ENV" BANK_API_KEY)"
-  totp_key="$(read_env_value "$DEV_ENV" TOTP_ENCRYPTION_KEY)"
-
-  if [[ "$rotate" == "true" || -z "$api_key" || "$api_key" == "replace-with-a-long-random-secret" ]]; then
-    api_key="$(random_hex)" || {
-      printf 'Nie mozna wygenerowac BANK_API_KEY. Zainstaluj openssl albo Python 3.\n' >&2
-      return 1
-    }
-    printf 'Wygenerowano nowy lokalny BANK_API_KEY.\n'
-  else
-    printf 'Zachowano istniejacy lokalny BANK_API_KEY.\n'
-  fi
-
-  if [[ -z "$totp_key" || "$totp_key" == "generate-a-32-byte-base64-key" ]]; then
-    totp_key="$(random_base64)" || {
-      printf 'Nie mozna wygenerowac TOTP_ENCRYPTION_KEY. Zainstaluj openssl albo Python 3.\n' >&2
-      return 1
-    }
-    printf 'Wygenerowano stabilny TOTP_ENCRYPTION_KEY.\n'
-  else
-    printf 'Zachowano istniejacy TOTP_ENCRYPTION_KEY.\n'
-  fi
-
-  upsert_env_value "$DEV_ENV" SPRING_PROFILES_ACTIVE dev
-  upsert_env_value "$DEV_ENV" BANK_API_KEY "$api_key"
-  upsert_env_value "$DEV_ENV" BANK_API_KEY_ID legacy
-  upsert_env_value "$DEV_ENV" BANK_API_KEYS ""
-  upsert_env_value "$DEV_ENV" TOTP_ENCRYPTION_KEY "$totp_key"
-  printf 'Gotowy plik: %s\n' "$DEV_ENV"
+  require_command python3 || return 1
+  local operation=prepare
+  [[ "$rotate" != true ]] || operation=rotate-api-key
+  python3 -B "$SCRIPT_DIR/web/dev_env_layout.py" "$operation" --root "$PROJECT_ROOT"
 }
 
 prepare_dev() {
@@ -846,8 +822,8 @@ prepare_dev() {
     return 1
   }
   prepare_dev_env false || return 1
-  docker compose --project-directory "$PROJECT_ROOT" -f "$PROJECT_ROOT/docker-compose.yaml" up -d || return 1
-  docker compose --project-directory "$PROJECT_ROOT" -f "$PROJECT_ROOT/docker-compose.yaml" ps
+  compose_project up -d || return 1
+  compose_project ps
   printf '\nSrodowisko DEV jest przygotowane.\n'
   printf 'W IntelliJ uruchom konfiguracje: NovaBank DEV.\n'
 }
@@ -1278,7 +1254,7 @@ run_powershell_script() {
 show_infrastructure_status() {
   require_command docker || return 1
   printf '%sDocker Compose:%s\n' "$C_BLUE" "$C_RESET"
-  docker compose --project-directory "$PROJECT_ROOT" -f "$PROJECT_ROOT/docker-compose.yaml" ps
+  compose_project ps
   printf '\n%sPorty aplikacji:%s\n' "$C_BLUE" "$C_RESET"
   for item in \
     'Bank API|http://127.0.0.1:8080/login' \
@@ -1296,7 +1272,9 @@ show_infrastructure_status() {
 }
 
 compose_project() {
-  docker compose --project-directory "$PROJECT_ROOT" --env-file "$PROJECT_ENV" -f "$PROJECT_ROOT/docker-compose.yaml" "$@"
+  local env_arguments=(--env-file "$PROJECT_ENV")
+  [[ ! -f "$DEV_ENV" ]] || env_arguments+=(--env-file "$DEV_ENV")
+  docker compose --project-directory "$PROJECT_ROOT" "${env_arguments[@]}" -f "$PROJECT_ROOT/docker-compose.yaml" "$@"
 }
 
 docker_infrastructure_status() {
@@ -1360,12 +1338,16 @@ validate_project_compose() {
     return 1
   }
   check_docker_engine || return 1
-  compose_project config --quiet
+  compose_project config --quiet || return 1
   printf 'Konfiguracja docker-compose.yaml jest poprawna.\n'
 }
 
 flyway_database_status() {
   local label="$1" container user database
+  [[ -r "$SCRIPT_DIR/flyway-status.sql" ]] || {
+    printf 'Brak pliku zapytania diagnostycznego flyway-status.sql.\n' >&2
+    return 1
+  }
   case "$label" in
     bank)
       container=bank-postgres
@@ -1383,7 +1365,7 @@ flyway_database_status() {
   database="${database:-${label}db}"
   printf '\n%s (%s):\n' "$label" "$database"
   docker exec "$container" psql -v ON_ERROR_STOP=1 -U "$user" -d "$database" -P pager=off -c \
-    "SELECT current_database() AS baza, COUNT(*) AS migracje, COALESCE(MAX(installed_rank), 0) AS ostatni_rank, COALESCE(MAX(version), 'brak') AS ostatnia_wersja, SUM(CASE WHEN success THEN 0 ELSE 1 END) AS bledne FROM flyway_schema_history;"
+    "$(< "$SCRIPT_DIR/flyway-status.sql")"
 }
 
 flyway_diagnostics() {
@@ -1394,6 +1376,8 @@ flyway_diagnostics() {
   }
   flyway_database_status bank || return 1
   flyway_database_status shop || return 1
+  printf '\nostatnia_wersja: ostatnia udana migracja wersjonowana wedlug installed_rank.\n'
+  printf 'migracje: liczba wpisow historii, nie numer wersji; ostatni_rank obejmuje tez wpisy bledne i repeatable.\n'
   printf '\nFlyway wykonuje migracje przy starcie odpowiedniej aplikacji.\n'
   printf 'Control Center nie uruchamia polecenia repair i nie usuwa historii migracji.\n'
 }
@@ -1582,36 +1566,9 @@ prompt_required_secret() {
 }
 
 create_root_env() {
-  local file="$PROJECT_ENV"
-  local value
-
-  if [[ ! -f "$file" ]]; then
-    [[ -f "$PROJECT_ROOT/.env.example" ]] || {
-      printf 'Brak szablonu: %s/.env.example\n' "$PROJECT_ROOT" >&2
-      return 1
-    }
-    cp "$PROJECT_ROOT/.env.example" "$file" || return 1
-    printf 'Utworzono %s na podstawie .env.example.\n' "$file"
-  else
-    printf 'Znaleziono istniejący %s. Zachowuję pozostałe wartości.\n' "$file"
-  fi
-
-  for key in POSTGRES_PASSWORD SHOP_POSTGRES_PASSWORD; do
-    value="$(read_env_value "$file" "$key")"
-    if ! first_run_value_ready "$value"; then
-      value="$(random_hex)" || {
-        printf 'Nie można wygenerować hasła dla %s. Zainstaluj openssl albo Python 3.\n' "$key" >&2
-        return 1
-      }
-      printf 'Control Center wygenerował lokalne hasło dla %s.\n' "$key"
-      upsert_env_value "$file" "$key" "$value"
-    else
-      printf 'Zachowano %s.\n' "$key"
-    fi
-  done
-
-  chmod 600 "$file" 2>/dev/null || true
-  printf 'Gotowy plik: %s\n' "$file"
+  # Same owner map as the browser generator; never copy the mixed legacy .env.example.
+  prepare_dev_env false || return 1
+  printf 'Gotowe pliki: %s i %s\n' "$PROJECT_ENV" "$DEV_ENV"
   printf 'Następnie uruchom opcję "Uruchom PostgreSQL i Redis".\n'
 }
 
@@ -1728,8 +1685,8 @@ first_run_status() {
 
   file="$PROJECT_ENV"
   if [[ -f "$file" ]] \
-    && first_run_value_ready "$(read_env_value "$file" POSTGRES_PASSWORD)" \
-    && first_run_value_ready "$(read_env_value "$file" SHOP_POSTGRES_PASSWORD)"; then
+    && first_run_value_ready "$(read_env_value "$DEV_ENV" POSTGRES_PASSWORD)" \
+    && first_run_value_ready "$(read_env_value "$DEV_ENV" SHOP_POSTGRES_PASSWORD)"; then
     printf '%-28s GOTOWY\n' "${file#"$PROJECT_ROOT/"}"
   else
     printf '%-28s BRAK lub nieuzupełniony\n' "${file#"$PROJECT_ROOT/"}"
@@ -2571,7 +2528,84 @@ main_menu() {
   done
 }
 
+web_action() {
+  local action="${1:-}" profile="${2:-}"
+  [[ $# -eq 2 ]] || { printf 'Wymagane: --web-action ID dev|test\n' >&2; return 2; }
+  # PROD has no dispatcher: only read-only diagnostics in the Python server.
+  case "$profile:$action" in
+    dev:check-java|test:check-java|dev:check-docker|test:check-docker|dev:regulamin-pdf|test:regulamin-pdf) ;;
+    dev:redis-invalidate|dev:e2e-smoke)
+      require_command docker || return 1
+      local local_endpoint
+      local_endpoint="${DOCKER_HOST:-$(docker context inspect --format '{{.Endpoints.docker.Host}}')}" || return 1
+      case "$local_endpoint" in unix://*|npipe://*) ;; *) printf 'Wymagany lokalny Docker.\n' >&2; return 1 ;; esac
+      ;;
+    dev:prerequisites|test:prerequisites|dev:install-tools|test:install-tools|dev:install-stripe|dev:monitoring-*|dev:backup-*|dev:dr-*|dev:stripe-*)
+      bash "$PROJECT_ROOT/scripts/control-center/web-operations.sh" "$action" "$profile"
+      return $? ;;
+    dev:dev-env)
+      prepare_dev_env false
+      return $?
+      ;;
+    dev:infra-status|dev:redis-status|dev:flyway-status|dev:db-logs) ;;
+    dev:infra-up|dev:infra-restart|dev:infra-stop|dev:compose-check)
+      require_command docker || return 1
+      local endpoint
+      endpoint="${DOCKER_HOST:-}"
+      if [[ -z "$endpoint" ]]; then
+        endpoint="$(docker context inspect --format '{{.Endpoints.docker.Host}}')" || return 1
+      fi
+      case "$endpoint" in
+        unix://*|npipe://*) ;;
+        *) printf 'Panel dopuszcza zmiany tylko przez lokalny socket Docker, nie SSH/TCP.\n' >&2; return 1 ;;
+      esac
+      ;;
+    dev:unit-bank|test:unit-bank|dev:unit-shop|test:unit-shop|dev:unit-all|test:unit-all|dev:it-bank|test:it-bank|dev:it-shop|test:it-shop|dev:build-bank|test:build-bank|dev:build-shop|test:build-shop) ;;
+    *) printf 'Operacja lub profil nie sa dozwolone w panelu web.\n' >&2; return 2 ;;
+  esac
+  cd "$PROJECT_ROOT" || return 1
+  case "$action" in
+    check-java) check_java_toolchain ;;
+    check-docker) check_docker_engine ;;
+    regulamin-pdf) generate_regulamin_pdf ;;
+    redis-invalidate) printf 't\n' | invalidate_bank_sessions ;;
+    e2e-smoke)
+      local key port
+      for key in BANK_APP_PORT SHOP_APP_PORT BANK_MANAGEMENT_PORT SHOP_MANAGEMENT_PORT; do
+        port="$(read_env_value "$DEV_ENV" "$key")"
+        [[ -n "$port" ]] || port="$(read_env_value "$PROJECT_ENV" "$key")"
+        case "$key" in
+          BANK_APP_PORT) port="${port:-8080}"; BANK_URL="http://127.0.0.1:$port" ;;
+          SHOP_APP_PORT) port="${port:-8081}"; SHOP_URL="http://127.0.0.1:$port" ;;
+          BANK_MANAGEMENT_PORT) port="${port:-8082}"; BANK_HEALTH_URL="http://127.0.0.1:$port/actuator/health" ;;
+          SHOP_MANAGEMENT_PORT) port="${port:-8083}"; SHOP_HEALTH_URL="http://127.0.0.1:$port/actuator/health" ;;
+        esac
+        [[ "$port" =~ ^[0-9]{4,5}$ ]] && ((port >= 1024 && port <= 65535)) || return 1
+      done
+      run_e2e_smoke ;;
+    infra-status) docker_infrastructure_status ;;
+    infra-up) start_project_databases ;;
+    infra-restart) restart_project_databases ;;
+    infra-stop) stop_project_databases ;;
+    compose-check) validate_project_compose ;;
+    redis-status) redis_session_status ;;
+    flyway-status) flyway_diagnostics ;;
+    db-logs) project_database_logs ;;
+    unit-bank) run_maven -Punit-tests test ;;
+    unit-shop) run_maven -f "$PROJECT_ROOT/shop-app/pom.xml" -Punit-tests test ;;
+    unit-all) run_all_unit_tests ;;
+    it-bank) run_maven -Pintegration-tests verify ;;
+    it-shop) run_maven -f "$PROJECT_ROOT/shop-app/pom.xml" -Pintegration-tests verify ;;
+    build-bank) build_bank ;;
+    build-shop) build_shop ;;
+  esac
+}
+
 case "${1:-}" in
+  --web-action)
+    shift
+    web_action "$@"
+    ;;
   --list)
     print_catalog
     ;;

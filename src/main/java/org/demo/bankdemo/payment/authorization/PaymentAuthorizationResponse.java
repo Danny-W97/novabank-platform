@@ -6,6 +6,7 @@ public record PaymentAuthorizationResponse(
         String authorizationId,
         String authorizationUrl,
         String state,
-        Instant expiresAt
+        Instant expiresAt,
+        String merchantId
 ) {
 }

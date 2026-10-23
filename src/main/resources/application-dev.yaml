@@ -10,6 +10,16 @@ spring:
       host: "${REDIS_HOST:localhost}"
       port: "${REDIS_PORT:6379}"
 
+logging:
+  file:
+    name: .novabank/logs/bank-dev.log
+  logback:
+    rollingpolicy:
+      file-name-pattern: .novabank/logs/bank-dev.%d{yyyy-MM-dd}.%i.log.gz
+      max-file-size: 10MB
+      max-history: 7
+      total-size-cap: 100MB
+
 server:
   port: "${BANK_APP_PORT:8080}"
   forward-headers-strategy: framework

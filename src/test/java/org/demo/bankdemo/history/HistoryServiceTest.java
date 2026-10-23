@@ -48,7 +48,7 @@ class HistoryServiceTest {
 
     @BeforeEach
     void setUp() {
-        historyService = new HistoryService(accountRepository, transactionRepository);
+        historyService = new HistoryService(accountRepository, transactionRepository, 1000);
         ownAccount = account(
                 1L,
                 new User("owner@example.pl", "hash", "Jan", "Kowalski", null),
@@ -61,6 +61,19 @@ class HistoryServiceTest {
         );
         when(accountRepository.findByOwnerEmail("owner@example.pl"))
                 .thenReturn(Optional.of(ownAccount));
+    }
+
+    @Test
+    void rejectsOversizedExportWithoutSilentlyTruncatingIt() {
+        historyService = new HistoryService(accountRepository, transactionRepository, 1);
+        when(transactionRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(org.mockito.Mockito.mock(BankTransaction.class),
+                        org.mockito.Mockito.mock(BankTransaction.class)), PageRequest.of(0, 2), 20000));
+        assertThatThrownBy(() -> historyService.exportRowsFor("owner@example.pl", new HistoryFilter()))
+                .isInstanceOf(HistoryExportLimitException.class);
+        var pageable = ArgumentCaptor.forClass(Pageable.class);
+        verify(transactionRepository).findAll(any(Specification.class), pageable.capture());
+        assertThat(pageable.getValue().getPageSize()).isEqualTo(2);
     }
 
     @Test

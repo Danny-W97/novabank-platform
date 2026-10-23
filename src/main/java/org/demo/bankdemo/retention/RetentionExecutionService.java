@@ -7,6 +7,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -81,7 +83,15 @@ public class RetentionExecutionService {
         var finishedAt = Instant.now(clock);
         runRepository.finish(runId, finishedAt, status, deleted, 0, errors,
                 String.join("; ", details));
-        deletedCounter.increment(deleted);
+        if (!dryRun && deleted > 0) {
+            var committedDeletes = deleted;
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    deletedCounter.increment(committedDeletes);
+                }
+            });
+        }
         return new RetentionResult(runId, status, dryRun, deleted, 0, errors,
                 String.join("; ", details));
     }

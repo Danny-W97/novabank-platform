@@ -19,9 +19,19 @@ import org.springframework.web.bind.annotation.RestController;
 public class CartController {
 
     private final CartService cartService;
+    private final PurchaseIdentityService purchases;
 
-    public CartController(CartService cartService) {
+    public CartController(CartService cartService, PurchaseIdentityService purchases) {
         this.cartService = cartService;
+        this.purchases=purchases;
+    }
+
+    @GetMapping("/purchase")
+    Object purchase(@AuthenticationPrincipal ShopUserDetails user){return purchases.status(user.getCustomerId());}
+    record IndependentPurchase(String purchaseId,boolean acknowledged){}
+    @PostMapping("/independent-purchase")
+    Object independent(@AuthenticationPrincipal ShopUserDetails user,@RequestBody IndependentPurchase request){
+        return purchases.startIndependent(user.getCustomerId(),request.purchaseId(),request.acknowledged());
     }
 
     @GetMapping

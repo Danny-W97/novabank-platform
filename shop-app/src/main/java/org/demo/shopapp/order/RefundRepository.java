@@ -41,6 +41,12 @@ public class RefundRepository {
         ));
     }
 
+    public boolean existsUnresolvedOrCompletedForOrder(long orderId) {
+        return Boolean.TRUE.equals(jdbcTemplate.queryForObject(
+                "SELECT EXISTS (SELECT 1 FROM shop_refunds WHERE order_id=? AND status IN ('PENDING','COMPLETED'))",
+                Boolean.class, orderId));
+    }
+
     public RefundRow create(
             long orderId,
             String orderNumber,
@@ -58,11 +64,13 @@ public class RefundRepository {
     }
 
     public RefundRow markCompleted(String key, String bankReference) {
-        jdbcTemplate.update(
+        int changed = jdbcTemplate.update(
                 "UPDATE shop_refunds SET status = 'COMPLETED', bank_reference = ?, failure_reason = NULL, "
-                        + "updated_at = CURRENT_TIMESTAMP WHERE idempotency_key = ?",
-                bankReference, key
+                        + "updated_at = CURRENT_TIMESTAMP WHERE idempotency_key = ? "
+                        + "AND (status='PENDING' OR (status='COMPLETED' AND bank_reference=?))",
+                bankReference, key, bankReference
         );
+        PaymentAttemptRepository.requireOne(changed);
         return findByIdempotencyKey(key).orElseThrow();
     }
 

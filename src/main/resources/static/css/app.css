@@ -45,21 +45,52 @@ select {
 
 .sidebar {
     --bs-offcanvas-width: 264px;
+    --bs-offcanvas-bg: var(--navy-900);
+    --bs-offcanvas-color: #dce6f5;
     position: fixed;
     inset: 0 auto 0 0;
     z-index: 1045;
     width: 264px;
-    color: #d9e3f4;
+    color: var(--bs-offcanvas-color);
     background:
-            radial-gradient(circle at 25% 0, rgba(47, 105, 202, 0.17), transparent 27%),
-            var(--navy-950);
-    border-right: 1px solid rgba(255, 255, 255, 0.06);
+            radial-gradient(circle at 15% 0, rgba(47, 105, 202, 0.22), transparent 40%),
+            var(--navy-900);
+    border-right: 1px solid #233c5c;
+    box-shadow: 6px 0 24px rgba(7, 16, 31, 0.08);
+}
+
+.sidebar.offcanvas-lg {
+    /* Bootstrap makes responsive offcanvas backgrounds transparent on desktop.
+       Keep the same opaque surface on desktop and in the mobile drawer. */
+    background-color: var(--bs-offcanvas-bg) !important;
 }
 
 .sidebar-content {
     height: 100%;
+    min-height: 0;
     display: flex;
+    flex: 1 1 auto;
     flex-direction: column;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #607b9e var(--navy-900);
+}
+
+.sidebar .brand {
+    color: #f8fbff;
+}
+
+.sidebar .brand-mark {
+    color: #b6d5ff;
+    border-color: #456a9b;
+    background: #17365b;
+}
+
+.sidebar .brand small {
+    color: #c2dbff;
+    border-color: #456a9b;
+    background: #17365b;
 }
 
 .brand {
@@ -113,29 +144,44 @@ select {
     display: flex;
     align-items: center;
     gap: 0.85rem;
-    padding: 0 0.85rem;
+    padding: 0.65rem 0.85rem;
+    border: 1px solid transparent;
     border-radius: 0.68rem;
-    color: #aebbd0;
+    color: #dce6f5;
     text-decoration: none;
     font-size: 0.88rem;
-    font-weight: 570;
-    transition: color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+    font-weight: 600;
+    line-height: 1.35;
+    transition: color 0.18s ease, background 0.18s ease, transform 0.18s ease, border-color 0.18s ease;
 }
 
 .sidebar-nav a > i {
     width: 1.1rem;
-    color: #8292ad;
+    flex: 0 0 1.1rem;
+    color: #b4c9e8;
     font-size: 1rem;
 }
 
-.sidebar-nav a:hover:not(.is-disabled),
-.sidebar-nav a.active {
-    color: white;
-    background: rgba(47, 124, 242, 0.16);
+.sidebar-nav a:hover:not(.is-disabled) {
+    color: #fff;
+    background: #193658;
+    border-color: #456a9b;
+    transform: translateX(2px);
 }
 
-.sidebar-nav a:hover:not(.is-disabled) {
-    transform: translateX(2px);
+.sidebar-nav a.active,
+.sidebar-nav a.active:hover:not(.is-disabled) {
+    color: #fff;
+    background: linear-gradient(100deg, #1d66dc, #1858bd);
+    border-color: #4d8df4;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+}
+
+.sidebar-nav a:focus-visible,
+.sidebar .brand:focus-visible,
+.sidebar .btn-close:focus-visible {
+    outline: 3px solid #9cc7ff;
+    outline-offset: 2px;
 }
 
 .sidebar-nav a.active::before {
@@ -145,11 +191,12 @@ select {
     width: 3px;
     height: 1.75rem;
     border-radius: 0 5px 5px 0;
-    background: #4691ff;
+    background: #9cc7ff;
 }
 
-.sidebar-nav a.active > i {
-    color: #65a2ff;
+.sidebar-nav a.active > i,
+.sidebar-nav a:hover:not(.is-disabled) > i {
+    color: #fff;
 }
 
 .sidebar-nav .is-disabled {
@@ -183,9 +230,16 @@ select {
     display: flex;
     align-items: center;
     gap: 0.7rem;
+    flex-shrink: 0;
     margin-top: auto;
     padding: 1.15rem 1.25rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    border-top: 1px solid #314865;
+    background: rgba(255, 255, 255, 0.035);
+}
+
+.sidebar-user > div:last-child {
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .sidebar-user strong,
@@ -200,7 +254,7 @@ select {
 
 .sidebar-user span {
     margin-top: 0.08rem;
-    color: #7f8ea7;
+    color: #b9c8df;
     font-size: 0.66rem;
 }
 

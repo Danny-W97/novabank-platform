@@ -18,25 +18,7 @@ public class CartRepository {
     }
 
     public long ensureCart(String customerId) {
-        var existing = jdbcTemplate.query(
-                "SELECT id FROM shop_carts WHERE customer_id = ?",
-                (rs, rowNum) -> rs.getLong(1),
-                customerId
-        );
-        if (!existing.isEmpty()) {
-            return existing.getFirst();
-        }
-
-        KeyHolder keyHolder = new GeneratedKeyHolder();
-        jdbcTemplate.update(connection -> {
-            var statement = connection.prepareStatement(
-                    "INSERT INTO shop_carts (customer_id) VALUES (?)",
-                    new String[]{"id"}
-            );
-            statement.setString(1, customerId);
-            return statement;
-        }, keyHolder);
-        return keyHolder.getKey().longValue();
+        return jdbcTemplate.queryForObject("INSERT INTO shop_carts(customer_id) VALUES (?) ON CONFLICT(customer_id) DO UPDATE SET customer_id=EXCLUDED.customer_id RETURNING id",Long.class,customerId);
     }
 
     public void addItem(long cartId, long productId, int quantity) {

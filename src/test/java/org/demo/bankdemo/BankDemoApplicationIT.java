@@ -34,6 +34,15 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 class BankDemoApplicationIT {
 
     @MockitoBean
+    org.springframework.transaction.PlatformTransactionManager transactionManager;
+
+    @MockitoBean
+    jakarta.persistence.EntityManager entityManager;
+
+    @MockitoBean
+    jakarta.persistence.EntityManagerFactory entityManagerFactory;
+
+    @MockitoBean
     JdbcTemplate jdbcTemplate;
 
     @MockitoBean
@@ -73,6 +82,9 @@ class BankDemoApplicationIT {
 
     @MockitoBean
     ExchangeTransactionRepository exchangeTransactionRepository;
+
+    @MockitoBean
+    org.demo.bankdemo.currency.ExchangeQuoteRepository exchangeQuoteRepository;
 
     @MockitoBean
     DemoCardRepository demoCardRepository;

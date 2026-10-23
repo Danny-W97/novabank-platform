@@ -69,8 +69,14 @@ public class AuthController {
                     ? "redirect:/login/2fa?error"
                     : "redirect:/login?error";
         }
-        var target = twoFactorLoginService.complete(request, response, session);
-        return "redirect:" + target;
+        try {
+            var target = twoFactorLoginService.complete(request, response, session, pending.get().challengeId());
+            return "redirect:" + target;
+        } catch (org.springframework.security.core.AuthenticationException | IllegalStateException exception) {
+            twoFactorLoginService.clear(session);
+            loginHistoryService.record(pending.get().email(), request, false, "Nie można zakończyć wyzwania 2FA.");
+            return "redirect:/login?error";
+        }
     }
 
     @GetMapping("/login")

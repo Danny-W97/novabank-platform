@@ -25,12 +25,15 @@ import static org.mockito.Mockito.when;
 class TwoFactorServiceTest {
 
     private static final String EMAIL = "anna.nowak@example.pl";
-    private static final String ENCRYPTION_KEY = "MDEyMzQ1Njc4OUFCQ0RFRjAxMjM0NTY3ODlBQkNERUY=";
+    private static final String ENCRYPTION_KEY = java.util.Base64.getEncoder().encodeToString(
+            "0123456789ABCDEF0123456789ABCDEF".getBytes(java.nio.charset.StandardCharsets.UTF_8));
 
     private UserRepository userRepository;
     private TotpRecoveryCodeRepository recoveryCodeRepository;
     private User user;
     private TwoFactorService service;
+    private final Instant now = Instant.parse("2026-08-02T21:00:00Z");
+    private org.demo.bankdemo.security.TotpReplayGuard replay;
 
     @BeforeEach
     void setUp() {
@@ -38,13 +41,17 @@ class TwoFactorServiceTest {
         recoveryCodeRepository = mock(TotpRecoveryCodeRepository.class);
         user = new User(EMAIL, new BCryptPasswordEncoder().encode("Password1"), "Anna", "Nowak", null);
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+        when(userRepository.findByEmailForUpdate(EMAIL)).thenReturn(Optional.of(user));
+        replay = mock(org.demo.bankdemo.security.TotpReplayGuard.class);
+        when(replay.consume(any(),any(),org.mockito.ArgumentMatchers.anyLong())).thenReturn(true);
         var cipher = new TotpSecretCipher(ENCRYPTION_KEY);
         service = new TwoFactorService(
                 userRepository,
                 recoveryCodeRepository,
                 new BCryptPasswordEncoder(),
                 cipher,
-                Clock.fixed(Instant.parse("2026-08-02T21:00:00Z"), ZoneOffset.UTC)
+                Clock.fixed(now, ZoneOffset.UTC),
+                replay
         );
     }
 
@@ -53,7 +60,7 @@ class TwoFactorServiceTest {
         var session = new MockHttpSession();
         var setup = service.setupFor(EMAIL, session);
         var code = new DefaultCodeGenerator(HashingAlgorithm.SHA1, 6)
-                .generate(setup.manualKey(), Instant.now().getEpochSecond() / 30);
+                .generate(setup.manualKey(), now.getEpochSecond() / 30);
 
         var recoveryCodes = service.confirmSetup(EMAIL, code, session);
 
@@ -68,11 +75,11 @@ class TwoFactorServiceTest {
         var session = new MockHttpSession();
         var setup = service.setupFor(EMAIL, session);
         var code = new DefaultCodeGenerator(HashingAlgorithm.SHA1, 6)
-                .generate(setup.manualKey(), Instant.now().getEpochSecond() / 30);
+                .generate(setup.manualKey(), now.getEpochSecond() / 30);
         service.confirmSetup(EMAIL, code, session);
 
         var loginCode = new DefaultCodeGenerator(HashingAlgorithm.SHA1, 6)
-                .generate(setup.manualKey(), Instant.now().getEpochSecond() / 30);
+                .generate(setup.manualKey(), now.getEpochSecond() / 30);
 
         assertThat(service.verifyLoginCode(EMAIL, loginCode)).isTrue();
     }

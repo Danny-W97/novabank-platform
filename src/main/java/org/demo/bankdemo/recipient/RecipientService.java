@@ -98,7 +98,7 @@ public class RecipientService {
 
     private SavedRecipient ownedRecipient(String email, Long id) {
         return recipientRepository.findByIdAndOwnerEmail(id, normalizeEmail(email))
-                .orElseThrow(() -> new RecipientException(null, "Nie znaleziono odbiorcy."));
+                .orElseThrow(RecipientNotFoundException::new);
     }
 
     private String validateAccount(String ownerEmail, String rawAccountNumber) {

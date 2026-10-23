@@ -40,6 +40,7 @@ public class TwoFactorService {
     private final PasswordEncoder passwordEncoder;
     private final TotpSecretCipher secretCipher;
     private final Clock clock;
+    private final org.demo.bankdemo.security.TotpReplayGuard replayGuard;
     private final SecretGenerator secretGenerator = new DefaultSecretGenerator();
     private final RecoveryCodeGenerator recoveryCodeGenerator = new RecoveryCodeGenerator();
 
@@ -48,13 +49,15 @@ public class TwoFactorService {
             TotpRecoveryCodeRepository recoveryCodeRepository,
             PasswordEncoder passwordEncoder,
             TotpSecretCipher secretCipher,
-            Clock clock
+            Clock clock,
+            org.demo.bankdemo.security.TotpReplayGuard replayGuard
     ) {
         this.userRepository = userRepository;
         this.recoveryCodeRepository = recoveryCodeRepository;
         this.passwordEncoder = passwordEncoder;
         this.secretCipher = secretCipher;
         this.clock = clock;
+        this.replayGuard = replayGuard;
     }
 
     @Transactional(readOnly = true)
@@ -97,15 +100,19 @@ public class TwoFactorService {
             throw new TwoFactorException("code", "Sesja konfiguracji 2FA wygasła. Wygeneruj nowy kod QR.");
         }
         var secret = secretCipher.decrypt(pending);
-        if (!verifyTotp(secret, code)) {
+        var step = matchingStep(secret, code);
+        if (step == null) {
             throw new TwoFactorException("code", "Kod 2FA jest nieprawidłowy lub wygasł.");
         }
 
-        var user = userFor(email);
+        var user = userRepository.findByEmailForUpdate(email.strip().toLowerCase(Locale.ROOT))
+                .orElseThrow(() -> new IllegalStateException("Nie znaleziono użytkownika."));
         if (user.isTotpEnabled()) {
             throw new TwoFactorException("code", "Uwierzytelnianie 2FA jest już włączone.");
         }
         user.enableTotp(secretCipher.encrypt(secret), Instant.now(clock));
+        if (!replayGuard.consume(user.getId(), secret, step))
+            throw new TwoFactorException("code", "Kod został już użyty. Poczekaj na kolejny kod.");
         recoveryCodeRepository.deleteByUser_Id(user.getId());
         var recoveryCodes = Arrays.asList(recoveryCodeGenerator.generateCodes(RECOVERY_CODE_COUNT));
         recoveryCodeRepository.saveAll(recoveryCodes.stream()
@@ -115,11 +122,11 @@ public class TwoFactorService {
         return recoveryCodes;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public boolean verifyTotpCode(String email, String code) {
         var user = userFor(email);
         return user.isTotpEnabled()
-                && verifyTotp(secretCipher.decrypt(user.getTotpSecretEncrypted()), code);
+                && consumeTotp(user, code);
     }
 
     @Transactional
@@ -128,7 +135,7 @@ public class TwoFactorService {
         if (!user.isTotpEnabled()) {
             return true;
         }
-        if (verifyTotp(secretCipher.decrypt(user.getTotpSecretEncrypted()), code)) {
+        if (consumeTotp(user, code)) {
             return true;
         }
         var normalized = normalizeRecoveryCode(code);
@@ -163,15 +170,24 @@ public class TwoFactorService {
                 .orElseThrow(() -> new IllegalStateException("Nie znaleziono użytkownika."));
     }
 
-    private static boolean verifyTotp(String secret, String code) {
+    private boolean consumeTotp(User user, String code) {
+        var secret = secretCipher.decrypt(user.getTotpSecretEncrypted());
+        var step = matchingStep(secret, code);
+        return step != null && replayGuard.consume(user.getId(), secret, step);
+    }
+
+    private Long matchingStep(String secret, String code) {
         if (code == null || !code.matches("\\d{" + CODE_LENGTH + "}")) {
-            return false;
+            return null;
         }
         CodeGenerator generator = new DefaultCodeGenerator(HashingAlgorithm.SHA1, CODE_LENGTH);
-        DefaultCodeVerifier verifier = new DefaultCodeVerifier(generator, new SystemTimeProvider());
-        verifier.setTimePeriod(PERIOD_SECONDS);
-        verifier.setAllowedTimePeriodDiscrepancy(1);
-        return verifier.isValidCode(secret, code);
+        long current = Instant.now(clock).getEpochSecond() / PERIOD_SECONDS;
+        try {
+            for (long step = current - 1; step <= current + 1; step++) {
+                if (generator.generate(secret, step).equals(code)) return step;
+            }
+            return null;
+        } catch (Exception exception) { throw new IllegalStateException("Nie można zweryfikować TOTP.", exception); }
     }
 
     private static String normalizeRecoveryCode(String code) {

@@ -21,6 +21,42 @@ public class PaymentApiProperties {
     private String apiKey = "";
     private String apiKeys = "";
     private int rateLimitPerMinute = 60;
+    private String keyMerchants = "";
+    private String merchants = "";
+
+    public String getKeyMerchants() { return keyMerchants; }
+    public void setKeyMerchants(String value) { keyMerchants = value; }
+    public String getMerchants() { return merchants; }
+    public void setMerchants(String value) { merchants = value; }
+
+    /** Non-secret operator configuration; key rotation must retain the same merchant ID. */
+    public org.demo.bankdemo.payment.MerchantIdentity merchantForKey(String keyId) {
+        var bindings = assignments(keyMerchants);
+        var merchantId = bindings.get(keyId);
+        var accounts = assignments(merchants).get(merchantId);
+        if (merchantId == null || !merchantId.matches("[A-Za-z0-9_-]{1,64}")
+                || accounts == null || accounts.isBlank()) {
+            throw new IllegalStateException("Payment merchant mapping is not configured.");
+        }
+        var allowed = Arrays.stream(accounts.split("\\+", -1)).collect(Collectors.toUnmodifiableSet());
+        if (allowed.stream().anyMatch(account -> !account.matches("\\d{26}"))) {
+            throw new IllegalStateException("Payment merchant account mapping is invalid.");
+        }
+        return new org.demo.bankdemo.payment.MerchantIdentity(merchantId, allowed);
+    }
+
+    private static Map<String, String> assignments(String value) {
+        var result = new LinkedHashMap<String, String>();
+        if (value == null || value.isBlank()) return result;
+        for (var entry : value.split("[;,]", -1)) {
+            var parts = entry.split("=", -1);
+            if (parts.length != 2 || parts[0].isBlank() || parts[1].isBlank()
+                    || result.putIfAbsent(parts[0].strip(), parts[1].strip()) != null) {
+                throw new IllegalStateException("Payment merchant mapping is invalid or duplicated.");
+            }
+        }
+        return result;
+    }
 
     public String getApiKey() {
         return apiKey;

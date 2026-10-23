@@ -1,0 +1,27 @@
+.bank-accounts-intro{margin-bottom:20px;padding:24px;border-top:3px solid var(--gold);background:#faf7f2}
+.bank-accounts-intro h2{margin:6px 0 10px}.bank-accounts-intro p{max-width:850px;font-size:12px;line-height:1.8;margin:8px 0 0}
+.bank-accounts-intro summary{margin-top:12px;cursor:pointer;font-size:11px;color:var(--burgundy);font-weight:650}
+#bank-accounts-data,#bank-accounts-unavailable,#shop-accounts-data,#shop-accounts-unavailable{padding:24px}.bank-accounts-heading h2{margin:0}
+.bank-accounts-heading{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.bank-accounts-badge{border:1px solid #dfc58e;border-radius:6px;padding:8px 12px;color:#73521e;background:#f6ecd5;font-size:11px;font-weight:700;white-space:nowrap}
+.bank-account-filters{display:grid;grid-template-columns:minmax(200px,1fr) 170px 110px auto;gap:14px;align-items:end;margin:20px 0;padding:18px;background:#f7f3f1;border:1px solid var(--line);border-radius:10px}
+.bank-account-filters label{display:grid;gap:8px;font-size:11px;font-weight:650;color:var(--ink)}
+.bank-account-filters input,.bank-account-filters select{width:100%;min-width:0;min-height:44px;margin:0;padding:11px 12px;border:1px solid #cbbfc2;border-radius:7px;background:#fff;color:var(--ink);font-family:inherit;font-size:12px;line-height:1.4}.bank-account-filters>.button{min-height:44px}
+.bank-account-filters input:focus-visible,.bank-account-filters select:focus-visible{outline:2px solid var(--burgundy);outline-offset:2px}
+#bank-accounts-data .table-scroll,#shop-accounts-data .table-scroll{max-height:520px;overflow:auto;border:1px solid var(--line);border-radius:8px}
+.bank-accounts-table thead th{position:sticky;top:0;z-index:1;background:#f7f3f1}
+.bank-accounts-status{font-size:12px;color:var(--muted);line-height:1.7;margin:16px 0}
+.bank-accounts-table{min-width:800px;width:100%}.bank-accounts-table th{white-space:nowrap}
+.bank-accounts-table td{vertical-align:middle;font-size:12px}.bank-accounts-table td strong,.bank-accounts-table td small{display:block;overflow-wrap:anywhere}
+.bank-accounts-table td small{margin-top:7px;font-size:10px;line-height:1.6}.bank-accounts-table .button{font-size:11px;white-space:nowrap}
+.bank-accounts-table tbody tr:hover{background:#fcf8f8}.bank-account-balance{white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:650}
+.bank-accounts-empty{text-align:center;padding:30px!important;color:var(--muted)}
+.bank-accounts-pagination{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;border-top:1px solid var(--line);margin-top:16px;padding-top:18px}
+.bank-accounts-pagination>div{display:flex;gap:8px}.bank-accounts-pagination p{font-size:11px;color:var(--muted);margin:0}
+.bank-account-dialog{width:min(740px,calc(100vw - 32px));max-width:calc(100vw - 32px);max-height:calc(100dvh - 32px);overflow-y:auto}
+.bank-account-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:22px 0 0}
+.bank-account-fields>div{border:1px solid var(--line);border-radius:9px;background:#f9f6f3;padding:15px;min-width:0}
+.bank-account-fields dt{font-size:10px;color:var(--muted);margin-bottom:8px}.bank-account-fields dd{font-size:13px;font-weight:650;margin:0;overflow-wrap:anywhere}
+@media(min-width:1101px){#shop-account-filters{grid-template-columns:minmax(200px,1fr) 170px 160px auto}}
+@media(max-width:1100px){.bank-account-filters{grid-template-columns:minmax(180px,1fr) 150px}.bank-account-filters>.button{align-self:end}}
+@media(max-width:600px){.bank-account-filters,.bank-account-fields{grid-template-columns:minmax(0,1fr)}.bank-accounts-pagination{align-items:stretch}.bank-accounts-pagination>div{width:100%}.bank-accounts-pagination .button{flex:1}.bank-account-dialog{padding:22px}}

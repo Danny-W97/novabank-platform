@@ -1,6 +1,5 @@
 package org.demo.bankdemo.web;
 
-import jakarta.servlet.http.HttpSession;
 import org.demo.bankdemo.currency.ExchangeException;
 import org.demo.bankdemo.currency.ExchangeForm;
 import org.demo.bankdemo.currency.ExchangeService;
@@ -19,8 +18,6 @@ import java.util.UUID;
 @Controller
 @RequestMapping("/exchange")
 public class ExchangeController {
-
-    private static final String QUOTE_ATTRIBUTE = "BANK_EXCHANGE_QUOTE";
 
     private final ExchangeService exchangeService;
     private final DashboardService dashboardService;
@@ -49,17 +46,17 @@ public class ExchangeController {
     String quote(
             Authentication authentication,
             @ModelAttribute("exchangeForm") ExchangeForm form,
-            HttpSession session,
             Model model
     ) {
         try {
-            var quote = exchangeService.quote(
+            var prepared = exchangeService.prepareQuote(
+                    authentication.getName(),
                     form.getSourceCurrency(),
                     form.getTargetCurrency(),
                     form.amountValue()
             );
-            session.setAttribute(QUOTE_ATTRIBUTE, quote);
-            model.addAttribute("quote", quote);
+            form.setIdempotencyKey(prepared.idempotencyKey());
+            model.addAttribute("quote", prepared.quote());
             model.addAttribute("exchangeForm", form);
             addCommon(authentication, model);
             return "exchange/confirm";
@@ -73,20 +70,20 @@ public class ExchangeController {
     String execute(
             Authentication authentication,
             @ModelAttribute("exchangeForm") ExchangeForm form,
-            HttpSession session,
             Model model
     ) {
-        var quote = session.getAttribute(QUOTE_ATTRIBUTE);
-        if (!(quote instanceof ExchangeService.Quote exchangeQuote)) {
-            return "redirect:/exchange?error=expired";
-        }
         try {
-            exchangeService.execute(authentication.getName(), exchangeQuote, form.getIdempotencyKey());
-            session.removeAttribute(QUOTE_ATTRIBUTE);
+            exchangeService.executePrepared(authentication.getName(), form.getIdempotencyKey());
             return "redirect:/exchange?success";
         } catch (ExchangeException exception) {
             model.addAttribute("exchangeError", exception.getMessage());
-            model.addAttribute("quote", exchangeQuote);
+            if (form.getIdempotencyKey() == null || form.getIdempotencyKey().isBlank()
+                    || form.getIdempotencyKey().length() > 64) {
+                return exchange(authentication, model);
+            }
+            var quote = exchangeService.pendingQuoteFor(authentication.getName(), form.getIdempotencyKey());
+            if (quote.isEmpty()) return exchange(authentication, model);
+            model.addAttribute("quote", quote.get());
             model.addAttribute("exchangeForm", form);
             addCommon(authentication, model);
             return "exchange/confirm";

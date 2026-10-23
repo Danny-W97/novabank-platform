@@ -67,7 +67,7 @@ Local development requires:
 - Docker Engine with Docker Compose;
 - Git;
 - Bash, `curl` and `jq` for the guide and E2E tests;
-- WSL 2 and PowerShell are recommended on Windows.
+- WSL 2/Bash on Windows, with Python 3.10+ and JDK 25 installed in WSL.
 
 HashiCorp Vault, Stripe CLI, IntelliJ IDEA, OpenSSL and GPG are needed only for selected scenarios such as the PROD profile, TLS, Stripe Sandbox, monitoring or backups.
 
@@ -75,49 +75,33 @@ HashiCorp Vault, Stripe CLI, IntelliJ IDEA, OpenSSL and GPG are needed only for 
 
 The simplest path uses NovaBank Control Center. Start it from the project directory.
 
-### Linux, WSL or macOS
+### WSL/Bash (recommended), Linux or macOS
 
 ```bash
-bash scripts/control-center/control-center.sh
+bash ./scripts/start.sh
 ```
 
-### Windows PowerShell
+The browser panel opens at `http://127.0.0.1:18110`, using Python 3.10+ in WSL/Linux without a Node build. Use Bash `.sh`, not PowerShell `.ps1`, in WSL. DEV supports local operations; TEST runs Maven/Testcontainers; PROD-like offers explicit named Vault/AppRole/bootstrap/TLS/build procedures with an additional warning and typed PROD confirmation, not remote-production control or deployment.
 
-```powershell
-.\scripts\control-center\start.ps1
-```
+Use **Konfiguracja DEV** for setup and **Pliki i sekrety** for DEV/TEST secret edits. File edits do not change PostgreSQL passwords, migrate TOTP data or restart processes. **Operacje → Vault** has status, one Shamir share, AppRole setup, and Secret ID rotation/finalization for a fixed verified localhost HTTPS Vault; root tokens are rejected and input secrets are never persisted in job history. Monitoring, backups/DR, Stripe TEST, Redis/E2E, a guided startup, IntelliJ information and bounded artifact cleanup are available. PL/EN covers navigation/action names; technical content remains in its source language. CLI: `bash ./scripts/start.sh --cli`. Requirements and limitations: [Control Center web](docs/control-center-web.md).
 
-Choose the first-run option. The Control Center prepares the local `.novabank` directory, environment files and required development secrets, and helps start PostgreSQL and Redis.
+The **Operacje → Salda DEV** category also provides audited, idempotent credit/debit corrections for local active PLN accounts. **Powiadomienia** collects bank/shop WARN/ERROR logs and failed panel jobs, with a counter and scrollable history. Payment reconciliation suspends further checks after three consecutive failures without declaring the payment rejected. Restart the panel and both DEV applications to activate these changes and migrations V25/V12; details and safety limits are in the [panel guide](docs/control-center-web.md).
 
 Do not commit `.novabank`. It may contain local passwords, keys, certificates, tokens and logs.
 
 ## Manual startup
 
-1. Prepare local configuration from [.env.example](.env.example). Replace values such as `change-me-*`, `replace-with-*` and `generate-*` with your own values.
-2. Create `.novabank/env/project.env` and `.novabank/env/dev.env`. You can generate the development environment with:
-
-   ```powershell
-   .\scripts\generate-dev-env.ps1
-   ```
+1. Use `bash ./scripts/start.sh` → **Konfiguracja DEV**, or `python3 -B scripts/control-center/web/dev_env_layout.py prepare` in WSL. Do not copy the mixed legacy `.env.example` into `project.env`.
+2. `project.env` owns non-sensitive local infrastructure settings; `dev.env` owns DEV passwords, keys and application settings. Each key has one owner. Existing conflicts stop automatic setup; see [DEV layout report](docs/dev-env-deduplication-report.md).
 
 3. Start the infrastructure:
 
    ```bash
-   docker compose --env-file .novabank/env/project.env up -d postgres shop-postgres redis
-   docker compose --env-file .novabank/env/project.env ps
+    docker compose --env-file .novabank/env/project.env --env-file .novabank/env/dev.env up -d postgres shop-postgres redis
+    docker compose --env-file .novabank/env/project.env --env-file .novabank/env/dev.env ps
    ```
 
-4. Start both applications with the `dev` profile, preferably through IntelliJ IDEA or the prepared script:
-
-   ```powershell
-   .\scripts\start-dev.ps1
-   ```
-
-   The script stops existing development processes and starts the bank and shop with the local environment file. Stop the applications with:
-
-   ```powershell
-   .\scripts\stop-dev.ps1
-   ```
+4. In the browser panel, run **Buduj bank**, **Buduj sklep**, then **Uruchom aplikacje DEV**. This requires JDK 25 in WSL and current JARs. Stop only these managed applications with **Zatrzymaj aplikacje panelu**. Alternatively, use the prepared IntelliJ DEV configurations. The panel does not stop processes started by IntelliJ.
 
 Default addresses:
 
@@ -155,28 +139,19 @@ Tests are separated using Maven naming conventions:
 
 Bank unit tests:
 
-```powershell
-.\mvnw.cmd -Punit-tests test
+```bash
+./mvnw -Punit-tests test
 ```
 
 Shop unit tests:
 
-```powershell
-.\mvnw.cmd -f shop-app\pom.xml -Punit-tests test
+```bash
+./mvnw -f shop-app/pom.xml -Punit-tests test
 ```
 
 Integration tests require a working Docker Engine:
 
-```powershell
-.\mvnw.cmd -Pintegration-tests verify
-.\mvnw.cmd -f shop-app\pom.xml -Pintegration-tests verify
-```
-
-Linux/WSL equivalents:
-
 ```bash
-./mvnw -Punit-tests test
-./mvnw -f shop-app/pom.xml -Punit-tests test
 ./mvnw -Pintegration-tests verify
 ./mvnw -f shop-app/pom.xml -Pintegration-tests verify
 ```

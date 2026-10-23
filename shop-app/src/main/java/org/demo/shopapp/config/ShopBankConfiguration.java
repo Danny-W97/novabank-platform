@@ -24,7 +24,10 @@ public class ShopBankConfiguration {
 
     @Bean
     RestClient.Builder bankRestClientBuilder() {
-        return RestClient.builder();
+        var factory=new org.springframework.http.client.JdkClientHttpRequestFactory(
+                java.net.http.HttpClient.newBuilder().connectTimeout(java.time.Duration.ofSeconds(3)).build());
+        factory.setReadTimeout(java.time.Duration.ofSeconds(10));
+        return RestClient.builder().requestFactory(factory);
     }
 
     @Bean

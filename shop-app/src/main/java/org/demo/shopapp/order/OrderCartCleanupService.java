@@ -22,11 +22,14 @@ public class OrderCartCleanupService {
         if (order.status() != OrderStatus.PAID || !orderRepository.claimCartCleanup(order.id())) {
             return;
         }
+        // Late success must never remove items from an explicitly independent/new cart.
+        if(!orderRepository.ownsCurrentCart(order.id(),order.customerId()))return;
 
         var purchasedQuantities = new LinkedHashMap<Long, Integer>();
         order.items().forEach(item -> purchasedQuantities.merge(
                 item.productId(), item.quantity(), Integer::sum
         ));
         cartService.removePurchasedQuantities(order.customerId(), purchasedQuantities);
+        orderRepository.finishPurchase(order.id(),order.customerId());
     }
 }

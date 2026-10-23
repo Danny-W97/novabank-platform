@@ -6,6 +6,8 @@
 
 Ten dokument opisuje pełny lokalny przepływ pracy z projektem: WSL 2, Docker Engine, PostgreSQL, Redis, profile Spring/Maven, IntelliJ IDEA, HashiCorp Vault, TLS/HTTPS, monitoring, Stripe, testy, audyt i kopie zapasowe.
 
+**Podział konfiguracji DEV (2026-10-14):** `project.env` jest właścicielem niewrażliwych hostów/portów/nazw/użytkowników infrastruktury, a `dev.env` — haseł baz, kluczy i ustawień aplikacji DEV. Compose wymaga obu `--env-file`. Nie kopiuj całego historycznego `.env.example` do project.env. Kreator i generator WSL `python3 -B scripts/control-center/web/dev_env_layout.py prepare` tworzą pliki we właściwym podziale. Różne wartości duplikatów zatrzymują zwykły zapis; patrz [raport](dev-env-deduplication-report.md). TEST/PROD nie dziedziczą tych sekretów DEV.
+
 To środowisko edukacyjne uruchamiane lokalnie. Nie jest produkcyjnym bankiem ani operatorem prawdziwych płatności. Wariant Stripe używa testowego konta Stripe, a wariant bank-demo symuluje przelewy w bazach aplikacji.
 
 > **Ważne: użyj własnej ścieżki projektu.** W instrukcji mogą występować przykłady
@@ -25,6 +27,16 @@ To środowisko edukacyjne uruchamiane lokalnie. Nie jest produkcyjnym bankiem an
 Pozostałe pliki Markdown w katalogu `docs` pozostają obecnie zachowane jako materiały źródłowe i kopie robocze. Nie są wymagane do zwykłego uruchamiania aplikacji ani działania Control Center. Można je później przenieść lub usunąć po dodatkowej weryfikacji, ponieważ bieżące odsyłacze operacyjne prowadzą do tej instrukcji głównej.
 
 ## Zacznij tutaj: przewodnik i NovaBank Control Center
+
+Panel operatorski uruchamiaj **z terminala WSL/Bash**, z katalogu projektu:
+
+```bash
+bash ./scripts/start.sh
+```
+
+Panel otwiera się pod adresem `http://127.0.0.1:18110`. Wymaga Python 3.10+ w WSL; start aplikacji DEV z panelu wymaga także JDK 25 w WSL. Menu terminalowe: `bash ./scripts/start.sh --cli`. Nie używaj komend `.ps1` w Bash. Szczegóły: [Obsługa panelu](control-center-web.md).
+
+Zakładka **Pliki i sekrety** edytuje wyłącznie wskazane pliki DEV/TEST, z potwierdzeniem i podglądem na 45 s. Zapis nie zmienia haseł PostgreSQL/Grafany, nie migruje TOTP ani nie restartuje aplikacji. Od 2026-10-14 **Operacje → Vault** obejmuje lokalny status, odpieczętowanie pojedynczym udziałem Shamir, AppRole oraz rotację/finalizację Secret ID banku/sklepu; dodano też bootstrap, buildy PROD i lokalne keystore TLS bez PowerShella. Każde zadanie PROD ma ostrzeżenie, checkbox i wpisanie PROD, wymuszone także przez API. Vault: wyłącznie HTTPS 127.0.0.1:8200 z CA projektu i token operatora, nigdy root. Nie ma edytora biznesowych KV, init/rekey, zdalnej produkcji ani automatycznego startu/deploy PROD. Panel zawiera również przewodnik, podgląd IntelliJ, ograniczone porządkowanie wygenerowanych artefaktów i PL/EN dla nawigacji/nazw operacji. Hasło sudo nadal podaje się poza WWW. Szczegóły, wymagania polityki operatora oraz granice: [Obsługa panelu](control-center-web.md#vault-i-jawne-procedury-prod--2026-10-14).
 
 Jeżeli uruchamiasz projekt pierwszy raz, zacznij od interaktywnego przewodnika. Pokazuje on architekturę, ekrany aplikacji, kolejność uruchomienia, profile `dev`, `test` i `prod`, monitoring, Vault, backupy oraz podstawowe przepływy banku i sklepu.
 
@@ -92,6 +104,10 @@ Ważne rozróżnienie: Docker uruchamia usługi infrastrukturalne, ale lokalne a
 
 ### Pierwsze uruchomienie nowej kopii projektu
 
+Po przygotowaniu WSL, Docker i JDK standardowy lokalny DEV można skonfigurować w przeglądarce: `bash ./scripts/start.sh` → **Konfiguracja DEV**. Formularz tworzy brakujące `project.env`/`dev.env`, pozwala uzupełnić dane baz, Redis, porty i rachunek sklepu oraz generuje brakujące sekrety bez rotacji istniejących prawidłowych wartości. W tej samej zakładce przyciski kolejnych kroków uruchamiają bazy/Redis, build banku, build sklepu i aplikacje DEV — każdy osobno po potwierdzeniu. Jeśli baza/wolumen już istnieje, zachowaj poprzednie poświadczenia; sekret w pliku nie resetuje hasła w PostgreSQL. Szczegóły i ograniczenia: [Konfigurator Control Center](control-center-web.md).
+
+Poniżej opisano dodatkowy wariant interaktywnego CLI, używany także do szerszej diagnostyki wymagań i zaawansowanych procedur:
+
 Najpierw otwórz WSL w katalogu projektu. Ścieżka Windows jest zamieniana na ścieżkę WSL, na przykład:
 
 ~~~bash
@@ -137,13 +153,13 @@ docker ps
 Uruchom wymagane usługi z konfiguracją przygotowaną dla bieżącej kopii projektu:
 
 ~~~bash
-docker compose --env-file .novabank/env/project.env up -d postgres shop-postgres redis
+docker compose --env-file .novabank/env/project.env --env-file .novabank/env/dev.env up -d postgres shop-postgres redis
 ~~~
 
 Sprawdź stan:
 
 ~~~bash
-docker compose --env-file .novabank/env/project.env ps
+docker compose --env-file .novabank/env/project.env --env-file .novabank/env/dev.env ps
 ~~~
 
 Oczekiwany stan to healthy dla bank-postgres i shop-postgres oraz running dla bank-redis. Jeżeli kontenera nie ma, sprawdź pliki docker-compose.yaml, .env.example i .novabank/env/project.env. Nie wykonuj FLUSHALL na Redisie i nie usuwaj baz tylko dlatego, że aplikacja nie widzi biblioteki Maven.
@@ -154,7 +170,7 @@ Porty lokalne:
 - shop-postgres: 127.0.0.1:5400 -> PostgreSQL 5432;
 - bank-redis: 127.0.0.1:6379 -> Redis 6379.
 
-Przy diagnostyce bazy używaj użytkownika i hasła z project.env. Nie zakładaj, że rola postgres istnieje w kontenerze. W tym projekcie często używana jest dedykowana wartość POSTGRES_USER. Przykład zapytania:
+Przy diagnostyce bazy używaj użytkownika z project.env oraz hasła z dev.env. Nie zakładaj, że rola postgres istnieje w kontenerze. W tym projekcie często używana jest dedykowana wartość POSTGRES_USER. Przykład zapytania:
 
 ~~~bash
 docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" bank-postgres \
@@ -618,7 +634,9 @@ Sklep ma dwa tryby płatności wybierane przez `SHOP_PAYMENT_PROVIDER`:
   środków z rachunku NovaBank ani nie zasila rachunku sklepu w bankowej bazie.
 
 Tryb `bank-demo` nie wymaga Stripe CLI. Dla Stripe przygotuj w `.novabank/env/dev.env`
-testowy klucz API i sekret webhooka, a następnie uruchom osobne nasłuchiwanie:
+testowy klucz API, sekret webhooka oraz konfigurację sprzedawcy i połączenia z bankiem.
+Pełna lista zmiennych, procedura przez Control Center i karty testowe są w
+[sekcjach 8.5–8.8](#stripe-test-dev). Następnie uruchom osobne nasłuchiwanie:
 
 ~~~bash
 stripe listen --forward-to http://localhost:8081/api/payments/stripe/webhook
@@ -861,8 +879,8 @@ Poniższe pliki nie powinny być commitowane, ale są potrzebne w konkretnych wa
 
 | Plik | Kiedy potrzebny | Jak utworzyć |
 |---|---|---|
-| .novabank/env/project.env | zawsze do docker-compose.yaml, zawiera hasła baz | skopiuj .env.example do .novabank/env/project.env |
-| .novabank/env/dev.env | dev uruchamiany z IntelliJ lub start-dev.ps1 | uruchom generate-dev-env.ps1 |
+| .novabank/env/project.env | zawsze do docker-compose.yaml, zawiera hasła baz | formularz Konfiguracja DEV w panelu; alternatywnie CLI lub kopia .env.example |
+| .novabank/env/dev.env | dev uruchamiany z IntelliJ lub panelu w WSL | formularz Konfiguracja DEV w panelu albo Pierwsze uruchomienie w CLI |
 | .novabank/env/prod.bank.env | prod banku | utwórz z placeholderów i wpisz dane AppRole |
 | .novabank/env/prod.shop.env | prod sklepu | utwórz z placeholderów i wpisz dane AppRole |
 | .novabank/monitoring/.env.monitoring | uruchomienie Grafany i monitoringu dev | wygeneruj przez scripts/monitoring/monitoring.sh setup |
@@ -929,7 +947,7 @@ Przejdź do projektu:
 
 Uruchom bazy i Redis:
 
-    docker compose --env-file .novabank/env/project.env up -d postgres shop-postgres redis
+    docker compose --env-file .novabank/env/project.env --env-file .novabank/env/dev.env up -d postgres shop-postgres redis
 
 Sprawdź:
 
@@ -1071,18 +1089,13 @@ W ShopAppApplication ustaw:
 
 Najpierw uruchom bank, następnie shop-app. Można utworzyć Compound configuration.
 
-Alternatywnie w PowerShell:
+Alternatywnie uruchom panel z terminala WSL/Bash:
 
-    $env:SPRING_PROFILES_ACTIVE = "dev"
+```bash
+bash ./scripts/start.sh
+```
 
-Gotowy skrypt:
-
-    Set-Location "C:\Dysk D\stuff\Bank-demo"
-    .\scripts\start-dev.ps1
-
-Zatrzymywanie procesów uruchomionych skryptem:
-
-    .\scripts\stop-dev.ps1
+W panelu wykonaj **Buduj bank**, **Buduj sklep**, a następnie **Uruchom aplikacje DEV**. Wymaga to JDK 25 w WSL i aktualnych JAR-ów. **Zatrzymaj aplikacje panelu** zatrzymuje wyłącznie procesy uruchomione przez panel; aplikacje z IntelliJ pozostają bez zmian.
 
 ### 5.4. Linki dev
 
@@ -1247,11 +1260,15 @@ Monitoring nie uruchamia się magicznie po restarcie komputera. Kontenery muszą
 
 SHOP_PAYMENT_PROVIDER=bank-demo oznacza wewnętrzny demonstracyjny operator. Bank sprawdza status karty, limit, subkonto walutowe i saldo, a potem aktualizuje saldo kupującego i rachunek sklepu. Ten wariant pokazuje komunikację sklep-bank.
 
-SHOP_PAYMENT_PROVIDER=stripe oznacza zewnętrznego testowego operatora. Stripe obsługuje hostowaną sesję i webhook. Nie korzysta z sald ani kart NovaBank, więc nie przenosi środków między rachunkami banku. Aktualizuje status zamówienia w shopdb po zweryfikowanym webhooku.
+SHOP_PAYMENT_PROVIDER=stripe oznacza zewnętrznego testowego operatora. Stripe obsługuje hostowaną sesję i webhook. Nie korzysta z sald ani kart NovaBank do obciążenia, więc nie przenosi środków między rachunkami banku. W obecnym kodzie sklep nadal odpytuje NovaBank o wycenę płatności przed utworzeniem sesji Stripe, również dla PLN. Dlatego bank, jego API i mapowanie sprzedawcy muszą działać. Status zamówienia w shopdb jest uzgadniany przez zweryfikowany webhook lub odczyt stanu operatora, nie przez sam powrót przeglądarki.
 
 Stripe CLI jest potrzebny tylko przy providerze stripe. Nie jest potrzebny przy bank-demo.
 
 ### 8.1. Instalacja Stripe CLI w WSL
+
+Preferowana obsługa to **Control Center → DEV → Operacje → Stripe TEST**: „Status Stripe CLI”, w razie braku „Zainstaluj Stripe CLI”, następnie „Połącz Stripe CLI”. Panel jest uruchamiany przez `bash ./scripts/start.sh`. Kolejność przygotowania zmiennych i listenera opisuje [sekcja 8.6](#86-przygotowanie-i-uruchomienie-przez-control-center).
+
+Ręczny odpowiednik w terminalu WSL:
 
     sudo apt update
     sudo apt install -y nodejs npm
@@ -1277,10 +1294,10 @@ Wariant z filtrem zdarzeń:
 CLI pokaże nowy whsec_.... Wpisz go do .novabank/env/dev.env:
 
     SHOP_PAYMENT_PROVIDER=stripe
-    SHOP_PAYMENT_API_KEY=sk_test_<PRAWIDLOWY_KLUCZ>
-    SHOP_PAYMENT_WEBHOOK_SECRET=whsec_<SEKRET_LISTENERA>
+    SHOP_PAYMENT_API_KEY=***
+    SHOP_PAYMENT_WEBHOOK_SECRET=***
 
-sk_test_... i whsec_... są różnymi sekretami. Po zmianie zrestartuj shop-app. Terminal listenera musi działać przez cały test. Ctrl+C kończy nasłuchiwanie.
+`***` oznacza wartość ukrytą w instrukcji, nie wartość do wklejenia do pliku. `sk_test_...` / `rk_test_...` i `whsec_...` są różnymi sekretami. Po zmianie zrestartuj shop-app. Terminal listenera musi działać przez cały test. Ctrl+C kończy nasłuchiwanie. W CC sekret zapisuje osobna operacja „Zapisz sekret webhooka Stripe TEST”, bez wypisywania jego wartości.
 
 ### 8.3. WSL i aplikacja Windows
 
@@ -1305,7 +1322,7 @@ Jeśli .wslconfig zawiera nieobsługiwaną opcję wsl2.hostAddressLoopback, usu�
 
 ### 8.4. Test Stripe
 
-W formularzu Stripe użyj testowej karty 4242 4242 4242 4242, przyszłej daty i testowego CVC.
+Przejdź przez koszyk, wybierz „Zapłać kartą”, walutę i przycisk przejścia do bezpiecznej płatności. Formularz wyboru NovaBank/karta nadal jest wyświetlany — `SHOP_PAYMENT_PROVIDER=stripe` wybiera operatora kart, a nie pomija całego checkoutu. Dane z [sekcji 8.7](#87-publiczne-karty-testowe-stripe) wpisuj dopiero na hostowanej stronie Stripe, nie w bankowym formularzu demonstracyjnej karty.
 
 Udany log powinien zawierać:
 
@@ -1318,7 +1335,101 @@ Jeśli jest 400, sprawdź log shop-app, whsec, identyfikator zamówienia i aktua
     stripe events retrieve evt_<ID>
     stripe events resend evt_<ID>
 
-stripe trigger payment_intent.succeeded testuje transport, ale nie tworzy poprawnego zamówienia sklepu.
+`Ready!` potwierdza gotowość listenera. Sam HTTP `200` może oznaczać również zdarzenie zignorowane przez aplikację. Sukces przepływu sprawdź dla właściwego zamówienia: odpowiadająca mu sesja Stripe ma płatność `paid`, zdarzenie jest poprawnie obsłużone, a „Moje zamówienia” pokazuje `PAID` / „Opłacone”. Sam redirect `/api/payments/stripe/success` nie nadaje tego statusu.
+
+`stripe trigger payment_intent.succeeded` nie tworzy poprawnej próby płatności sklepu. Syntetyczne zdarzenie transportowe nie zastępuje płatności rozpoczętej w checkoutcie, której sesja zawiera `attemptId`, `merchantId`, `orderNumber` i `client_reference_id`.
+
+<a id="stripe-test-dev"></a>
+
+### 8.5. Zmienne wymagane do testowania sklepu przez Stripe
+
+Procedura dotyczy **profilu Spring `dev` z operatorem Stripe w trybie testowym/sandbox**. Nie oznacza przełączania aplikacji na profil Spring `test`: automatyczne testy Maven/Testcontainers to osobny mechanizm i nie zastępują testu z rzeczywistym kontem Stripe TEST.
+
+Przygotuj zwykłe środowisko DEV: pliki `project.env` i `dev.env`, bazy banku i sklepu, Redis oraz oba procesy aplikacji. Infrastrukturalne nazwy, hosty i porty baz/Redis pozostają w `project.env`; poniższe ustawienia aplikacyjne uzupełnij w **CC → DEV → Pliki i sekrety → dev.env**. Nie kopiuj sekretów do `project.env`, repozytorium, zrzutów ekranu lub zgłoszeń.
+
+| Zmienna w `dev.env` | Co przygotować / skąd pochodzi | Znaczenie |
+| --- | --- | --- |
+| `SHOP_PAYMENT_PROVIDER` | `stripe` | Włącza hostowany checkout Stripe dla opcji „Zapłać kartą”; wymagany również przez kafelek listenera. |
+| `SHOP_PAYMENT_API_KEY` | `***` — testowy klucz z wybranego konta/sandboxa Stripe, `sk_test_…` lub `rk_test_…`. Klucz ograniczony musi mieć uprawnienia do tworzenia i odczytu używanych sesji Checkout. | Uwierzytelnia backend sklepu oraz adapter CLI. Nie jest kluczem NovaBank ani sekretem webhooka. |
+| `SHOP_PAYMENT_WEBHOOK_SECRET` | `***` — sekret `whsec_…` właściwego lokalnego listenera; operacja CC „Zapisz sekret webhooka Stripe TEST”. | Weryfikuje podpis webhooków. Nie zastępuj go kluczem API ani sekretem innego endpointu Dashboard. |
+| `SHOP_MERCHANT_ID` | Stały identyfikator sprzedawcy w tej aplikacji, zgodny z istniejącymi zamówieniami. Dla nowej integracji np. `novatech-shop`. | Nie jest emailem, ID klienta sklepu, kluczem API ani identyfikatorem konta Stripe. Dozwolone `[A-Za-z0-9_-]`, 1–64 znaki. |
+| `SHOP_MERCHANT_ACCOUNT_NUMBER` | Właściwy rachunek odbiorczy sklepu w NovaBank: dokładnie 26 cyfr bez `PL`, spacji i myślników. | Wymagany podczas tworzenia zamówienia również przy Stripe; numer pozostaje lokalny, w instrukcji nie podajemy rzeczywistej wartości. |
+| `BANK_API_URL` | Lokalny adres działającego banku, standardowo `http://localhost:8080`. | Sklep używa bankowej wyceny przed utworzeniem Checkout Stripe. |
+| `BANK_API_KEY` | `***` — istniejący wspólny sekret integracji sklep–NovaBank, nie `SHOP_PAYMENT_API_KEY`. | Bank musi akceptować klucz wysyłany przez sklep. Nie wykonuj rotacji w celu naprawy samego mapowania sprzedawcy. |
+| `BANK_API_KEY_ID` | Identyfikator używanego klucza; domyślnie `legacy` dla pojedynczego `BANK_API_KEY`. | Sklep wysyła go jako `X-API-Key-Id`; musi odpowiadać kluczowi po stronie banku. To nie sekret i nie ID konta klienta. |
+| `BANK_API_KEY_MERCHANTS` | Wartość `key-id=merchant-id`, np. `legacy=novatech-shop`, jeśli właśnie te ID obowiązują. | Przypisuje zaakceptowany klucz NovaBank do sprzedawcy. Po lewej jest ID klucza, nie jego sekret ani email. |
+| `BANK_PAYMENT_MERCHANTS` | Wartość `merchant-id=rachunek`; po prawej rzeczywisty 26-cyfrowy rachunek sklepu zgodny z `SHOP_MERCHANT_ACCOUNT_NUMBER`. | Lista rachunków dozwolonych dla sprzedawcy. Użyj tego samego merchant ID co powyżej i w `SHOP_MERCHANT_ID`. |
+
+Brak `BANK_API_KEYS` nie jest błędem, jeśli bank korzysta ze zgodnego pojedynczego `BANK_API_KEY`. Jeżeli keyring API jest już skonfigurowany, zachowaj jego identyfikatory, ważność i uprawnienia; do wyceny kart wymagany jest zakres `payments:card`. Nie wpisuj klucza Stripe w bankowy keyring. Aktualna integracja hostowanego Checkout nie wymaga dodawania klucza publikowalnego `pk_test_…` do frontu sklepu.
+
+Przykład **wyłącznie dla nowej integracji**, w której ustalono merchant ID `novatech-shop` i używa się klucza `legacy`:
+
+```dotenv
+SHOP_MERCHANT_ID=novatech-shop
+BANK_API_KEY_ID=legacy
+BANK_API_KEY_MERCHANTS=legacy=novatech-shop
+```
+
+Osobno dodaj `BANK_PAYMENT_MERCHANTS`: w polu **Nazwa** wpisz `BANK_PAYMENT_MERCHANTS`, a w polu **Wartość** wpisz `novatech-shop=` i od razu właściwe 26 cyfr rachunku. Nie wpisuj nawiasów `<…>`, słowa „rachunek”, spacji ani ponownie nazwy zmiennej w jej wartości. Przy istniejących zamówieniach najpierw potwierdź zapisane merchant ID; brak zmiennej w pliku nie dowodzi, że można nadać nową tożsamość sprzedawcy.
+
+Ustawienia dodatkowe, jeśli zmieniasz standardowe adresy:
+
+| Zmienna | Standard / kiedy ustawić |
+| --- | --- |
+| `SHOP_APP_PORT` | `8081`; CC używa go do lokalnego forwardowania webhooka. Musi odpowiadać rzeczywistemu portowi sklepu. |
+| `SHOP_PAYMENT_API_BASE_URL` | Domyślnie `https://api.stripe.com`; dla testów z kontem Stripe pozostaw oficjalny adres. |
+| `SHOP_PAYMENT_SUCCESS_URL` | Domyślnie `http://localhost:8081/api/payments/stripe/success?order={ORDER_NUMBER}&session_id={CHECKOUT_SESSION_ID}`. Przy innym porcie ustaw poprawny adres; zachowaj oba znaczniki w klamrach. |
+| `SHOP_PAYMENT_CANCEL_URL` | Domyślnie `http://localhost:8081/api/payments/stripe/cancel?order={ORDER_NUMBER}`. Przy innym porcie dostosuj adres; zachowaj znacznik zamówienia. |
+
+Źródła konfiguracji i zachowania projektu: `shop-app/src/main/resources/application-dev.yaml`, `shop-app/src/main/resources/application.yaml`, `src/main/resources/application.yaml`, `CheckoutController.quote()`, `ExternalCardPaymentService.createCheckout()`, `StripeCheckoutClient.create()`, `PaymentApiKeyFilter` i `PaymentApiProperties.merchantForKey()`. Wyjaśnienie rodzajów kluczy: [Stripe — API keys](https://docs.stripe.com/keys).
+
+### 8.6. Przygotowanie i uruchomienie przez Control Center
+
+1. W Stripe wybierz właściwy sandbox/środowisko testowe. Klucz backendu i listener muszą obsługiwać to samo konto/sandbox. Nigdy nie używaj tutaj klucza `sk_live_…` / `rk_live_…` ani prawdziwej karty.
+2. Zakończ aktywne zadanie CC, jeśli blokuje edytor. Wybierz **DEV → Pliki i sekrety → dev.env** i uzupełnij tabelę z 8.5, poza sekretem webhooka pobieranym w kroku 4. Nowa zmienna: wpisz nazwę i wartość → **Dodaj do formularza** → sprawdź nowy kafelek → zaznacz potwierdzenie zapisu oraz, jeśli dotyczy zmiany istniejących poświadczeń, potwierdzenie ryzyka → **Zapisz zmiany**. Sekretów nie trzeba ujawniać przyciskiem „Pokaż na 45 s”, żeby je zmienić.
+3. Sprawdź komunikat **nad edytorem** i obecność zapisanych nazw pól po ponownym odczycie. Samo pojawienie się kafelka nie oznacza zapisu na dysku. Komunikat „Mapowanie rachunków: merchant-id=rachunek…” oznacza odrzucenie formatu, nie udany zapis. Pusta wartość istniejącego sekretu zachowuje go; usunięcie wymaga opcji „Usuń pole”.
+4. **Operacje → Stripe TEST → Status Stripe CLI**. W razie braku przygotuj CLI w WSL; w razie potrzeby wykonaj **Połącz Stripe CLI**. Potem uruchom **Zapisz sekret webhooka Stripe TEST**: CC wywołuje `stripe listen --print-secret` i zapisuje otrzymany sekret w `dev.env` bez ujawniania. Autoryzacja CLI sama w sobie nie uzupełnia klucza API aplikacji.
+5. Uruchom bazy i Redis, a następnie zrestartuj bank i sklep z profilem `dev` oraz aktualnym EnvFile `dev.env` (dla IntelliJ zgodnie z sekcją 4). Jeśli działają z IDE, restart musi objąć te procesy — zatrzymywanie aplikacji należących do CC ich nie zastępuje. Odświeżenie strony nie przeładowuje środowiska Java.
+6. Uruchom **Listener webhooków Stripe TEST**. Oczekiwany log: `Ready! … webhook signing secret is ***`. CC przekazuje zdarzenia do `http://localhost:SHOP_APP_PORT/api/payments/stripe/webhook`. Nie publikuj rzeczywistego `whsec_…` z ręcznego terminala. `Ready!` nie oznacza jeszcze zaliczonej płatności.
+7. Listener zajmuje pojedynczą kolejkę zadań CC do **Przerwij** lub limitu jednej godziny. Dlatego konfigurację, pobranie sekretu i restarty przez CC wykonuj **przed** jego uruchomieniem. Jeśli trzeba poprawić ustawienia, zatrzymaj listener, zapisz zmiany, zrestartuj zależny proces i dopiero uruchom listener ponownie.
+8. Zaloguj się w sklepie, dodaj produkty do koszyka, przejdź do kasy i wybierz kartę. Po wycenie przejdź do hostowanej płatności Stripe, użyj danych z 8.7 i sprawdź wynik zgodnie z 8.4. Zweryfikuj, że odpowiedni testowy checkout widoczny jest w wybranym środowisku Stripe.
+
+Jeżeli używasz listenera ręcznego zamiast CC, korzystaj z tego samego konta/sandboxa i sekretu właściwego listenera. Nie uruchamiaj drugiego listenera jako sposobu obejścia błędu. Brak połączenia WSL → sklep Windows diagnozuj według 8.3; CC celowo forwarduje tylko na localhost, a nie na dowolny zdalny adres. Dokumentacja poleceń: [Stripe CLI](https://docs.stripe.com/cli).
+
+### 8.7. Publiczne karty testowe Stripe
+
+Poniższe numery są **publicznymi danymi symulacyjnymi Stripe**, nie rzeczywistymi kartami klientów. Używaj ich tylko z testowym Stripe. Źródło, sprawdzone 19.10.2026: [Stripe — Testing](https://docs.stripe.com/testing).
+
+Podstawowy udany test: **Visa `4242 4242 4242 4242`**, ważność **`12/34`**, CVC/CVV **`123`**, imię i nazwisko np. **Jan Testowy**. Ta karta symuluje poprawną płatność. Jeżeli formularz wymaga innych danych, użyj danych testowych zgodnych z jego formatem; nie podawaj danych rzeczywistej osoby.
+
+| Scenariusz | Numer karty testowej |
+| --- | --- |
+| Sukces — Visa | `4242 4242 4242 4242` |
+| Sukces — Visa, kraj wydania Polska | `4000 0061 6000 0005` |
+| Sukces — Mastercard | `5555 5555 5555 4444` |
+| Płatność odrzucona — generic decline | `4000 0000 0000 0002` |
+| Brak środków — insufficient funds | `4000 0000 0000 9995` |
+| Wymagane uwierzytelnienie 3D Secure | `4000 0000 0000 3220` |
+
+Dla wszystkich sześciu kart możesz wpisać `12/34` i `123`. Data musi nadal być przyszła w dniu testu. Przy karcie 3D Secure ukończ testowe wyzwanie Stripe, aby uzyskać sukces; sama karta nie gwarantuje powodzenia bez tego kroku. Nie jest to kod TOTP NovaBank.
+
+Odmowa karty w Stripe nie oznacza automatycznie terminalnego `FAILED` w sklepie. Checkout może pozostać otwarty, a nierozstrzygnięty wynik nadal blokować nową próbę. Nie obchodź blokady nowym kluczem ani zmianą statusu w SQL; najpierw ustal wynik istniejącej sesji. To ograniczenie aktualnego uzgadniania aplikacji, nie opis zachowania samych kart Stripe.
+
+### 8.8. Typowe problemy podczas przygotowania Stripe TEST
+
+| Objaw | Co sprawdzić / bezpieczne działanie |
+| --- | --- |
+| Ogólny błąd kafelka listenera | Ustaw `SHOP_PAYMENT_PROVIDER=stripe`, sprawdź CLI w tym samym WSL co CC, testowy format klucza i autoryzację. Adapter ukrywa szczegóły części wyjątków, więc sam komunikat nie dowodzi złego hasła. |
+| `Ready!` i informacja o nowszym CLI | Listener jest gotowy; sama informacja o aktualizacji nie jest błędem płatności. Nadal sprawdź dostarczenie zdarzenia i wynik zamówienia. |
+| Nadal pojawia się wybór NovaBank/karta | To zamierzone. Stripe uruchamia się dopiero w ścieżce karty. Działający sklep ujawnia wybór operatora przez uwierzytelnione `GET /api/checkout/card-provider`; oczekiwane `provider=stripe`, `hosted=true`. Jeśli odczyt wskazuje stary wariant, sprawdź EnvFile i restart właściwego procesu. |
+| `Bank authorization was rejected.` | Ogólny komunikat klienta bankowego, niekoniecznie odmowa karty. Do wyceny wymagany jest bank. Rozróżnij status HTTP: 401 — klucz/ID/ważność, 403 — zakres, 429 — limit, 503 — konfiguracja lub zależność. `Payment merchant mapping is not configured or invalid.` wymaga kontroli obu mapowań sprzedawcy, nie regeneracji klucza. |
+| `Mapowanie rachunków: merchant-id=rachunek…` przy zapisie | Wartość `BANK_PAYMENT_MERCHANTS` musi mieć merchant ID, znak `=` i 26 cyfr rachunku. Bez `PL`, spacji, cudzysłowów ani placeholderów. Błąd jest wyświetlany nad edytorem; dane nie są zapisane. |
+| HTTP 400 webhooka | Sprawdź sekret lokalnego listenera, restart sklepu i kontekst istniejącej próby. Kod wymaga ważnego podpisu; dla obsługiwanej sesji dodatkowo weryfikuje identyfikatory i dane płatności. Nie wyłączaj weryfikacji podpisu. |
+| HTTP 409 / brak lub niezgodna próba | Zdarzenie musi dotyczyć sesji utworzonej przez aktualny checkout sklepu. Losowe `stripe trigger` nie zastępuje prawidłowej próby zamówienia. Nie dopisuj ręcznie metadanych do obcej płatności. |
+| „Poprzednia płatność wymaga uzgodnienia…” | Konto ma nierozstrzygniętą próbę lub historyczne zamówienie bez przypisanego merchant ID. Poprawna konfiguracja Stripe nie migruje historii. „Moje zamówienia” pokazuje status/powód, ale nie wykonuje naprawy. Potrzebne jest uzgodnienie wyniku; sam historyczny `FAILED` nie dowodzi braku obciążenia. |
+| Po trzech błędach sprawdzania nic się nie zmienia | Scheduler zawiesza uzgadnianie danej próby, zachowując blokadę nowej płatności. Historyczne rekordy bez nowej próby nie są automatycznie importowane przez scheduler. Istniejący przegląd historycznych płatności nie jest jeszcze zapisującym migratorem. |
+
+Granice obecnej implementacji potwierdzają `OrderService.create()`, `OrderRepository.hasUnresolvedCardPayment()`, `PaymentAttemptRepository.candidates()`, `PaymentReconciliationJob`, `PaymentResolutionService.acceptStripe()` i `StripeWebhookController`. Ten rozdział dokumentuje przygotowanie i ręczny test; nie potwierdza wykonania migracji historycznych danych ani zaliczenia wszystkich scenariuszy na koncie operatora.
 
 
 ## 9. Profil prod i HashiCorp Vault
@@ -2339,7 +2450,7 @@ Uruchom bazy i wykonaj kopię:
 
     PROJECT_WSL='/mnt/c/Projekty/Bank-demo'
     cd "$PROJECT_WSL"
-    docker compose --env-file "$PROJECT_WSL/.novabank/env/project.env" up -d postgres shop-postgres redis
+    docker compose --env-file "$PROJECT_WSL/.novabank/env/project.env" --env-file "$PROJECT_WSL/.novabank/env/dev.env" up -d postgres shop-postgres redis
     bash "$PROJECT_WSL/scripts/backup/backup.sh" create --backup-dir "$BACKUP_DIR"
 
 Można też użyć launchera Windows:
@@ -2511,7 +2622,7 @@ Utwórz jeden ignorowany przez Git katalog na pliki generowane i sekrety:
 ```bash
 cd "$PROJECT_WSL"
 mkdir -p .novabank/env .novabank/monitoring .novabank/tls/vault .novabank/tls/prod
-cp -n .env.example .novabank/env/project.env
+python3 -B scripts/control-center/web/dev_env_layout.py prepare
 chmod 600 .novabank/env/project.env
 ```
 
@@ -2520,7 +2631,7 @@ Można zamiast tego wybrać odpowiednią pozycję w `Pierwsze uruchomienie`; Cen
 Uruchom bazy i Redis:
 
 ```bash
-docker compose --env-file "$PROJECT_WSL/.novabank/env/project.env" up -d postgres shop-postgres redis
+docker compose --env-file "$PROJECT_WSL/.novabank/env/project.env" --env-file "$PROJECT_WSL/.novabank/env/dev.env" up -d postgres shop-postgres redis
 docker ps
 docker inspect --format '{{.Name}} {{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{end}}' \
   bank-postgres shop-postgres bank-redis
@@ -2649,7 +2760,7 @@ Po przeniesieniu repozytorium do innej lokalizacji:
 2. uruchamiaj Control Center z nowego katalogu projektu;
 3. wybierz `Pierwsze uruchomienie` i sprawdź `.novabank`;
 4. zaktualizuj Working directory oraz EnvFile w IntelliJ;
-5. używaj `docker compose --env-file .novabank/env/project.env`;
+5. używaj `docker compose --env-file .novabank/env/project.env --env-file .novabank/env/dev.env`;
 6. sprawdź, czy lokalne pliki są ignorowane przez Git.
 
 Nie kopiuj bez zmian ścieżek `C:\Dysk D\stuff\Bank-demo` ani `/mnt/c/Dysk D/stuff/Bank-demo` do nowej instalacji. W WSL ścieżka musi odpowiadać rzeczywistemu montowaniu dysku, a w Windows ścieżka musi być zgodna z katalogiem projektu.
@@ -2718,3 +2829,158 @@ Szczegółowe źródła pozostają dostępne:
 - `docs/control-center.md`.
 
 Jeżeli przykład w tej instrukcji różni się od ustawień lokalnych, kieruj się faktycznym profilem, `.novabank`, konfiguracją Compose, konfiguracją IntelliJ i komunikatem Centrali. Przykładowe hasła, klucze, Role ID, Secret ID, tokeny i ścieżki nie są wartościami do kopiowania do środowiska.
+
+### Formularze wybranych operacji webowego Control Center
+
+Ten dodatek objaśnia pola operacji, których wynik zależy od wartości pochodzących z innych kroków. Dotyczy przeglądarkowego Control Center; opisy menu CLI w §19–20 odnoszą się do osobnego trybu terminalowego. Nie zmienia zachowania żadnego skryptu. Zawsze sprawdź aktywny profil i nazwę zadania. Operacje finansowe, klucze i Vault uruchamiaj wyłącznie w środowisku, którego kopie i konfigurację rozpoznajesz. Do pól uzasadnienia nie wpisuj haseł, tokenów, kluczy ani danych kart.
+
+#### Plan i wykonanie partii rotacji szyfrowania TOTP
+
+Operację znajdziesz w `Operacje → Bezpieczeństwo` jako `Plan rotacji szyfrowania TOTP` oraz `Wykonaj zatwierdzoną partię TOTP`. Nie jest to generowanie nowego kodu TOTP ani reset 2FA użytkowników. Narzędzie odszyfrowuje istniejące ziarno i zapisuje je ponownie pod aktywnym kluczem keyringu; sam sekret 2FA pozostaje ten sam.
+
+Przed rozpoczęciem wykonaj i przetestuj odtworzenie kopii banku. W `dev.env` przygotuj kompletny `TOTP_ENCRYPTION_KEYS` oraz `TOTP_ENCRYPTION_ACTIVE_ID`; zachowaj wszystkie dotychczasowe klucze, również ewentualny klucz legacy `TOTP_ENCRYPTION_KEY`. Zbuduj aktualny bank w CC (`Buduj bank`), a następnie zrestartuj **każdą** działającą instancję banku, aby wszystkie używały nowej konfiguracji. Sam zapis pliku nie przeładowuje procesu. Nie usuwaj starych kluczy: mogą być nadal potrzebne do odczytu starszych rekordów i kopii zapasowych.
+
+Znaczenie pól:
+
+- **Checkpoint — ID po ostatniej zatwierdzonej partii** — identyfikator ostatniego rekordu użytkownika sprawdzonego w poprzedniej zatwierdzonej partii. Na pierwszym uruchomieniu wpisz `0`. To nie jest numer partii, liczba rekordów ani sekret. Po udanym wykonaniu następnej partii przepisz dokładnie `nextCheckpoint` z jej wyniku. Zapytanie szuka rekordów o ID **większym** od checkpointu, więc nie dodawaj do niego `1`.
+- **Rozmiar partii** — maksymalna liczba rekordów z zapisanym sekretem TOTP sprawdzanych w jednym przebiegu; zakres `1–100`, domyślnie `100`. Mniejsza wartość oznacza więcej przebiegów, ale mniejszą pojedynczą partię.
+- **planDigest** — 64-znakowy skrót SHA-256 z bieżącego wyniku planu widocznego w `Testy i logi`. Wiąże zatwierdzenie z konkretnym checkpointem, rozmiarem partii, danymi i konfiguracją kluczy. Nie wpisuj skrótu z wcześniejszego albo innego planu.
+- **Potwierdzenie operacji** — wpisz dokładnie `ROTATE`; nie wpisuj tu klucza ani identyfikatora klucza.
+- **Potwierdzenie zakresu** — zaznacz dopiero po sprawdzeniu kopii, zachowaniu starych kluczy i restarcie wszystkich instancji banku z nowym keyringiem.
+
+`Plan` niczego nie zapisuje; pokazuje m.in. `inspected` (ile rekordów obejmuje zakres), `requiringMigration` (ile trzeba ponownie zaszyfrować), `nextCheckpoint` i `activeKeyId`. Jeśli `inspected` wynosi `0`, zakres jest pusty. Jeśli wystąpi błąd odszyfrowania, konflikt lub wynik jest niejasny, zatrzymaj procedurę — nie zgaduj następnego checkpointu. Po każdej zatwierdzonej partii użyj wartości `nextCheckpoint` i ponownie wykonaj plan. Zakończ, gdy plan obejmie wszystkie rekordy. Potem wykonaj kontrolowane logowanie do banku z 2FA. Zachowaj stare klucze tak długo, jak istnieją dane lub backupy zaszyfrowane pod ich identyfikatorami.
+
+**Ważne: formularz `Wykonaj zatwierdzoną partię TOTP` musi dostać ten sam checkpoint i rozmiar partii, co plan, który właśnie sprawdziłeś.** Przykład: jeśli plan wykonano z checkpointem `0` i zwrócił `nextCheckpoint: 5`, to przy zatwierdzaniu tej partii nadal wpisz `0` (oraz ten sam rozmiar i `planDigest` z planu). Dopiero po udanym wykonaniu użyj `5` jako checkpointu **następnego planu**. Nie wpisuj `5` do wykonania bieżącej partii — zmieniłoby to zakres względem planu i mogłoby pominąć rekordy.
+
+**Jeśli nie pamiętasz, czy plan lub wykonanie już uruchomiono:** sam plan jest podglądem i można go powtórzyć — nie zmienia danych. W `Testy i logi` sprawdź zadanie `Wykonaj zatwierdzoną partię TOTP`: wynik `replayed: false` oznacza wykonanie tej partii, a `replayed: true` — że ten sam zatwierdzony `planDigest`, checkpoint, rozmiar i konfiguracja były już zastosowane; ponowienie zwróciło zapisany wynik, bez ponownego szyfrowania. CC zachowuje lokalnie historię maksymalnie 60 zadań i pokazuje w logu wynik planu, w tym digest i `nextCheckpoint`, ale nie udostępnia osobnego widoku aktualnego postępu rotacji ani nie zachowuje checkpointu i rozmiaru z formularza jako danych wznowienia. Baza banku trwale rejestruje wykonane partie, lecz obecnie nie ma do tego odczytu w CC.
+
+Jeżeli nie odnajdziesz poprzedniego wyniku i nie znasz ostatniego zatwierdzonego checkpointu, **nie zgaduj**. Po sprawdzeniu kopii, aktywnego keyringu i działania wszystkich instancji banku rozpocznij świeży skan od checkpointu `0`: uruchom nowy plan, a następnie wykonaj go z tym samym checkpointem `0`, rozmiarem i nowym `planDigest`. Już aktualnie zaszyfrowane rekordy zostaną rozpoznane i pominięte; nie są szyfrowane ponownie. Po udanym wykonaniu kolejnych partii kontynuuj od `nextCheckpoint` zwróconego przez wykonanie. Nie usuwaj starych kluczy — skan może napotkać rekordy lub kopie wymagające ich odszyfrowania.
+
+```mermaid
+flowchart TD
+    A[Wykonaj kopię banku i sprawdź jej odtworzenie] --> B[Zachowaj stare klucze, ustaw aktywny keyring i zrestartuj wszystkie instancje banku]
+    B --> C[Plan rotacji: checkpoint 0 przy pierwszej partii, rozmiar 1–100]
+    C --> D{Czy plan jest poprawny i obejmuje oczekiwane rekordy?}
+    D -->|Nie lub błąd| X[STOP: sprawdź Testy i logi, nie zgaduj wartości]
+    D -->|Tak| E[Wykonaj partię z tym samym checkpointem i rozmiarem, planDigest oraz ROTATE]
+    E --> F[Odczytaj nextCheckpoint z wyniku]
+    F --> G{Czy pozostały rekordy?}
+    G -->|Tak| C
+    G -->|Nie| H[Zweryfikuj wynik i wykonaj logowanie do banku z 2FA]
+```
+
+#### Test odszyfrowania 2FA z kopii — dwie osobne operacje
+
+W `Operacje → Backup DEV` uruchom `Test odzyskania 2FA — 1/2: wykrycie kluczy`. Narzędzie wybiera najnowszą kompletną parę backupów banku i sklepu z sumami SHA-256, ale do tego testu odtwarza **kopię bazy banku** w osobnym kontenerze. Nie podłącza jej do aplikacji, nie zmienia bieżącej bazy, nie wykonuje rotacji i nie sprawdza logowania HTTP. Wymagane są lokalny obraz `postgres:18`, JDK 25 i aktualny JAR banku.
+
+Po sukcesie wynik pokaże użyty backup, jego sumę i identyfikatory kluczy wykryte w zaszyfrowanych rekordach. W otwartym formularzu podaj **wartość Base64 klucza**, która odpowiada każdemu wskazanemu identyfikatorowi:
+
+- identyfikator `legacy` — wartość dotychczasowego `TOTP_ENCRYPTION_KEY`;
+- inny identyfikator — wartość przypisana do tego ID w `TOTP_ENCRYPTION_KEYS` (format konfiguracji: `ID=Base64,INNE_ID=Base64`). Wpisz samą wartość klucza dla danego pola, nie całą listę.
+
+Klucze muszą pochodzić z zabezpieczonego, niezależnego miejsca i odpowiadać **tej kopii**. Nie generuj nowych kluczy w celu wypełnienia formularza. Jeśli któregoś wymaganego klucza nie masz, przerwij — bez niego kopia nie może potwierdzić odzyskiwalności. Zaznacz potwierdzenie testu na kopii i uruchom `Test odzyskania 2FA — 2/2: odszyfrowanie`. Formularz przyjmuje tylko identyfikatory znalezione w aktualnym planie; plan jest ważny 20 minut. Po restarcie panelu lub wygaśnięciu planu powtórz wykrywanie. Wprowadzone klucze są używane tylko przejściowo, nie są zapisywane do plików ani historii.
+
+Zaliczenie potwierdza odszyfrowanie rekordów z kopii, **nie** poprawność logowania użytkownika. Krok K1 kończy się dopiero po osobnym uruchomieniu aplikacji z odzyskaną konfiguracją i sprawdzeniu logowania do banku z 2FA.
+
+```mermaid
+flowchart TD
+    A[Ustaw poprawny katalog kopii w Ustawieniach operacji] --> B[1/2: wykryj klucze i odtwórz kopię banku w izolacji]
+    B --> C{Czy suma i plan kopii są poprawne?}
+    C -->|Nie| X[STOP: napraw backup lub jego sumę, nie podawaj kluczy]
+    C -->|Tak| D[Odczytaj wymagane ID kluczy z wyniku]
+    D --> E[Wpisz pasujące wartości Base64 w formularzu 2/2]
+    E --> F[Sprawdź odszyfrowanie wszystkich rekordów]
+    F --> G[Osobno uruchom aplikację i przetestuj logowanie z 2FA]
+```
+
+#### Migracja historycznych płatności — plan przed zapisem
+
+Ta operacja dotyczy wyłącznie lokalnego DEV. Jej celem jest powiązanie starych zamówień z jednoznacznym dowodem udanego obciążenia; nie wysyła nowego obciążenia ani zwrotu. Brak dowodu, sprzeczne dane, odmowa i przypadki niejednoznaczne pozostają zablokowane do osobnego wyjaśnienia. Nie próbuj płacić ponownie, aby obejść blokadę.
+
+Najpierw w `Testy i logi` sprawdź `Historia migracji`: baza sklepu musi mieć migrację co najmniej V14 (ta wersja wprowadza dziennik migracji), a używany JAR i baza muszą być zgodne z aktualnym projektem. V14 jest minimalnym wymaganiem tej operacji, nie stwierdzeniem, że nowsze migracje nie istnieją. Sprawdź też w `Ustawieniach operacji`, że katalog zawiera aktualną, kompletną parę kopii DEV. Zatrzymaj bank, sklep, Stripe listener i wszelkie inne procesy zapisujące do obu baz; dopiero wtedy utwórz świeże kopie, sprawdź ich sumy oraz odtworzenie w izolacji. Nie zastępuj tej kontroli samym komunikatem o sumie SHA-256.
+
+1. Uruchom `Migracja historycznych płatności — plan`. Nie ma pól do ręcznego mapowania ani SQL do wpisania. Plan pokaże liczbę i listę rekordów z potwierdzonym wynikiem oraz pozycje zablokowane.
+2. Przejrzyj plan i upewnij się, że odpowiada oczekiwanym kopiom i zakresowi. Odczytaj `planDigest` z wyniku zadania w `Testy i logi`; po zmianie kopii, konfiguracji lub danych wygeneruj plan ponownie.
+3. Przy nadal zatrzymanych zapisach wybierz `Migracja historycznych płatności — wykonaj`. Wpisz dokładnie `planDigest`, wpisz `MIGRATE`, zaznacz potwierdzenie świeżych kopii wykonanych po zatrzymaniu zapisów i ich sprawdzonego odtworzenia oraz zaznacz potwierdzenie zatrzymania wszystkich zapisów.
+4. Po zakończeniu sprawdź dziennik zadania i ponownie uruchom `Historia migracji`. Sukces zadania potwierdza wykonanie procedury; sam w sobie nie oznacza, że każda historyczna pozycja została uznana za opłaconą. Pozycje zablokowane muszą pozostać nierozstrzygnięte.
+
+Nie twórz nowej pary kopii między planem a jego wykonaniem. Jeśli zmieniły się kopie, dane lub plan, zatrzymaj się i wykonaj świeży plan. Procedura zapisuje bank i sklep w dwóch bazach, więc nie jest jedną globalną transakcją; dziennik pozwala wznowić zatwierdzony przebieg po przerwaniu. Przy niepewnym wyniku użyj tego samego zatwierdzonego planu i odczytaj historię — nie twórz alternatywnego planu, by ominąć blokadę.
+
+```mermaid
+flowchart TD
+    A[Zatrzymaj bank, sklep, listener i pozostałe zapisy] --> B[Utwórz świeżą parę kopii DEV i sprawdź sumy oraz odtworzenie]
+    B --> C[Uruchom plan migracji]
+    C --> D{Czy plan jest zgodny z oczekiwaną historią?}
+    D -->|Nie / są wątpliwości| X[STOP: zachowaj blokady i wyjaśnij dowody]
+    D -->|Tak| E[Skopiuj planDigest; potwierdź MIGRATE, kopie i zatrzymane zapisy]
+    E --> F[Wykonaj zatwierdzony plan]
+    F --> G[Sprawdź dziennik zadania i aktualną Historię migracji]
+    G --> H[Uruchom aplikacje dopiero po weryfikacji; nierozstrzygnięte rekordy pozostaw zablokowane]
+```
+
+#### Uzgadnianie płatności i bieżący zakup
+
+Widok `Uzgadnianie płatności` działa wyłącznie w DEV i wymaga aktualnego JAR sklepu oraz schematu V16. Najpierw wyszukaj sprawę po ID/numerze zamówienia albo ID klienta i wybierz `Szczegóły`. Operacja jest przypisana do wybranej sprawy — nie wpisujesz ID zamówienia w formularzu decyzji. Sam filtr listy nie zmienia danych. Jeśli planujesz `Zastosuj potwierdzony wynik`, najpierw wykonaj i sprawdź odtworzenie świeżej pary kopii DEV; przed zastosowaniem zatrzymaj zapisy i zachowaj tę samą parę. Nowy backup lub zmiana danych po sprawdzeniu dowodów unieważnia zgodność planu — ponownie sprawdź dowody przed zatwierdzeniem.
+
+- **Sprawdź dowody** — wpisz uzasadnienie długości 8–1000 znaków i `CHECK`. Opisz, dlaczego sprawa jest sprawdzana; nie wklejaj w nim sekretów ani danych karty. Centrala odczyta dowody banku/sklepu/Stripe i zapisze plan oraz zdarzenie audytowe. Nie obciąża karty, nie zwraca środków i samo nie rozstrzyga sprawy.
+- **Zastosuj potwierdzony wynik** — dostępne tylko wtedy, gdy aktualny plan potwierdza `PAID`, zgodny pełny `REFUNDED` albo trwałą odmowę `DECLINED`. Wpisz uzasadnienie i `RECONCILE`, potwierdź świeżą sprawdzoną parę kopii i zatrzymane zapisy. Centrala podstawia ID sprawy i digest wybranego planu. Jeśli plan jest `APPLYING` po przerwaniu, wznawiaj tę samą operację; nie twórz nowego żądania ani nowego rozstrzygnięcia. Ta czynność nie wysyła obciążenia ani zwrotu.
+- **Decyzja operatora** — wybierz przycisk `Eskaluj`, `Zamknij bez rozstrzygnięcia`, `Dopuść niezależny nowy zakup` albo `Cofnij zgodę na nowy zakup`, wpisz uzasadnienie i `DECIDE`. Zmienia wyłącznie obsługę sprawy lub zgodę na niezależny zakup. Nie zmienia wyniku finansowego, salda ani starego zamówienia. Zgoda na nowy zakup nie oznacza, że poprzednia płatność została odrzucona; klient musi jawnie rozpocząć nowy zakup.
+- **Bieżący, niedokończony zakup — Sprawdź stan operatora** — wpisz uzasadnienie i `REFRESH`. Odczytuje istniejącą próbę u operatora; nie wysyła nowej płatności i nie anuluje zakupu.
+- **Bieżący, niedokończony zakup — Zrezygnuj z zakupu** — wpisz uzasadnienie i `CANCEL`. Zapisuje prośbę o anulowanie i sprawdza wynik u operatora. Produkty pozostają w koszyku; koszyk zostanie odblokowany dopiero po potwierdzeniu zakończenia bez obciążenia. Nie wymusza zmiany `UNKNOWN` na odmowę i nie wykonuje zwrotu. Jeśli operator potwierdzi obciążenie, sprawa wymaga dalszego uzgodnienia.
+
+`UNKNOWN` oznacza brak pewnego wyniku, a nie odmowę. Nie wykonuj ręcznego uzgodnienia na podstawie lokalnego `FAILED`, zamknięcia strony płatności, wygaśnięcia Stripe Checkout ani samego braku odpowiedzi.
+
+```mermaid
+flowchart TD
+    A[Wybierz sprawę i otwórz Szczegóły] --> B[Sprawdź dowody: uzasadnienie + CHECK]
+    B --> C{Wynik planu}
+    C -->|Potwierdzony PAID / zgodny zwrot / trwała odmowa| D[Sprawdź świeże kopie i zatrzymaj zapisy]
+    D --> E[Zastosuj wynik: ten sam planDigest + RECONCILE]
+    C -->|UNKNOWN lub konflikt| F[Eskaluj albo zamknij bez rozstrzygnięcia]
+    F --> G{Czy rozważasz osobny zakup?}
+    G -->|Tak, po ocenie ryzyka| H[DECIDE: dopuść niezależny nowy zakup]
+    G -->|Nie| I[Pozostaw poprzednią płatność nierozstrzygniętą]
+    J[Bieżący niedokończony zakup] --> K[REFRESH: odczytaj istniejącą próbę]
+    J --> L[CANCEL: poproś operatora o zakończenie]
+    L --> M{Operator potwierdził brak obciążenia?}
+    M -->|Tak| N[Sklep może odblokować zachowany koszyk]
+    M -->|Nie / UNKNOWN| I
+```
+
+#### Dodanie lub odjęcie środków na koncie DEV
+
+W `Operacje → Salda DEV` wybierz `Dodaj środki do konta` albo `Odejmij środki z konta`. Wybierz z listy aktywne konto w PLN i wpisz **dodatnią kwotę** od `0,01` do `999999999,99`, maksymalnie dwa miejsca po przecinku. Przy odejmowaniu nie wpisuj wartości ujemnej — kierunek wynika z wybranej operacji. Zmniejszenie nie może sprowadzić salda poniżej zera. Przed potwierdzeniem sprawdź właściciela, zamaskowany numer rachunku i saldo pokazane w podsumowaniu.
+
+To audytowana korekta testowego salda, a nie przelew, wpłata gotówki przez klienta ani księgowanie płatności sklepu. Działa tylko na lokalnej bazie DEV. UUID korekty generuje panel; nie trzeba go wpisywać. Po wykonaniu sprawdź wynik w `Testy i logi`. Przy niepewnym wyniku najpierw sprawdź historię zadania i saldo — nie uruchamiaj ponownie korekty w ciemno.
+
+#### Ustawienia kopii, retencji i harmonogramów
+
+W `Ustawienia operacji` wybierz DEV lub TEST. DEV ma dodatkowo katalog, retencję backupu i harmonogramy; TEST udostępnia tylko retencję artefaktów i plików tymczasowych. Pola `backupAt` i `drAt` podaje się jako czas lokalny WSL `HH:MM`; `drWeekday` to dzień tygodnia. Zakres retencji backupów i raportów wynosi 1–3650 dni, a plików tymczasowych 1–365 dni. Domyślny katalog to `.novabank/backups/dev`; alternatywnie wskaż podkatalog `.novabank/backups` albo osobny, dedykowany katalog WSL `novabank-dev-backups[-nazwa]`. Nie wskazuj katalogu projektu, `env`, katalogu domowego ani folderu z cudzymi kopiami.
+
+Najpierw zapisz i potwierdź ustawienia. **Zapis nie instaluje ani nie zmienia istniejącego timera.** Następnie osobno uruchom `Zainstaluj harmonogram backupu DEV` lub `Zainstaluj harmonogram DR DEV` i sprawdź status timera. Jeśli wciąż działa stary timer CLI, w `Ustawienia operacji` pobierz i przejrzyj jego plan migracji; zmiana harmonogramu wymaga osobnego potwierdzenia. `backupRetentionDays` określa limit dla osobnej operacji `Backup DEV z retencją` — nie oznacza, że sam zapis ustawień usuwa stare kopie. Przyciski DR uruchamiają test odtwarzania w izolacji, a nie przywrócenie produkcyjnej/bieżącej bazy.
+
+#### Pola operacji Vault i PROD
+
+Przełącz na profil `PROD` wyłącznie wtedy, gdy świadomie pracujesz z lokalnym Vault i plikami PROD. Każda operacja wymaga zaznaczenia potwierdzenia oraz wpisania dokładnie `PROD`. Wartość ta potwierdza zakres, nie jest hasłem.
+
+- **Odpieczętuj Vault — jeden udział:** w polu udziału wprowadź jeden klucz Shamir. Przy kolejnym uruchomieniu podaj inny udział, aż Vault zgłosi osiągnięcie wymaganego progu. Nie wpisuj tu tokenu root ani ponownie tego samego udziału.
+- **Skonfiguruj polityki i AppRole / Rotuj Secret ID:** podaj token operatora Vault o wymaganych uprawnieniach, nie root token. `bank`, `shop` lub `all` wybiera zakres aplikacji. Rotacja tworzy i testuje nowy Secret ID oraz aktualizuje bootstrap; stary pozostaje ważny do finalizacji.
+- **Finalizuj rotację:** użyj dopiero po restarcie wskazanej aplikacji lub obu aplikacji i sprawdzeniu, że działają z nowym Secret ID. Wpisz ponownie token operatora, zaznacz potwierdzenie restartu i sprawności oraz wpisz `PROD`. Finalizacja unieważnia poprzedni Secret ID.
+- **Przygotuj bootstrap PROD:** wszystkie pola są opcjonalne; uzupełniaj tylko brakujące wartości. Puste pole zachowuje istniejącą wartość. `truststorePassword` to hasło istniejącego truststore Vault (co najmniej 6 znaków); `bankRoleId`/`shopRoleId` pochodzą z właściwego AppRole, a `bankSecretId`/`shopSecretId` z bezpiecznej procedury wydania/rotacji w Vault. Nie wymyślaj identyfikatorów. Operacja nie tworzy truststore, certyfikatu CA, sekretów biznesowych KV ani baz danych.
+- **Generuj/Odnów lokalne keystore TLS PROD:** wpisz osobne hasło dla `bankPassword` i `shopPassword`, każde co najmniej 16 znaków. To hasło do odpowiadającego pliku PKCS12, nie token Vault. Zabezpiecz je, uzupełnij odpowiednio `SERVER_SSL_KEY_STORE_PASSWORD` w Vault poza formularzem i zrestartuj obie aplikacje, których dotyczy zmiana. `Generuj` nie nadpisuje istniejących keystore; `Odnów` zastępuje je, zachowując pliki `.previous`.
+
+Przy rotacji AppRole zachowaj kolejność: wygenerowanie i test nowego ID → restart wskazanej aplikacji → sprawdzenie działania → finalizacja i unieważnienie starego ID. Nie finalizuj rotacji przed udanym restartem. Jeśli aplikacja nie działa, zatrzymaj się i użyj zachowanego poprzedniego poświadczenia zgodnie z procedurą Vault.
+
+```mermaid
+flowchart TD
+    A[Sprawdź status Vault; jeśli sealed, odpieczętuj różnymi udziałami Shamir] --> B[Użyj tokenu operatora, nie root]
+    B --> C[Wykonaj rotację Secret ID dla banku, sklepu lub obu]
+    C --> D[Nowy ID zostaje sprawdzony i zapisany w bootstrap; stary pozostaje aktywny]
+    D --> E[Zrestartuj wskazane aplikacje i sprawdź pobieranie sekretów oraz działanie]
+    E --> F{Czy obie wymagane aplikacje działają na nowym ID?}
+    F -->|Nie| X[STOP: nie finalizuj; diagnozuj lub odzyskaj poprzednią konfigurację]
+    F -->|Tak| G[Finalizuj ten sam zakres i potwierdź restart]
+    G --> H[Stary Secret ID zostaje unieważniony]
+```
+
+Pozostałe pola związane ze Stripe, kluczami API sklepu i ich wartościami opisują odpowiednio rozdziały `8. Stripe TEST` oraz `12. Rotacja kluczy`. Pole `USUN` dotyczy wyłącznie operacji trwałego usuwania wygasłych artefaktów z zamkniętego zakresu; nie używaj go do plików źródłowych, sekretów, baz ani backupów.
