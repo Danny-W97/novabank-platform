@@ -5,10 +5,26 @@ import subprocess
 import tempfile
 import unittest
 
-from source_bundle import export
+from source_bundle import ROOT, export
 
 
 class SourceBundleTest(unittest.TestCase):
+    def test_monitoring_template_is_public_but_runtime_credentials_stay_ignored(self):
+        template = 'infra/monitoring/.env.monitoring.example'
+        self.assertTrue((ROOT / template).is_file())
+        for name in (template, '.env.example'):
+            result = subprocess.run(['git', '-c', 'core.fsmonitor=false', 'check-ignore', '--no-index', '-q', name], cwd=ROOT)
+            self.assertEqual(1, result.returncode, name)
+        for name in ('infra/monitoring/.env.monitoring', '.novabank/monitoring/.env.monitoring', '.novabank/env/dev.env'):
+            result = subprocess.run(['git', '-c', 'core.fsmonitor=false', 'check-ignore', '--no-index', '-q', name], cwd=ROOT)
+            self.assertEqual(0, result.returncode, name)
+        with tempfile.TemporaryDirectory() as temp:
+            target = Path(temp) / 'export'
+            names = {row['file'] for row in export(target)}
+            self.assertIn(template, names)
+            self.assertEqual((ROOT / template).read_bytes(), (target / template).read_bytes())
+            self.assertNotIn('infra/monitoring/.env.monitoring', names)
+
     def test_includes_new_sources_but_never_runtime_secrets_or_artifacts(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp) / 'repo'

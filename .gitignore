@@ -38,6 +38,8 @@ build/
 .env
 .env.*
 !.env.example
+# Public placeholder-only template; real monitoring credentials stay ignored.
+!/infra/monitoring/.env.monitoring.example
 /${env.USERPROFILE}/
 
 ### NovaBank Control Center local runtime files ###

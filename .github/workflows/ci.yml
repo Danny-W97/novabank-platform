@@ -42,12 +42,12 @@ jobs:
         with:
           python-version: '3.12'
       - run: python3 -B scripts/ci/security_checks.py ${{ matrix.scan }}
-      - uses: actions/upload-artifact@v4
+      - uses: ./.github/actions/archive-results
         if: always()
         with:
           name: security-${{ matrix.scan }}
           path: target/security/*.json
-          retention-days: 14
+          retention-days: 7
 
   control-center-tests:
     name: Control Center Python and JavaScript
@@ -240,7 +240,7 @@ jobs:
 
       - name: Upload application logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/archive-results
         with:
           name: e2e-application-logs
           path: /tmp/*-e2e.log
@@ -263,12 +263,12 @@ jobs:
       - run: python3 -B scripts/ci/audit_extended_verify.py transport
       - if: github.event_name == 'workflow_dispatch'
         run: python3 -B scripts/ci/audit_extended_verify.py load
-      - uses: actions/upload-artifact@v4
+      - uses: ./.github/actions/archive-results
         if: always()
         with:
           name: audit-extended-evidence
           path: target/audit-extended/
-          retention-days: 14
+          retention-days: 7
 
   security-k4:
     name: K4 application authorization acceptance
@@ -286,12 +286,12 @@ jobs:
           python-version: '3.12'
       - name: Complete K4 policy, HTTP boundary and business evidence
         run: python3 -B scripts/ci/audit_extended_verify.py k4
-      - uses: actions/upload-artifact@v4
+      - uses: ./.github/actions/archive-results
         if: always()
         with:
           name: security-k4-evidence
           path: target/audit-extended/k4/
-          retention-days: 14
+          retention-days: 7
 
   package:
     name: Build delivery artifacts
@@ -312,9 +312,12 @@ jobs:
         run: |
           ./mvnw -B -ntp -DskipTests package
           ./mvnw -B -ntp -f shop-app/pom.xml -DskipTests package
+          test -s target/Bank-demo-0.0.1-SNAPSHOT.jar
+          test -s shop-app/target/shop-app-0.0.1-SNAPSHOT.jar
+          sha256sum target/Bank-demo-0.0.1-SNAPSHOT.jar shop-app/target/shop-app-0.0.1-SNAPSHOT.jar
 
       - name: Upload JAR artifacts
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/archive-results
         with:
           name: bank-demo-jars
           path: |
