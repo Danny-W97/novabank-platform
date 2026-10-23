@@ -4,10 +4,10 @@ import os
 from pathlib import Path
 import re
 import subprocess
-import time
 import unittest
 import uuid
 from payment_cases import PaymentCases,filters
+from postgres_test_support import wait_for_postgres
 
 DOCKER=['docker','--host','unix:///var/run/docker.sock']
 
@@ -15,7 +15,7 @@ DOCKER=['docker','--host','unix:///var/run/docker.sock']
 class PaymentCaseSqlTests(unittest.TestCase):
     @classmethod
     def sql(cls,text):
-        result=subprocess.run(DOCKER+['exec','-i',cls.container,'psql','-X','-qAt','-U','postgres','-v','ON_ERROR_STOP=1'],input=text,text=True,capture_output=True,timeout=30)
+        result=subprocess.run(DOCKER+['exec','-i',cls.container,'psql','-h','127.0.0.1','-X','-qAt','-U','postgres','-v','ON_ERROR_STOP=1'],input=text,text=True,capture_output=True,timeout=30)
         if result.returncode:raise AssertionError('Owned payment case SQL fixture failed: '+result.stderr)
         return result.stdout.strip()
     @classmethod
@@ -24,10 +24,7 @@ class PaymentCaseSqlTests(unittest.TestCase):
         cls.addClassCleanup(cls.cleanup)
         subprocess.run(DOCKER+['run','-d','--name',cls.container,'--network','none','--label','novabank.control.test=payment-cases-reader',
             '-e','POSTGRES_HOST_AUTH_METHOD=trust','postgres:18'],check=True,capture_output=True,timeout=30)
-        for _ in range(60):
-            if subprocess.run(DOCKER+['exec',cls.container,'pg_isready','-U','postgres'],capture_output=True,timeout=5).returncode==0:break
-            time.sleep(.2)
-        else:raise AssertionError('Owned fixture readiness timeout')
+        wait_for_postgres(DOCKER, cls.container)
         root=Path(__file__).resolve().parents[3]
         for migration in sorted((root/'shop-app/src/main/resources/db/migration').glob('V*__*.sql'),key=lambda p:int(re.match(r'V(\d+)',p.name)[1])):
             cls.sql(migration.read_text(encoding='utf8'))

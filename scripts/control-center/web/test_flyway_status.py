@@ -3,9 +3,9 @@ import os
 from pathlib import Path
 import sqlite3
 import subprocess
-import time
 import unittest
 import uuid
+from postgres_test_support import wait_for_postgres
 
 QUERY = (Path(__file__).resolve().parents[1] / 'flyway-status.sql').read_text(encoding='utf8')
 HISTORY = 'CREATE TABLE flyway_schema_history (installed_rank INTEGER PRIMARY KEY, version VARCHAR(50), success BOOLEAN NOT NULL);'
@@ -42,12 +42,7 @@ class FlywayStatusPostgresTests(unittest.TestCase):
         subprocess.run(cls.docker + ['run', '-d', '--name', cls.container, '--network', 'none',
                        '--label', 'novabank.control.test=flyway-status', '-e', 'POSTGRES_HOST_AUTH_METHOD=trust', 'postgres:18'],
                        check=True, capture_output=True, timeout=30)
-        for _ in range(60):
-            if subprocess.run(cls.docker + ['exec', cls.container, 'pg_isready', '-U', 'postgres'], capture_output=True, timeout=5).returncode == 0:
-                break
-            time.sleep(.2)
-        else:
-            raise AssertionError('Owned PostgreSQL readiness timeout')
+        wait_for_postgres(cls.docker, cls.container)
 
     @classmethod
     def cleanup(cls):
@@ -62,7 +57,7 @@ class FlywayStatusPostgresTests(unittest.TestCase):
                 if rows:
                     sql += ' INSERT INTO flyway_schema_history VALUES ' + rows + ';'
                 sql += QUERY + ' ROLLBACK;'
-                result = subprocess.run(self.docker + ['exec', '-i', self.container, 'psql', '-X', '-qAt', '-F', '\t', '-U', 'postgres', '-v', 'ON_ERROR_STOP=1'],
+                result = subprocess.run(self.docker + ['exec', '-i', self.container, 'psql', '-h', '127.0.0.1', '-X', '-qAt', '-F', '\t', '-U', 'postgres', '-v', 'ON_ERROR_STOP=1'],
                                         input=sql, text=True, capture_output=True, timeout=15)
                 self.assertEqual(0, result.returncode, result.stderr)
                 self.assertEqual(('postgres', *expected), tuple(result.stdout.strip().split('\t')))
