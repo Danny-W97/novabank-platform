@@ -141,7 +141,7 @@ Do not add .novabank files to the repository or commits. This local data may con
 
 If the project is elsewhere, run scripts from its directory. Scripts derive PROJECT_ROOT from their own location. Do not hard-code C:\Dysk D\stuff\Bank-demo into environment files. In IntelliJ, set Working directory to the project directory and point EnvFile to the current repository.
 
-### PostgreSQL, Redis and infrastructure startup
+### PostgreSQL, Redis, Mailpit and infrastructure startup
 
 Before starting applications, check containers:
 
@@ -152,7 +152,7 @@ docker ps
 Start the required services using configuration prepared for this project copy:
 
 ~~~bash
-docker compose --env-file .novabank/env/project.env --env-file .novabank/env/dev.env up -d postgres shop-postgres redis
+docker compose --env-file .novabank/env/project.env --env-file .novabank/env/dev.env up -d postgres shop-postgres redis mailpit
 ~~~
 
 Check status:
@@ -161,13 +161,37 @@ Check status:
 docker compose --env-file .novabank/env/project.env --env-file .novabank/env/dev.env ps
 ~~~
 
-Expect healthy for bank-postgres/shop-postgres and running for bank-redis. If a container is missing, check docker-compose.yaml, .env.example and .novabank/env/project.env. Do not run FLUSHALL on Redis or delete databases just because an application cannot find a Maven library.
+Expect healthy for bank-postgres, shop-postgres and bank-mailpit, and running for bank-redis. If a container is missing, check docker-compose.yaml, .env.example and .novabank/env/project.env. Do not run FLUSHALL on Redis or delete databases just because an application cannot find a Maven library.
 
 Local ports:
 
 - bank-postgres: 127.0.0.1:5300 -> PostgreSQL 5432;
 - shop-postgres: 127.0.0.1:5400 -> PostgreSQL 5432;
-- bank-redis: 127.0.0.1:6379 -> Redis 6379.
+- bank-redis: 127.0.0.1:6379 -> Redis 6379;
+- bank-mailpit (SMTP): 127.0.0.1:11026 -> Mailpit SMTP 1025;
+- bank-mailpit (Web UI): http://localhost:18026 -> Mailpit HTTP 8025.
+
+SMTP and Mailpit availability check:
+
+~~~bash
+docker exec bank-mailpit /mailpit readyz
+curl -fsS http://127.0.0.1:18026/livez
+~~~
+
+In PowerShell, verify the SMTP and Web UI listener ports with:
+
+~~~powershell
+Get-NetTCPConnection -LocalPort 11026,18026 -State Listen
+~~~
+
+#### Email delivery and bank account activation via Mailpit (DEV)
+
+In the `dev` profile, NovaBank sends emails over SMTP (`EMAIL_MODE=smtp`, `MAIL_HOST=localhost`, `MAIL_PORT=11026`, without username, password or TLS) to the dedicated `bank-mailpit` container backed by the `bank_mailpit_data` volume. Email bodies and verification tokens are never printed to IDE/console logs, and there is no fallback to logging email contents.
+
+- **Local test inbox:** any email sent by the bank in `dev` (even addressed to an external domain such as Gmail) is delivered exclusively to the local Mailpit web UI at <http://localhost:18026>, never to an external mailbox.
+- **Account activation:** login is blocked until the email address is verified. Open <http://localhost:18026>, open the "Potwierdź adres e-mail NovaBank" message and click **"Aktywuj konto bankowe"**. The activation link is single-use and valid for 24 hours.
+- **SMTP failure handling and resending the link:** if `bank-mailpit` was stopped during registration, the account is created as unverified and `/verify-email/sent` displays an SMTP delivery error instead of claiming the email was sent. After starting `bank-mailpit`, click **"Wyślij ponownie"** on `/verify-email/sent` to issue a fresh single-use link (invalidating previous tokens for that account) and deliver it to Mailpit.
+- **Restart required after configuration changes:** changing mail or port settings in `.novabank/env/dev.env` or `project.env` requires restarting the bank application (`Bank DEV` / `NovaBank DEV`).
 
 For database diagnostics, use the username from project.env and password from dev.env. Do not assume a postgres role exists in the container. This project often uses a dedicated POSTGRES_USER value. Example query:
 
@@ -228,7 +252,7 @@ Use the same settings for Shop DEV, except:
 
 You can start both processes through the NovaBank DEV compound configuration. Do not simultaneously start another bank/shop on the same ports.
 
-After changing BANK_API_KEY, BANK_API_URL, database passwords, TOTP keys, Stripe or monitoring settings, stop and restart both processes. A browser refresh does not reload Java process environment variables.
+After changing BANK_API_KEY, BANK_API_URL, SMTP mail settings (EMAIL_MODE, MAIL_HOST, MAIL_PORT, MAILPIT_UI_URL), database passwords, TOTP keys, Stripe or monitoring settings, stop and restart both processes. A browser refresh does not reload Java process environment variables.
 
 #### TEST
 
@@ -726,6 +750,7 @@ Infrastructure:
 | bank-postgres | bankdb database, bankuser user | 5300 |
 | shop-postgres | shopdb database, shopuser user | 5400 |
 | bank-redis | bank sessions, rate limiting, temporary data | 6379 |
+| bank-mailpit | local SMTP server and Web UI for NovaBank (bank_mailpit_data volume) | 11026 (SMTP), 18026 (Web UI) |
 
 WSL 2 provides Linux on Windows 11. Docker Engine, docker compose, Vault and Stripe CLI are used from WSL. The project path in WSL is:
 
@@ -838,9 +863,9 @@ Enter the project:
 
     cd "/mnt/c/Dysk D/stuff/Bank-demo"
 
-Start databases and Redis:
+Start databases, Redis and Mailpit:
 
-    docker compose --env-file .novabank/env/project.env --env-file .novabank/env/dev.env up -d postgres shop-postgres redis
+    docker compose --env-file .novabank/env/project.env --env-file .novabank/env/dev.env up -d postgres shop-postgres redis mailpit
 
 Check:
 
@@ -849,16 +874,17 @@ Check:
     docker exec bank-postgres pg_isready -U bankuser -d bankdb
     docker exec shop-postgres pg_isready -U shopuser -d shopdb
     docker exec bank-redis redis-cli ping
+    docker exec bank-mailpit /mailpit readyz
 
-Expected responses: accepting connections, accepting connections and PONG.
+Expected responses: accepting connections, accepting connections, PONG and exit code 0 for readyz.
 
 WSL ports:
 
-    ss -ltnp | grep -E ':5300|:5400|:6379'
+    ss -ltnp | grep -E ':5300|:5400|:6379|:11026|:18026'
 
 PowerShell ports:
 
-    Get-NetTCPConnection -LocalPort 5300,5400,6379 -State Listen
+    Get-NetTCPConnection -LocalPort 5300,5400,6379,11026,18026 -State Listen
 
 Stop without deleting data:
 
@@ -886,21 +912,40 @@ Create an account with email, password and the required details. In dev, emails 
 
 ### 4.2. Bank administrator
 
-Registration creates USER. AdminRoleInitializer assigns ADMIN based on the exact email configured as ADMIN_EMAIL.
+Registration (`/register`) creates a standard account with the `USER` role. The `ADMIN` role cannot be selected from the registration form.
 
-Dev sequence:
+Access to administrative functions and the admin panel (`/admin`) can be unlocked in two ways:
 
-1. Register the administrator at /register.
-2. Set ADMIN_EMAIL to that exact address in bank configuration.
-3. Restart the bank.
-4. Sign out and back in.
-5. Open administration:
+#### Option 1: Via the `ADMIN_EMAIL` configuration (official application path)
+
+1. Open `/register` and create an account (e.g. `admin@example.test`).
+2. Confirm the email address by clicking the activation link (in `dev`, check Mailpit at <http://localhost:18026>).
+3. Set `ADMIN_EMAIL` to that exact address in bank configuration:
+   * in `.novabank/env/dev.env`: `ADMIN_EMAIL=admin@example.test` (or in environment variables / `application.yaml`).
+4. Restart the bank application. On startup, `AdminRoleInitializer` automatically promotes the account to the `ADMIN` role.
+5. Sign in and open administration:
 
     http://localhost:8080/admin
 
-In prod, ADMIN_EMAIL must come from Vault. The account should exist before initialization; otherwise restart the bank after creating it.
+In `prod`, `ADMIN_EMAIL` must come from Vault. The account should exist before initialization; otherwise restart the bank after creating it.
 
-Administration supports user search, account blocking/activation/closure, invalidating user sessions, exchange rates, auditing and retention.
+#### Option 2: Direct database SQL update (fast path without restart in dev)
+
+You can assign the admin role directly in PostgreSQL using Docker CLI:
+
+    docker exec -it bank-postgres psql -U bankuser -d bankdb
+
+In psql:
+
+    UPDATE users SET role = 'ADMIN'
+    WHERE email = LOWER(BTRIM('admin@example.test'));
+
+    SELECT email, role, status FROM users
+    WHERE email = LOWER(BTRIM('admin@example.test'));
+
+Exit with `\q`, sign out and back in.
+
+Administration supports user search, account blocking/activation/closure, invalidating user sessions, updating exchange rates, operational auditing, and technical data retention (`/admin/data-retention`).
 
 ### 4.3. Shop account
 

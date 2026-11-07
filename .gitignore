@@ -76,3 +76,7 @@ replay_pid*
 
 ### Isolated CI tool dependencies ###
 **/node_modules/
+
+### Prompt notes ###
+Prompt*.md
+

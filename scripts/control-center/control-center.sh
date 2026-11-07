@@ -1259,6 +1259,7 @@ show_infrastructure_status() {
   for item in \
     'Bank API|http://127.0.0.1:8080/login' \
     'Sklep API|http://127.0.0.1:8081/api/products' \
+    'Mailpit UI|http://127.0.0.1:18026' \
     'Metryki banku|http://127.0.0.1:8082/actuator/health/readiness' \
     'Metryki sklepu|http://127.0.0.1:8083/actuator/health/readiness'; do
     local name="${item%%|*}"
@@ -1282,7 +1283,7 @@ docker_infrastructure_status() {
   compose_project ps
   printf '\nStan healthcheckow kontenerow:\n'
   local container health
-  for container in bank-postgres shop-postgres bank-redis; do
+  for container in bank-postgres shop-postgres bank-redis bank-mailpit; do
     health="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$container" 2>/dev/null || printf 'brak')"
     printf '  %-16s %s\n' "$container" "$health"
   done
@@ -1299,6 +1300,7 @@ docker_infrastructure_status() {
   docker exec bank-redis redis-cli ping 2>/dev/null | sed 's/^/  Redis: /' || printf '  Redis: BLAD\n'
   docker exec bank-postgres pg_isready -U "$bank_user" -d "$bank_db" 2>/dev/null | sed 's/^/  Bank PostgreSQL: /' || printf '  Bank PostgreSQL: BLAD\n'
   docker exec shop-postgres pg_isready -U "$shop_user" -d "$shop_db" 2>/dev/null | sed 's/^/  Shop PostgreSQL: /' || printf '  Shop PostgreSQL: BLAD\n'
+  docker exec bank-mailpit /mailpit readyz >/dev/null 2>&1 && printf '  Bank Mailpit:    OK (SMTP 127.0.0.1:11026, UI http://localhost:18026)\n' || printf '  Bank Mailpit:    BLAD\n'
 }
 
 start_project_databases() {
@@ -1308,28 +1310,29 @@ start_project_databases() {
   }
   check_docker_engine || return 1
   printf 'Compose uruchomi obrazy:\n'
-  printf '  postgres:18       -> bank-postgres i shop-postgres\n'
-  printf '  redis:7.4-alpine  -> bank-redis\n\n'
-  compose_project up -d postgres shop-postgres redis || return 1
+  printf '  postgres:18            -> bank-postgres i shop-postgres\n'
+  printf '  redis:7.4-alpine       -> bank-redis\n'
+  printf '  axllent/mailpit:v1.22  -> bank-mailpit (SMTP 11026, UI 18026)\n\n'
+  compose_project up -d postgres shop-postgres redis mailpit || return 1
   compose_project ps
 }
 
 restart_project_databases() {
   check_docker_engine || return 1
-  compose_project up -d postgres shop-postgres redis || return 1
-  compose_project restart postgres shop-postgres redis || return 1
+  compose_project up -d postgres shop-postgres redis mailpit || return 1
+  compose_project restart postgres shop-postgres redis mailpit || return 1
   compose_project ps
 }
 
 stop_project_databases() {
   check_docker_engine || return 1
-  printf 'Zatrzymuje tylko kontenery PostgreSQL i Redis. Wolumeny pozostaja bez zmian.\n'
-  compose_project stop postgres shop-postgres redis
+  printf 'Zatrzymuje kontenery PostgreSQL, Redis i Mailpit. Wolumeny pozostaja bez zmian.\n'
+  compose_project stop postgres shop-postgres redis mailpit
 }
 
 project_database_logs() {
   check_docker_engine || return 1
-  compose_project logs --tail=120 postgres shop-postgres redis
+  compose_project logs --tail=120 postgres shop-postgres redis mailpit
 }
 
 validate_project_compose() {

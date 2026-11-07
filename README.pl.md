@@ -42,6 +42,7 @@ NovaTech Shop obsługuje między innymi:
                  +----------------------+
 
   PostgreSQL bank :5300       PostgreSQL shop :5400       Redis :6379
+  Mailpit SMTP    :11026      Mailpit WWW     :18026
   Actuator bank   :8082       Actuator shop   :8083
 ```
 
@@ -100,10 +101,10 @@ Nie dodawaj katalogu `.novabank` do repozytorium. Może zawierać lokalne hasła
    python3 -B scripts/control-center/web/dev_env_layout.py prepare
    ```
 
-3. Uruchom infrastrukturę:
+3. Uruchom infrastrukturę (PostgreSQL, Redis oraz lokalną skrzynkę Mailpit `bank-mailpit`):
 
    ```bash
-    docker compose --env-file .novabank/env/project.env --env-file .novabank/env/dev.env up -d postgres shop-postgres redis
+    docker compose --env-file .novabank/env/project.env --env-file .novabank/env/dev.env up -d postgres shop-postgres redis mailpit
     docker compose --env-file .novabank/env/project.env --env-file .novabank/env/dev.env ps
    ```
 
@@ -122,7 +123,9 @@ Nie dodawaj katalogu `.novabank` do repozytorium. Może zawierać lokalne hasła
 Domyślne adresy:
 
 - bank: <http://localhost:8080/login>;
+- panel administratora banku: <http://localhost:8080/admin> (wymaga roli `ADMIN`);
 - sklep: <http://localhost:8081/novatech_shop.html>;
+- skrzynka pocztowa DEV (Mailpit): <http://localhost:18026>;
 - Actuator banku: <http://localhost:8082/actuator/health>;
 - Actuator sklepu: <http://localhost:8083/actuator/health>.
 
@@ -130,7 +133,21 @@ Lokalne porty infrastruktury są dostępne tylko na `127.0.0.1`:
 
 - bank PostgreSQL: `5300`;
 - shop PostgreSQL: `5400`;
-- Redis: `6379`.
+- Redis: `6379`;
+- Mailpit SMTP (`bank-mailpit`): `11026`;
+- Mailpit WWW (`bank-mailpit`): `18026`.
+
+### Odblokowanie uprawnień administratora
+
+Rejestracja przez formularze www tworzy standardowe konta z rolą `USER`. Aby odblokować panel administratora banku (`/admin`):
+1. Zarejestruj konto na `/register` i aktywuj je linkiem ze skrzynki Mailpit (<http://localhost:18026>).
+2. Nadaj rolę administratora:
+   * **Przez konfigurację**: ustaw `ADMIN_EMAIL=twoj_email@example.test` w `.novabank/env/dev.env` i zrestartuj aplikację banku, **lub**
+   * **Bez restartu (SQL w Dockerze)**:
+     ```bash
+     docker exec -it bank-postgres psql -U bankuser -d bankdb -c "UPDATE users SET role = 'ADMIN' WHERE email = 'twoj_email@example.test';"
+     ```
+3. Wyloguj się i zaloguj ponownie, po czym otwórz <http://localhost:8080/admin>. Szczegóły: [docs/General_Instruction.pl.md](docs/General_Instruction.pl.md#42-administrator-banku).
 
 ## Profile Spring
 

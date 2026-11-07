@@ -18,6 +18,8 @@ public class ProductionConfigurationValidator {
 
     private static void validate(Environment environment) {
         validateEmailMode(environment);
+        requireEnv(environment, "MAIL_HOST");
+        validateProductionSmtp(environment);
         requireEnv(environment, "POSTGRES_HOST");
         requireEnv(environment, "POSTGRES_PORT");
         requireEnv(environment, "POSTGRES_DB");
@@ -47,6 +49,25 @@ public class ProductionConfigurationValidator {
         var mode = environment.getProperty("app.email.mode", environment.getProperty("EMAIL_MODE", "log"));
         if (!"smtp".equalsIgnoreCase(mode.strip())) {
             throw new IllegalStateException("Profil prod wymaga app.email.mode=SMTP (EMAIL_MODE=SMTP); treść email nie może trafiać do logów.");
+        }
+    }
+
+    static void validateProductionSmtp(Environment environment) {
+        var host = environment.getProperty("spring.mail.host", environment.getProperty("MAIL_HOST", ""))
+                .strip()
+                .toLowerCase(java.util.Locale.ROOT);
+        if (host.isEmpty()
+                || "localhost".equals(host)
+                || "127.0.0.1".equals(host)
+                || "bank-mailpit".equals(host)
+                || host.contains("mailpit")) {
+            throw new IllegalStateException(
+                    "Profil prod wymaga rzeczywistego serwera SMTP (MAIL_HOST nie może wskazywać na lokalny Mailpit ani localhost).");
+        }
+        var port = environment.getProperty("spring.mail.port", environment.getProperty("MAIL_PORT", "587")).strip();
+        if ("11026".equals(port)) {
+            throw new IllegalStateException(
+                    "Profil prod nie może używać lokalnego portu deweloperskiego Mailpit (11026).");
         }
     }
 

@@ -5,11 +5,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "app.email")
 public class EmailProperties {
 
-    public enum Mode { LOG, SMTP }
+    public enum Mode { LOG, SMTP, NOOP }
 
-    private Mode mode = Mode.LOG;
+    private Mode mode = Mode.SMTP;
     private String from = "no-reply@novabank.local";
     private String baseUrl = "http://localhost:8080";
+    private String mailpitUrl = "http://localhost:18026";
 
     public String getMode() {
         return mode.name();
@@ -40,5 +41,13 @@ public class EmailProperties {
 
     public void setBaseUrl(String baseUrl) {
         this.baseUrl = baseUrl;
+    }
+
+    public String getMailpitUrl() {
+        return mailpitUrl;
+    }
+
+    public void setMailpitUrl(String mailpitUrl) {
+        this.mailpitUrl = mailpitUrl;
     }
 }

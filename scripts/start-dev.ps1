@@ -55,10 +55,10 @@ if (-not (Get-Command mvn.cmd -ErrorAction SilentlyContinue)) {
 }
 
 if (-not $SkipInfrastructureCheck) {
-    $requiredPorts = @(5300, 5400, 6379)
+    $requiredPorts = @(5300, 5400, 6379, 11026)
     $unavailablePorts = @($requiredPorts | Where-Object { -not (Test-LocalPort -Port $_) })
     if ($unavailablePorts.Length -gt 0) {
-        throw "Brak dostepnej infrastruktury WSL 2 na portach: $($unavailablePorts -join ', '). Uruchom PostgreSQL i Redis albo uzyj -SkipInfrastructureCheck."
+        throw "Brak dostepnej infrastruktury WSL 2 na portach: $($unavailablePorts -join ', '). Uruchom PostgreSQL, Redis i Mailpit (bank-mailpit) albo uzyj -SkipInfrastructureCheck."
     }
 }
 
@@ -109,4 +109,5 @@ Start-Process powershell.exe -ArgumentList @(
 Write-Host "Uruchomiono bank i shop-app w profilu dev."
 Write-Host "Klucz API jest tymczasowy; klucz szyfrowania TOTP jest stabilny i pochodzi z .novabank/env/dev.env."
 Write-Host "Bank: http://localhost:8080"
+Write-Host "Mailpit (skrzynka DEV): http://localhost:18026 (SMTP: 127.0.0.1:11026)"
 Write-Host "Sklep: http://localhost:8081/novatech_shop.html"

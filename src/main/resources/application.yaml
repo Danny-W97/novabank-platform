@@ -32,15 +32,33 @@ spring:
   flyway:
     enabled: true
 
+  mail:
+    host: "${MAIL_HOST:localhost}"
+    port: "${MAIL_PORT:11026}"
+    username: "${MAIL_USERNAME:}"
+    password: "${MAIL_PASSWORD:}"
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: "${MAIL_SMTP_AUTH:false}"
+          starttls:
+            enable: "${MAIL_SMTP_STARTTLS:false}"
+            required: "${MAIL_SMTP_STARTTLS_REQUIRED:false}"
+          connectiontimeout: "${MAIL_SMTP_CONNECTION_TIMEOUT:5000}"
+          timeout: "${MAIL_SMTP_TIMEOUT:5000}"
+          writetimeout: "${MAIL_SMTP_WRITE_TIMEOUT:5000}"
+
 app:
   history:
     export-max-rows: "${HISTORY_EXPORT_MAX_ROWS:1000}"
   database:
     transaction-timeout-seconds: "${DB_TRANSACTION_TIMEOUT_SECONDS:15}"
   email:
-    mode: "${EMAIL_MODE:log}"
+    mode: "${EMAIL_MODE:smtp}"
     from: "${EMAIL_FROM:no-reply@novabank.local}"
     base-url: "${APP_PUBLIC_BASE_URL:http://localhost:8080}"
+    mailpit-url: "${MAILPIT_UI_URL:http://localhost:18026}"
   security:
     totp-encryption-keys: "${TOTP_ENCRYPTION_KEYS:}"
     totp-encryption-active-id: "${TOTP_ENCRYPTION_ACTIVE_ID:current}"

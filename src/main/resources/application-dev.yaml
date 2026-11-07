@@ -9,6 +9,18 @@ spring:
     redis:
       host: "${REDIS_HOST:localhost}"
       port: "${REDIS_PORT:6379}"
+  mail:
+    host: "${MAIL_HOST:localhost}"
+    port: "${MAIL_PORT:11026}"
+    username: "${MAIL_USERNAME:}"
+    password: "${MAIL_PASSWORD:}"
+    properties:
+      mail:
+        smtp:
+          auth: "${MAIL_SMTP_AUTH:false}"
+          starttls:
+            enable: "${MAIL_SMTP_STARTTLS:false}"
+            required: "${MAIL_SMTP_STARTTLS_REQUIRED:false}"
 
 logging:
   file:
@@ -36,6 +48,11 @@ management:
       environment: dev
 
 app:
+  email:
+    mode: "${EMAIL_MODE:smtp}"
+    from: "${EMAIL_FROM:no-reply@novabank.local}"
+    base-url: "${APP_PUBLIC_BASE_URL:http://localhost:8080}"
+    mailpit-url: "${MAILPIT_UI_URL:http://localhost:18026}"
   certificate-monitor:
     enabled: false
   payment-authorization:

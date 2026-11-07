@@ -28,6 +28,8 @@ management:
       environment: test
 
 app:
+  email:
+    mode: "${TEST_EMAIL_MODE:noop}"
   certificate-monitor:
     enabled: false
   security:

@@ -31,6 +31,9 @@ FIELDS = (
     ("SHOP_POSTGRES_PASSWORD", "Hasło bazy sklepu", "Baza sklepu", "secret", "", "dev", True),
     ("REDIS_HOST", "Host Redis", "Redis", "host", "localhost", "project", False),
     ("REDIS_PORT", "Port Redis", "Redis", "port", "6379", "project", False),
+    ("MAILPIT_SMTP_PORT", "Port SMTP Mailpit", "Poczta DEV (Mailpit)", "port", "11026", "project", False),
+    ("MAILPIT_HTTP_PORT", "Port skrzynki Mailpit (WWW)", "Poczta DEV (Mailpit)", "port", "18026", "project", False),
+    ("MAIL_HOST", "Host SMTP banku", "Poczta DEV (Mailpit)", "host", "localhost", "dev", False),
     ("BANK_APP_PORT", "Port banku", "Aplikacje i płatności", "port", "8080", "dev", False),
     ("SHOP_APP_PORT", "Port sklepu", "Aplikacje i płatności", "port", "8081", "dev", False),
     ("BANK_MANAGEMENT_PORT", "Port Actuator banku", "Monitoring", "port", "8082", "dev", False),
@@ -239,6 +242,12 @@ class DevConfiguration:
                 changes["dev"]["BANK_API_URL"] = f"http://localhost:{candidate['BANK_APP_PORT']}"
             if candidate["SHOP_APP_PORT"] != effective.get("SHOP_APP_PORT", "8081") or not real(effective.get("SHOP_PAYMENT_CALLBACK_URL", "")):
                 changes["dev"]["SHOP_PAYMENT_CALLBACK_URL"] = f"http://localhost:{candidate['SHOP_APP_PORT']}/payment/callback"
+            if not real(effective.get("EMAIL_MODE", "")):
+                changes["dev"]["EMAIL_MODE"] = "smtp"
+            if candidate["MAILPIT_SMTP_PORT"] != effective.get("MAILPIT_SMTP_PORT", "11026") or not real(effective.get("MAIL_PORT", "")):
+                changes["dev"]["MAIL_PORT"] = candidate["MAILPIT_SMTP_PORT"]
+            if candidate["MAILPIT_HTTP_PORT"] != effective.get("MAILPIT_HTTP_PORT", "18026") or not real(effective.get("MAILPIT_UI_URL", "")):
+                changes["dev"]["MAILPIT_UI_URL"] = f"http://localhost:{candidate['MAILPIT_HTTP_PORT']}"
             new = {name: upsert(raw if raw is not None else b"# Konfiguracja lokalna Control Center. Tylko DEV; nie commituj.\n", changes[name]) for name, raw in canonical.items()}
             self.commit(original, new)
             result = self.state()

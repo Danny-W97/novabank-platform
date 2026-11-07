@@ -20,4 +20,19 @@ class EmailModeSecurityTest {
                 .isInstanceOf(IllegalStateException.class);
         ProductionConfigurationValidator.validateEmailMode(new MockEnvironment().withProperty("app.email.mode", "SMTP"));
     }
+
+    @Test void productionRejectsLocalMailpitAndRequiresRealSmtpHost() {
+        for (var host : java.util.List.of("", "localhost", "127.0.0.1", "bank-mailpit", "mailpit.local")) {
+            assertThatThrownBy(() -> ProductionConfigurationValidator.validateProductionSmtp(
+                    new MockEnvironment().withProperty("MAIL_HOST", host).withProperty("MAIL_PORT", "587")))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("rzeczywistego serwera SMTP");
+        }
+        assertThatThrownBy(() -> ProductionConfigurationValidator.validateProductionSmtp(
+                new MockEnvironment().withProperty("MAIL_HOST", "smtp.novabank.pl").withProperty("MAIL_PORT", "11026")))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("11026");
+        ProductionConfigurationValidator.validateProductionSmtp(
+                new MockEnvironment().withProperty("MAIL_HOST", "smtp.novabank.pl").withProperty("MAIL_PORT", "587"));
+    }
 }

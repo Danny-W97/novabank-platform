@@ -5,7 +5,11 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import org.demo.bankdemo.audit.LoginHistoryService;
+import org.demo.bankdemo.config.EmailProperties;
 import org.demo.bankdemo.profile.TwoFactorService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -22,11 +26,40 @@ import java.nio.charset.StandardCharsets;
 @Controller
 public class AuthController {
 
+    private static final String VERIFICATION_DELIVERY_ERROR_MESSAGE =
+            "Nie udało się wysłać wiadomości e-mail z linkiem aktywacyjnym (serwer pocztowy SMTP jest niedostępny). "
+                    + "Konto zostało utworzone i oczekuje na potwierdzenie — upewnij się, że usługa pocztowa (w DEV: Mailpit) działa, "
+                    + "a następnie kliknij „Wyślij ponownie”.";
+    private static final String RESET_DELIVERY_ERROR_MESSAGE =
+            "Nie udało się wysłać wiadomości e-mail z instrukcją resetu hasła (serwer pocztowy SMTP jest niedostępny). "
+                    + "Spróbuj ponownie za chwilę.";
+
     private final RegistrationService registrationService;
     private final TwoFactorService twoFactorService;
     private final TwoFactorLoginService twoFactorLoginService;
     private final EmailTokenService emailTokenService;
     private final LoginHistoryService loginHistoryService;
+    private final EmailProperties emailProperties;
+    private final Environment environment;
+
+    @Autowired
+    public AuthController(
+            RegistrationService registrationService,
+            TwoFactorService twoFactorService,
+            TwoFactorLoginService twoFactorLoginService,
+            EmailTokenService emailTokenService,
+            LoginHistoryService loginHistoryService,
+            EmailProperties emailProperties,
+            Environment environment
+    ) {
+        this.registrationService = registrationService;
+        this.twoFactorService = twoFactorService;
+        this.twoFactorLoginService = twoFactorLoginService;
+        this.emailTokenService = emailTokenService;
+        this.loginHistoryService = loginHistoryService;
+        this.emailProperties = emailProperties;
+        this.environment = environment;
+    }
 
     public AuthController(
             RegistrationService registrationService,
@@ -35,11 +68,8 @@ public class AuthController {
             EmailTokenService emailTokenService,
             LoginHistoryService loginHistoryService
     ) {
-        this.registrationService = registrationService;
-        this.twoFactorService = twoFactorService;
-        this.twoFactorLoginService = twoFactorLoginService;
-        this.emailTokenService = emailTokenService;
-        this.loginHistoryService = loginHistoryService;
+        this(registrationService, twoFactorService, twoFactorLoginService, emailTokenService,
+                loginHistoryService, new EmailProperties(), null);
     }
 
     @GetMapping("/login/2fa")
@@ -108,7 +138,8 @@ public class AuthController {
     @PostMapping("/register")
     String register(
             @Valid @ModelAttribute RegistrationForm registrationForm,
-            BindingResult bindingResult
+            BindingResult bindingResult,
+            RedirectAttributes redirectAttributes
     ) {
         if (!registrationForm.passwordsMatch()) {
             bindingResult.rejectValue(
@@ -131,6 +162,11 @@ public class AuthController {
                     "Nie można utworzyć konta dla podanego adresu e-mail."
             );
             return "auth/register";
+        } catch (EmailDeliveryException exception) {
+            redirectAttributes.addFlashAttribute(
+                    "verificationDeliveryError",
+                    VERIFICATION_DELIVERY_ERROR_MESSAGE
+            );
         }
 
         return "redirect:/verify-email/sent?email="
@@ -143,6 +179,9 @@ public class AuthController {
             Model model
     ) {
         model.addAttribute("email", email);
+        if (isDevMailpitVisible()) {
+            model.addAttribute("mailpitUrl", emailProperties.getMailpitUrl());
+        }
         return "auth/check-email";
     }
 
@@ -151,13 +190,33 @@ public class AuthController {
             @RequestParam(value = "email", required = false, defaultValue = "") String email,
             RedirectAttributes redirectAttributes
     ) {
-        emailTokenService.resendVerification(email);
-        redirectAttributes.addFlashAttribute(
-                "verificationSent",
-                "Jeśli konto wymaga potwierdzenia, wysłaliśmy nowy link."
-        );
+        try {
+            emailTokenService.resendVerification(email);
+            redirectAttributes.addFlashAttribute(
+                    "verificationSent",
+                    "Jeśli konto wymaga potwierdzenia, wysłaliśmy nowy link."
+            );
+        } catch (EmailDeliveryException exception) {
+            redirectAttributes.addFlashAttribute(
+                    "verificationDeliveryError",
+                    VERIFICATION_DELIVERY_ERROR_MESSAGE
+            );
+        }
         return "redirect:/verify-email/sent?email="
                 + URLEncoder.encode(email.strip(), StandardCharsets.UTF_8);
+    }
+
+    private boolean isDevMailpitVisible() {
+        if (emailProperties == null
+                || emailProperties.getMailpitUrl() == null
+                || emailProperties.getMailpitUrl().isBlank()) {
+            return false;
+        }
+        if (environment == null) {
+            return false;
+        }
+        return environment.acceptsProfiles(Profiles.of("dev"))
+                && !environment.acceptsProfiles(Profiles.of("prod"));
     }
 
     @GetMapping("/verify-email")
@@ -187,11 +246,18 @@ public class AuthController {
             @RequestParam(value = "email", required = false, defaultValue = "") String email,
             RedirectAttributes redirectAttributes
     ) {
-        emailTokenService.requestPasswordReset(email);
-        redirectAttributes.addFlashAttribute(
-                "resetRequested",
-                "Jeśli podany adres istnieje, wysłaliśmy instrukcję resetowania hasła."
-        );
+        try {
+            emailTokenService.requestPasswordReset(email);
+            redirectAttributes.addFlashAttribute(
+                    "resetRequested",
+                    "Jeśli podany adres istnieje, wysłaliśmy instrukcję resetowania hasła."
+            );
+        } catch (EmailDeliveryException exception) {
+            redirectAttributes.addFlashAttribute(
+                    "resetDeliveryError",
+                    RESET_DELIVERY_ERROR_MESSAGE
+            );
+        }
         return "redirect:/password/forgot";
     }
 

@@ -67,7 +67,7 @@ public class EmailTokenService {
                 emailDeliveryService, userSessionService, clock, null);
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = EmailDeliveryException.class)
     public void issueVerification(User user) {
         if (user.isEmailVerified()) {
             return;
@@ -79,7 +79,7 @@ public class EmailTokenService {
                 hash(rawToken),
                 Instant.now(clock).plus(VERIFICATION_LIFETIME)
         ));
-        deliverSafely(() -> emailDeliveryService.sendVerification(user.getEmail(), rawToken));
+        emailDeliveryService.sendVerification(user.getEmail(), rawToken);
     }
 
     @Transactional
@@ -95,14 +95,14 @@ public class EmailTokenService {
         return true;
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = EmailDeliveryException.class)
     public void resendVerification(String email) {
         userRepository.findByEmail(RegistrationService.normalizeEmail(email))
                 .filter(user -> !user.isEmailVerified())
                 .ifPresent(this::issueVerification);
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = EmailDeliveryException.class)
     public void requestPasswordReset(String email) {
         userRepository.findByEmail(RegistrationService.normalizeEmail(email))
                 .ifPresent(user -> {
@@ -113,7 +113,7 @@ public class EmailTokenService {
                             hash(rawToken),
                             Instant.now(clock).plus(RESET_LIFETIME)
                     ));
-                    deliverSafely(() -> emailDeliveryService.sendPasswordReset(user.getEmail(), rawToken));
+                    emailDeliveryService.sendPasswordReset(user.getEmail(), rawToken);
                 });
     }
 
@@ -134,14 +134,6 @@ public class EmailTokenService {
                     user.getEmail(),
                     "Haslo do konta zostalo zresetowane. Jezeli to nie Ty wykonales te operacje, skontaktuj sie z bankiem."
             );
-        }
-    }
-
-    private void deliverSafely(Runnable delivery) {
-        try {
-            delivery.run();
-        } catch (RuntimeException exception) {
-            System.err.println("Nie udało się wysłać wiadomości e-mail: " + exception.getMessage());
         }
     }
 

@@ -29,7 +29,7 @@ TEST_KEYS = {
 }
 SECRET = re.compile(r"password|secret|token|api.?keys?|encryption.?key|account|merchant", re.I)
 RISK = re.compile(r"PASSWORD|SECRET|API_KEYS?$|TOTP_ENCRYPTION_(?:KEY|ACTIVE_ID)|MERCHANT_ID|API_KEY_MERCHANTS|PAYMENT_MERCHANTS|POSTGRES_(?:DB|USER)")
-PREFIX = re.compile(r"^(?:POSTGRES_|SHOP_|BANK_|REDIS_|METRICS_|TOTP_|GRAFANA_|MANAGEMENT_)")
+PREFIX = re.compile(r"^(?:POSTGRES_|SHOP_|BANK_|REDIS_|MAIL_|EMAIL_|MAILPIT_|METRICS_|TOTP_|GRAFANA_|MANAGEMENT_)")
 BLOCKED = re.compile(r"(?:^|_)(?:PROD|VAULT|SSL|TLS|KEYSTORE|TRUSTSTORE)(?:_|$)")
 
 
@@ -89,7 +89,9 @@ def validate_entry(key, value, file):
     if key.endswith("PORT"):
         if not re.fullmatch(r"[0-9]{1,5}", value) or not 1024 <= int(value) <= 65535:
             raise ValueError(f"Pole {key}: wymagany port 1024–65535.")
-    if key in ("BANK_API_URL", "SHOP_PAYMENT_CALLBACK_URL", "TEST_BANK_BASE_URL"):
+    if key == "EMAIL_MODE" and value.lower() != "smtp":
+        raise ValueError("Pole EMAIL_MODE: w DEV dozwolony jest wyłącznie tryb smtp.")
+    if key in ("BANK_API_URL", "SHOP_PAYMENT_CALLBACK_URL", "TEST_BANK_BASE_URL", "MAILPIT_UI_URL"):
         if not re.fullmatch(r"http://(?:localhost|127\.0\.0\.1):[0-9]{4,5}(?:/[A-Za-z0-9/_-]*)?", value):
             raise ValueError(f"Pole {key}: wymagany lokalny adres HTTP z portem.")
     if file == "test" and key.endswith("POSTGRES_URL"):
@@ -218,9 +220,11 @@ class ConfigurationFiles:
                     new["monitoring"] = upsert(original["monitoring"], metrics)
             if file in ("project", "dev"):
                 derived = {}
-                for port, url, suffix in (("BANK_APP_PORT", "BANK_API_URL", ""), ("SHOP_APP_PORT", "SHOP_PAYMENT_CALLBACK_URL", "/payment/callback")):
+                for port, url, suffix in (("BANK_APP_PORT", "BANK_API_URL", ""), ("SHOP_APP_PORT", "SHOP_PAYMENT_CALLBACK_URL", "/payment/callback"), ("MAILPIT_HTTP_PORT", "MAILPIT_UI_URL", "")):
                     if port in values and url not in values:
                         derived[url] = "http://localhost:" + values[port] + suffix
+                if "MAILPIT_SMTP_PORT" in values and "MAIL_PORT" not in values:
+                    derived["MAIL_PORT"] = values["MAILPIT_SMTP_PORT"]
                 if derived:
                     new["dev"] = upsert(new.get("dev", original["dev"]) or b"# Ustawienia DEV.\n", derived)
                 effective = assignments(new.get("project", original["project"]) or b"") | assignments(new.get("dev", original["dev"]) or b"")

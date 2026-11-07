@@ -173,7 +173,7 @@ def java_executable() -> str | None:
 
 
 def clean_environment() -> dict[str, str]:
-    prefixes = ("SPRING_", "BANK_", "SHOP_", "POSTGRES_", "REDIS_", "VAULT_", "TOTP_", "SERVER_", "MANAGEMENT_", "TEST_")
+    prefixes = ("SPRING_", "BANK_", "SHOP_", "POSTGRES_", "REDIS_", "MAIL_", "EMAIL_", "MAILPIT_", "VAULT_", "TOTP_", "SERVER_", "MANAGEMENT_", "TEST_")
     removed = {"JAVA_TOOL_OPTIONS", "JDK_JAVA_OPTIONS", "_JAVA_OPTIONS", "MAVEN_ARGS", "MAVEN_OPTS",
                "BASH_ENV", "ENV", "ENV_FILE", "BACKUP_DIR", "BANK_DUMP", "SHOP_DUMP", "NOVABANK_WEB_MODE",
                "DEFAULT_BACKUP_DIR", "BACKUP_DELETE_OLD", "BACKUP_RETENTION_DAYS", "NOVABANK_WEB_TIMER_DRY_RUN", "NOVABANK_WEB_MIGRATION_ID"}
@@ -818,7 +818,8 @@ def service_status(panel: Panel, profile: str) -> dict:
     settings = env_values(panel.root / ".novabank/env/project.env") | env_values(panel.root / ".novabank/env/dev.env")
     services = [("NovaBank", "BANK_APP_PORT", 8080, "Aplikacja"), ("NovaTech Shop", "SHOP_APP_PORT", 8081, "Aplikacja"),
                 ("PostgreSQL · bank", "POSTGRES_PORT", 5300, "Infrastruktura"), ("PostgreSQL · sklep", "SHOP_POSTGRES_PORT", 5400, "Infrastruktura"),
-                ("Redis", "REDIS_PORT", 6379, "Infrastruktura"), ("Prometheus", "", 9090, "Monitoring"), ("Grafana", "", 3000, "Monitoring")]
+                ("Redis", "REDIS_PORT", 6379, "Infrastruktura"), ("Mailpit · SMTP", "MAILPIT_SMTP_PORT", 11026, "Infrastruktura"),
+                ("Mailpit · WWW", "MAILPIT_HTTP_PORT", 18026, "Infrastruktura"), ("Prometheus", "", 9090, "Monitoring"), ("Grafana", "", 3000, "Monitoring")]
 
     def probe(item: tuple) -> dict:
         name, key, default, group = item

@@ -63,4 +63,16 @@ for (const profile of ['test', 'prod']) {
 context.state.profile = 'dev'; context.renderServices(data);
 assert.equal(tile.classList.contains('hidden'), false);
 assert.equal(tile.open, false, 'returning to DEV starts with a collapsed chooser');
+const mailpitData = {
+  services: [
+    {name: 'NovaBank', port: 8080, group: 'Aplikacja', up: true},
+    {name: 'NovaTech Shop', port: 8081, group: 'Aplikacja', up: true},
+    {name: 'Mailpit · WWW', port: 18026, group: 'Infrastruktura', up: true}
+  ],
+  note: 'Synthetic status', checked: '2026-10-22'
+};
+context.renderServices(mailpitData);
+assert.equal($('app-links').children.length, 3, 'mailpit link is rendered alongside bank and shop');
+assert.equal($('app-links').children[2].href, 'http://localhost:18026');
+assert.equal($('app-links').children[2].className, 'app-link app-link-mailpit');
 console.log('Monitoring tile: placement, three local new-tab links, no auto-start, stable refresh and DEV profile guard — OK');

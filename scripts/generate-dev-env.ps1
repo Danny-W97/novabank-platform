@@ -81,6 +81,10 @@ else {
 
 $updates = [ordered]@{
     SPRING_PROFILES_ACTIVE = "dev"
+    EMAIL_MODE = $(if ($null -ne (Get-ExistingValue "EMAIL_MODE")) { Get-ExistingValue "EMAIL_MODE" } else { "smtp" })
+    MAIL_HOST = $(if ($null -ne (Get-ExistingValue "MAIL_HOST")) { Get-ExistingValue "MAIL_HOST" } else { "localhost" })
+    MAIL_PORT = $(if ($null -ne (Get-ExistingValue "MAIL_PORT")) { Get-ExistingValue "MAIL_PORT" } else { "11026" })
+    MAILPIT_UI_URL = $(if ($null -ne (Get-ExistingValue "MAILPIT_UI_URL")) { Get-ExistingValue "MAILPIT_UI_URL" } else { "http://localhost:18026" })
     BANK_API_KEY = $secret
     BANK_API_KEY_ID = $(if ($null -ne (Get-ExistingValue "BANK_API_KEY_ID")) { Get-ExistingValue "BANK_API_KEY_ID" } else { "legacy" })
     BANK_API_KEYS = $(if ($null -ne (Get-ExistingValue "BANK_API_KEYS")) { Get-ExistingValue "BANK_API_KEYS" } else { "" })

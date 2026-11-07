@@ -192,7 +192,11 @@ function renderServices(data) {
   for (const [id, group] of [['apps-count', 'Aplikacja'], ['infra-count', 'Infrastruktura']]) {const services = data.services.filter(service => service.group === group); $(id).textContent = services.length ? `${services.filter(service => service.up).length} / ${services.length}` : '—';}
   $('status-note').textContent = data.note; $('checked-at').textContent = date(data.checked);
   $('app-links').replaceChildren();
-  if (state.profile === 'dev') for (const [name, path, label, kind, description] of [['NovaBank', '/login', 'Otwórz bank', 'bank', 'Panel klienta'], ['NovaTech Shop', '/novatech_shop.html', 'Otwórz sklep', 'shop', 'NovaTech Shop']]) {
+  if (state.profile === 'dev') for (const [name, path, label, kind, description] of [
+    ['NovaBank', '/login', 'Otwórz bank', 'bank', 'Panel klienta'],
+    ['NovaTech Shop', '/novatech_shop.html', 'Otwórz sklep', 'shop', 'NovaTech Shop'],
+    ['Mailpit · WWW', '', 'Otwórz Mailpit', 'mailpit', 'Skrzynka pocztowa DEV']
+  ]) {
     const service = data.services.find(item => item.name === name);
     if (service?.port) {
       const link = el('a', '', `app-link app-link-${kind}`);
@@ -202,7 +206,7 @@ function renderServices(data) {
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       for (const [attribute, value] of Object.entries({viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.7', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', focusable: 'false'})) svg.setAttribute(attribute, value);
       const drawing = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      drawing.setAttribute('d', kind === 'bank' ? 'M3 10h18M4 21h16M6 10v8m6-8v8m6-8v8M3 7l9-4 9 4v3H3z' : 'M5 7h14l1 14H4L5 7zM8 8V6a4 4 0 0 1 8 0v2');
+      drawing.setAttribute('d', kind === 'bank' ? 'M3 10h18M4 21h16M6 10v8m6-8v8m6-8v8M3 7l9-4 9 4v3H3z' : kind === 'shop' ? 'M5 7h14l1 14H4L5 7zM8 8V6a4 4 0 0 1 8 0v2' : 'M3 6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6zM3 7l9 6 9-6');
       svg.append(drawing); icon.append(svg);
       const content = el('span', '', 'app-link-content'); content.append(el('strong', label), el('small', description));
       const arrow = el('span', '↗', 'app-link-arrow'); arrow.setAttribute('aria-hidden', 'true');

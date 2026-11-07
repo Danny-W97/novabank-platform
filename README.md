@@ -42,6 +42,7 @@ NovaTech Shop includes, among other features:
                  +----------------------+
 
   Bank PostgreSQL :5300       Shop PostgreSQL :5400       Redis :6379
+  Mailpit SMTP    :11026      Mailpit Web UI  :18026
   Bank Actuator   :8082       Shop Actuator   :8083
 ```
 
@@ -94,10 +95,10 @@ Do not commit `.novabank`. It may contain local passwords, keys, certificates, t
 1. Use `bash ./scripts/start.sh` → **Konfiguracja DEV**, or `python3 -B scripts/control-center/web/dev_env_layout.py prepare` in WSL. Do not copy the mixed legacy `.env.example` into `project.env`.
 2. `project.env` owns non-sensitive local infrastructure settings; `dev.env` owns DEV passwords, keys and application settings. Each key has one owner. Existing conflicts stop automatic setup; see [configuration conflict handling](docs/General_Instruction.md#manual-conflict).
 
-3. Start the infrastructure:
+3. Start the infrastructure (PostgreSQL, Redis and the dedicated `bank-mailpit` container):
 
    ```bash
-    docker compose --env-file .novabank/env/project.env --env-file .novabank/env/dev.env up -d postgres shop-postgres redis
+    docker compose --env-file .novabank/env/project.env --env-file .novabank/env/dev.env up -d postgres shop-postgres redis mailpit
     docker compose --env-file .novabank/env/project.env --env-file .novabank/env/dev.env ps
    ```
 
@@ -106,7 +107,9 @@ Do not commit `.novabank`. It may contain local passwords, keys, certificates, t
 Default addresses:
 
 - bank: <http://localhost:8080/login>;
+- bank administration: <http://localhost:8080/admin> (requires `ADMIN` role);
 - shop: <http://localhost:8081/novatech_shop.html>;
+- DEV mail inbox (Mailpit): <http://localhost:18026>;
 - bank Actuator: <http://localhost:8082/actuator/health>;
 - shop Actuator: <http://localhost:8083/actuator/health>.
 
@@ -114,7 +117,21 @@ Local infrastructure ports are available only on `127.0.0.1`:
 
 - bank PostgreSQL: `5300`;
 - shop PostgreSQL: `5400`;
-- Redis: `6379`.
+- Redis: `6379`;
+- Mailpit SMTP (`bank-mailpit`): `11026`;
+- Mailpit Web UI (`bank-mailpit`): `18026`.
+
+### Unlocking administrator privileges
+
+Registration via web forms creates regular accounts with the `USER` role. To unlock the bank administration panel (`/admin`):
+1. Register an account at `/register` and activate it via the verification link in Mailpit (<http://localhost:18026>).
+2. Assign the administrator role:
+   * **Via configuration**: set `ADMIN_EMAIL=your_email@example.test` in `.novabank/env/dev.env` and restart the bank application, **or**
+   * **Without restart (SQL in Docker)**:
+     ```bash
+     docker exec -it bank-postgres psql -U bankuser -d bankdb -c "UPDATE users SET role = 'ADMIN' WHERE email = 'your_email@example.test';"
+     ```
+3. Sign out and back in, then open <http://localhost:8080/admin>. Full instructions: [docs/General_Instruction.md](docs/General_Instruction.md#42-bank-administrator).
 
 ## Spring profiles
 

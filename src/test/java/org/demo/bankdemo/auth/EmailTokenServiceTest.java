@@ -20,9 +20,11 @@ class EmailTokenServiceTest {
     private final PasswordResetTokenRepository resets = mock(PasswordResetTokenRepository.class);
     private final PasswordEncoder encoder = mock(PasswordEncoder.class);
     private final UserSessionService sessions = mock(UserSessionService.class);
+    private final UserRepository users = mock(UserRepository.class);
+    private final EmailDeliveryService delivery = mock(EmailDeliveryService.class);
     private final Instant now = Instant.parse("2026-10-16T10:00:00Z");
     private final EmailTokenService service = new EmailTokenService(verification, resets,
-            mock(UserRepository.class), encoder, mock(EmailDeliveryService.class), sessions,
+            users, encoder, delivery, sessions,
             Clock.fixed(now, ZoneOffset.UTC));
 
     @Test
@@ -61,5 +63,21 @@ class EmailTokenServiceTest {
         assertThatThrownBy(() -> service.verifyEmail("synthetic-token"))
                 .isInstanceOf(IllegalArgumentException.class);
         verifyNoInteractions(user);
+    }
+
+    @Test
+    void smtpDeliveryFailurePropagatesFromIssueAndResendVerification() {
+        var user = mock(User.class);
+        when(user.getId()).thenReturn(42L);
+        when(user.getEmail()).thenReturn("klient@example.pl");
+        when(user.isEmailVerified()).thenReturn(false);
+        when(users.findByEmail("klient@example.pl")).thenReturn(Optional.of(user));
+        doThrow(new EmailDeliveryException("SMTP down"))
+                .when(delivery).sendVerification(eq("klient@example.pl"), anyString());
+
+        assertThatThrownBy(() -> service.resendVerification("  Klient@Example.pl "))
+                .isInstanceOf(EmailDeliveryException.class);
+        verify(verification).deleteAllByUserId(42L);
+        verify(verification).save(any(EmailVerificationToken.class));
     }
 }

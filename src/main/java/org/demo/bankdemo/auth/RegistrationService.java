@@ -46,7 +46,7 @@ public class RegistrationService {
         this.emailTokenService = emailTokenService;
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = EmailDeliveryException.class)
     public RegistrationResult register(RegistrationForm form) {
         if (!form.passwordsMatch()) {
             throw new IllegalArgumentException("Hasła nie są zgodne.");
