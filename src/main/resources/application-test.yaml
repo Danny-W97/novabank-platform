@@ -23,6 +23,9 @@ server:
 management:
   server:
     port: 0
+  health:
+    mail:
+      enabled: false
   metrics:
     tags:
       environment: test

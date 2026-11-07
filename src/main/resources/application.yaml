@@ -150,6 +150,9 @@ management:
       show-details: when_authorized
       probes:
         enabled: true
+  health:
+    mail:
+      enabled: "${MANAGEMENT_HEALTH_MAIL_ENABLED:false}"
   metrics:
     tags:
       application: "${spring.application.name}"
