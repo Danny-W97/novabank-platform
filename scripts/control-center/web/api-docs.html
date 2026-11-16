@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>API Control Center · NovaBank</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/api-docs.js" defer></script>
+</head>
+<body class="api-documentation-page">
+  <a class="skip-link" href="#api-main">Przejdź do endpointów</a>
+  <main id="api-main" class="api-documentation-main">
+    <header class="api-documentation-heading"><div><p class="eyebrow">NOVABANK / KONTRAKT HTTP</p><h1>API Control Center</h1><p>Lokalna dokumentacja panelu, niezależna od API banku i sklepu.</p></div><a class="button outline" href="/">Wróć do panelu</a></header>
+    <section class="card documentation-notes"><h2>Dokumentacja bez wykonywania operacji</h2><p>Ta strona pobiera wyłącznie specyfikację. Nie ma przycisku „Try it out”, nie pobiera tokenu instancji ani danych kont, nie uruchamia zadań i nie zmienia powiadomień. Kontrakt można zaimportować do własnego narzędzia OpenAPI; uruchamianie żądań poza tym widokiem wymaga świadomej decyzji operatora.</p><p id="api-security-note"></p><a class="button primary" href="/api/openapi.json" target="_blank" rel="noopener">Otwórz OpenAPI JSON ↗</a></section>
+    <section class="card api-catalog" aria-labelledby="api-endpoints-title"><div class="card-heading"><div><p class="eyebrow">ENDPOINTY I MODELE</p><h2 id="api-endpoints-title">Kontrakt API</h2></div><label class="search-box"><input id="api-search" type="search" placeholder="Szukaj endpointu…" aria-label="Szukaj endpointu, opisu lub kategorii" disabled></label></div><p id="api-docs-status" class="card-footnote" role="status">Ładowanie kontraktu…</p><div id="api-endpoints"></div></section>
+    <footer class="page-footer"><span>OpenAPI 3.1 · bez zewnętrznych CDN</span><span>Tylko localhost · DEV/TEST + diagnostyka plików PROD</span></footer>
+  </main>
+  <noscript>Do przeglądania katalogu wymagany jest JavaScript. Specyfikacja JSON pozostaje dostępna pod /api/openapi.json.</noscript>
+</body>
+</html>

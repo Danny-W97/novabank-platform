@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/app-layout :: layout('Historia operacji', 'history', ~{::main})}">
+<main>
+    <div class="page-heading">
+        <div>
+            <span class="page-eyebrow">Twój rachunek</span>
+            <h1>Historia operacji</h1>
+            <p>Przeglądaj, filtruj i otwieraj szczegóły wszystkich transakcji.</p>
+        </div>
+        <div class="export-actions">
+            <a class="btn app-btn-secondary"
+               th:href="@{/history/export.csv(query=${filter.query},direction=${filter.direction},type=${filter.type},currency=${filter.currency},dateFrom=${filter.dateFrom},dateTo=${filter.dateTo},minAmount=${filter.minAmount},maxAmount=${filter.maxAmount})}">
+                <i class="bi bi-filetype-csv"></i> Eksport CSV
+            </a>
+            <a class="btn app-btn-secondary"
+               th:href="@{/history/export.pdf(query=${filter.query},direction=${filter.direction},type=${filter.type},currency=${filter.currency},dateFrom=${filter.dateFrom},dateTo=${filter.dateTo},minAmount=${filter.minAmount},maxAmount=${filter.maxAmount})}">
+                <i class="bi bi-file-earmark-pdf"></i> Eksport PDF
+            </a>
+        </div>
+    </div>
+
+    <section class="app-card history-card">
+        <form class="history-filters" th:action="@{/history}" th:object="${filter}" method="get">
+            <div class="history-filter-main">
+                <div class="search-input">
+                    <i class="bi bi-search"></i>
+                    <input type="search" th:field="*{query}" maxlength="140"
+                           placeholder="Tytuł, kontrahent lub numer referencyjny"
+                           aria-label="Szukaj w historii">
+                </div>
+                <select th:field="*{direction}" aria-label="Kierunek transakcji">
+                    <option value="ALL">Wszystkie kierunki</option>
+                    <option value="INCOMING">Przychodzące</option>
+                    <option value="OUTGOING">Wychodzące</option>
+                </select>
+                <select th:field="*{type}" aria-label="Typ transakcji">
+                    <option value="">Wszystkie typy</option>
+                    <option value="TRANSFER">Przelewy</option>
+                    <option value="INITIAL_CREDIT">Salda początkowe</option>
+                    <option value="PAYMENT">Płatności</option>
+                </select>
+                <select th:field="*{currency}" aria-label="Waluta transakcji">
+                    <option value="">Wszystkie waluty</option>
+                    <option th:each="currency : ${currencies}"
+                            th:value="${currency}"
+                            th:text="${currency}">PLN</option>
+                </select>
+                <button class="btn filter-button" type="submit">
+                    <i class="bi bi-sliders"></i> Filtruj
+                </button>
+                <a class="btn filter-clear" th:href="@{/history}" aria-label="Wyczyść filtry">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+            </div>
+
+            <div class="history-filter-range">
+                <label>
+                    <span>Data od</span>
+                    <input type="date" th:field="*{dateFrom}">
+                </label>
+                <label>
+                    <span>Data do</span>
+                    <input type="date" th:field="*{dateTo}">
+                </label>
+                <label>
+                    <span>Kwota od</span>
+                    <input type="number" th:field="*{minAmount}" min="0.01" step="0.01" placeholder="0,00">
+                </label>
+                <label>
+                    <span>Kwota do</span>
+                    <input type="number" th:field="*{maxAmount}" min="0.01" step="0.01" placeholder="Bez limitu">
+                </label>
+            </div>
+
+            <div class="history-filter-errors" th:if="${#fields.hasAnyErrors()}">
+                <i class="bi bi-exclamation-circle"></i>
+                <div>
+                    <span th:each="error : ${#fields.allErrors()}" th:text="${error}">Nieprawidłowy filtr.</span>
+                </div>
+            </div>
+        </form>
+
+        <div class="history-summary">
+            <span th:if="${history.totalElements > 0}">
+                Pozycje <strong th:text="${history.firstElement}">1</strong>–<strong th:text="${history.lastElement}">10</strong>
+                z <strong th:text="${history.totalElements}">10</strong>
+            </span>
+            <span th:unless="${history.totalElements > 0}">Nie znaleziono operacji</span>
+            <span th:if="${history.filtered}"><i class="bi bi-funnel"></i> Aktywne filtry</span>
+            <span th:unless="${history.filtered}">Wszystkie operacje na rachunku</span>
+        </div>
+
+        <div class="transaction-list history-list" th:if="${not #lists.isEmpty(history.transactions)}">
+            <a class="transaction-item history-transaction-link"
+               th:each="transaction : ${history.transactions}"
+               th:href="@{/history/{id}(id=${transaction.id})}">
+                <span class="transaction-icon" th:classappend="${transaction.color}">
+                    <i class="bi" th:classappend="${transaction.icon}"></i>
+                </span>
+                <div class="transaction-copy">
+                    <strong th:text="${transaction.counterparty}">Nazwa kontrahenta</strong>
+                    <span>
+                        <span th:text="${transaction.date}">Data</span>
+                        <span aria-hidden="true"> · </span>
+                        <span th:text="${transaction.title}">Tytuł</span>
+                    </span>
+                </div>
+                <span class="transaction-status" th:text="${transaction.status}">Zrealizowana</span>
+                <strong class="transaction-amount" th:classappend="${transaction.direction}"
+                        th:text="${transaction.amount}">−100,00 zł</strong>
+                <span class="transaction-more" aria-hidden="true">
+                    <i class="bi bi-chevron-right"></i>
+                </span>
+            </a>
+        </div>
+
+        <div class="empty-state" th:if="${#lists.isEmpty(history.transactions)}">
+            <span><i class="bi bi-receipt"></i></span>
+            <strong th:text="${history.filtered ? 'Brak wyników dla wybranych filtrów' : 'Brak historii operacji'}">
+                Brak historii operacji
+            </strong>
+            <p th:text="${history.filtered ? 'Zmień lub wyczyść filtry i spróbuj ponownie.' : 'Po wykonaniu pierwszej operacji pojawi się ona na tej liście.'}">
+                Po wykonaniu pierwszej operacji pojawi się ona na tej liście.
+            </p>
+            <a class="btn app-btn-secondary" th:if="${history.filtered}" th:href="@{/history}">Wyczyść filtry</a>
+        </div>
+
+        <nav class="history-pagination" th:if="${history.totalPages > 1}" aria-label="Paginacja historii">
+            <a class="pagination-control" th:classappend="${not history.hasPrevious} ? ' disabled'"
+               th:href="${history.hasPrevious} ? @{/history(page=${history.currentPage - 1},query=${filter.query},direction=${filter.direction},type=${filter.type},currency=${filter.currency},dateFrom=${filter.dateFrom},dateTo=${filter.dateTo},minAmount=${filter.minAmount},maxAmount=${filter.maxAmount})} : null"
+               aria-label="Poprzednia strona">
+                <i class="bi bi-chevron-left"></i>
+            </a>
+            <a th:each="pageNumber : ${history.pageNumbers}"
+               th:text="${pageNumber + 1}"
+               th:classappend="${pageNumber == history.currentPage} ? ' active'"
+               th:attr="aria-current=${pageNumber == history.currentPage ? 'page' : null}"
+               th:href="@{/history(page=${pageNumber},query=${filter.query},direction=${filter.direction},type=${filter.type},currency=${filter.currency},dateFrom=${filter.dateFrom},dateTo=${filter.dateTo},minAmount=${filter.minAmount},maxAmount=${filter.maxAmount})}">1</a>
+            <a class="pagination-control" th:classappend="${not history.hasNext} ? ' disabled'"
+               th:href="${history.hasNext} ? @{/history(page=${history.currentPage + 1},query=${filter.query},direction=${filter.direction},type=${filter.type},currency=${filter.currency},dateFrom=${filter.dateFrom},dateTo=${filter.dateTo},minAmount=${filter.minAmount},maxAmount=${filter.maxAmount})} : null"
+               aria-label="Następna strona">
+                <i class="bi bi-chevron-right"></i>
+            </a>
+        </nav>
+    </section>
+</main>
+</html>

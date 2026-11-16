@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Logowanie | NovaTech Shop</title>
+  <style>
+    :root { font-family: Arial, sans-serif; color: #0f172a; background: #f1f5f9; }
+    body { min-height: 100vh; display: grid; place-items: center; margin: 0; }
+    main { width: min(100% - 32px, 420px); background: white; padding: 32px; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 12px 32px rgba(15,23,42,.08); }
+    h1 { margin: 0 0 8px; font-size: 24px; }
+    p { color: #64748b; line-height: 1.5; }
+    label { display: block; margin: 18px 0 6px; font-weight: 600; font-size: 14px; }
+    input { width: 100%; box-sizing: border-box; padding: 11px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 15px; }
+    button { width: 100%; margin-top: 22px; padding: 12px; border: 0; border-radius: 8px; background: #2563eb; color: white; font-weight: 700; cursor: pointer; }
+    .message { padding: 10px 12px; border-radius: 8px; background: #fef2f2; color: #b91c1c; }
+    .link { display: block; margin-top: 18px; text-align: center; color: #2563eb; }
+    .home-button { display: block; margin-top: 12px; padding: 11px 12px; border: 1px solid #cbd5e1; border-radius: 8px; color: #334155; text-align: center; text-decoration: none; font-weight: 700; }
+    .home-button:hover { background: #f8fafc; border-color: #94a3b8; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>NovaTech Shop</h1>
+  <p>Zaloguj się, aby korzystać z koszyka i płatności.</p>
+  <div class="message" id="message" hidden></div>
+  <form action="/login" method="post">
+    <input type="hidden" name="_csrf" id="csrf">
+    <label for="username">E-mail</label>
+    <input id="username" name="username" type="email" autocomplete="username" required>
+    <label for="password">Hasło</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required>
+    <button type="submit">Zaloguj się</button>
+  </form>
+  <a class="link" href="/shop-register.html">Załóż konto</a>
+  <a class="home-button" href="/novatech_shop.html">Powrót na stronę główną</a>
+</main>
+<script>
+  function cookie(name) {
+    const item = document.cookie.split('; ').find(value => value.startsWith(name + '='));
+    return item ? decodeURIComponent(item.substring(name.length + 1)) : '';
+  }
+  fetch('/api/auth/csrf', { credentials: 'same-origin' })
+    .then(response => response.json())
+    .then(data => { document.getElementById('csrf').value = cookie('SHOP-XSRF-TOKEN') || data.token; });
+  const params = new URLSearchParams(location.search);
+  if (params.has('error')) {
+    const message = document.getElementById('message');
+    message.textContent = 'Nieprawidłowy e-mail lub hasło.';
+    message.hidden = false;
+  }
+  if (params.has('logout')) {
+    const message = document.getElementById('message');
+    message.className = '';
+    message.textContent = 'Wylogowano.';
+    message.hidden = false;
+  }
+  if (params.has('registered')) {
+    const message = document.getElementById('message');
+    message.className = '';
+    message.textContent = 'Konto utworzone. Możesz się teraz zalogować.';
+    message.hidden = false;
+  }
+</script>
+</body>
+</html>

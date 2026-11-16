@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NovaBank | Wprowadzenie do projektu</title>
+  <style>
+    :root { --navy:#0b1830; --navy-2:#122644; --blue:#2f75ed; --gold:#e9b83f; --ink:#15243c; --muted:#60708d; --line:#d9e2ef; --paper:#f4f7fb; }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; color:var(--ink); background:var(--paper); font:16px/1.6 Inter,Segoe UI,Arial,sans-serif; }
+    .top { background:var(--navy); color:#fff; padding:42px 6vw 48px; position:relative; overflow:hidden; }
+    .top:after { content:""; position:absolute; inset:0; opacity:.16; background-image:linear-gradient(45deg,transparent 48%,#91b5f5 49%,transparent 51%),linear-gradient(-45deg,transparent 48%,#91b5f5 49%,transparent 51%); background-size:42px 42px; }
+    .top > * { position:relative; z-index:1; }
+    .brand { display:flex; align-items:center; gap:12px; font-weight:800; font-size:21px; }
+    .mark { width:38px; height:38px; display:grid; place-items:center; border:1px solid #6498ed; border-radius:11px; color:#a9c8ff; }
+    .eyebrow { margin:34px 0 4px; color:#8db7ff; font-size:13px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+    h1 { max-width:850px; margin:0; font-size:clamp(34px,5vw,66px); line-height:1.04; letter-spacing:0; }
+    .lead { max-width:760px; margin:20px 0 0; color:#c1d0e8; font-size:19px; }
+    .layout { display:grid; grid-template-columns:250px minmax(0,1fr); max-width:1440px; margin:auto; }
+    aside { position:sticky; top:0; align-self:start; height:100vh; padding:28px 20px; background:#fff; border-right:1px solid var(--line); }
+    aside strong { display:block; margin:0 10px 14px; }
+    aside a { display:block; padding:9px 10px; color:var(--muted); text-decoration:none; border-radius:7px; }
+    aside a:hover, aside a.active { background:#e8f0ff; color:#2164d4; }
+    main { min-width:0; padding:42px clamp(22px,5vw,70px) 80px; }
+    section { scroll-margin-top:24px; margin-bottom:58px; }
+    h2 { margin:0 0 10px; font-size:30px; line-height:1.2; }
+    h3 { margin:24px 0 6px; font-size:19px; }
+    p { margin:8px 0 14px; }
+    .note { padding:18px 20px; border:1px solid #e9c35d; border-left:5px solid var(--gold); background:#fff9e8; border-radius:7px; }
+    .info { padding:16px 18px; border:1px solid #bed5ff; background:#edf4ff; border-radius:7px; }
+    .grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+    .card { padding:20px; background:#fff; border:1px solid var(--line); border-radius:8px; box-shadow:0 3px 14px rgba(25,50,90,.05); }
+    .card h3 { margin-top:0; }
+    code, pre { font-family:Consolas,ui-monospace,monospace; }
+    code { padding:2px 5px; background:#eef2f7; border-radius:4px; }
+    pre { overflow:auto; padding:16px; color:#eaf1ff; background:#101b2d; border-radius:7px; }
+    .steps { counter-reset:step; padding:0; list-style:none; }
+    .steps li { counter-increment:step; position:relative; padding:10px 0 10px 48px; border-bottom:1px solid var(--line); }
+    .steps li:before { content:counter(step); position:absolute; left:0; top:10px; width:28px; height:28px; display:grid; place-items:center; color:#fff; background:var(--blue); border-radius:50%; font-weight:700; }
+    .links { display:flex; flex-wrap:wrap; gap:10px; }
+    .links a { color:#185cc7; text-decoration:none; padding:8px 12px; background:#fff; border:1px solid #cbdcf8; border-radius:6px; }
+    .gallery { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }
+    figure { margin:0; overflow:hidden; background:#fff; border:1px solid var(--line); border-radius:8px; }
+    figure img { display:block; width:100%; height:240px; object-fit:cover; cursor:zoom-in; }
+    figcaption { padding:9px 12px; color:var(--muted); font-size:14px; }
+    dialog { width:min(96vw,1200px); padding:0; border:0; border-radius:8px; box-shadow:0 20px 80px #0008; }
+    dialog::backdrop { background:#061126cc; }
+    dialog img { display:block; width:100%; max-height:88vh; object-fit:contain; background:#07132a; }
+    @media (max-width:900px) { .layout { display:block; } aside { position:static; height:auto; border-right:0; border-bottom:1px solid var(--line); overflow:auto; white-space:nowrap; } aside a { display:inline-block; } .grid,.gallery { grid-template-columns:1fr; } main { padding-top:28px; } }
+  </style>
+</head>
+<body>
+  <header class="top" id="start">
+    <div class="brand"><span class="mark">N</span><span>NovaBank <small style="color:#8db7ff">DEMO</small></span></div>
+    <p class="eyebrow">Wprowadzenie do projektu</p>
+    <h1>Uruchom bank i sklep bez zgadywania.</h1>
+    <p class="lead">Krótki, interaktywny przewodnik po aplikacjach, profilach, narzędziach administracyjnych i bezpiecznym środowisku lokalnym.</p>
+  </header>
+  <div class="layout">
+    <aside>
+      <strong>Spis przewodnika</strong>
+      <a href="#architektura">Projekt</a><a href="#uruchomienie">Start</a><a href="#praca">Profile</a><a href="#funkcje">Funkcje</a><a href="#monitoring">Monitoring</a><a href="#bezpieczenstwo">Bezpieczeństwo</a><a href="#utrzymanie">Utrzymanie</a><a href="#screeny">Screeny</a><a href="#linki">Linki</a>
+    </aside>
+    <main>
+      <section id="architektura">
+        <h2>1. Co znajduje się w projekcie?</h2>
+        <p>To edukacyjny system złożony z dwóch aplikacji Spring Boot: NovaBank oraz NovaTech Shop. Bank przechowuje wirtualne rachunki, operacje i autoryzacje płatności, a sklep katalog, koszyk, zamówienia i refundacje.</p>
+        <div class="grid"><div class="card"><h3>Bank</h3><p>Port 8080, opcjonalnie TLS. Obsługuje logowanie, 2FA, PIN transakcyjny, przelewy, waluty, karty, historię i panel administratora.</p></div><div class="card"><h3>Shop-app</h3><p>Port 8081. Obsługuje produkty, koszyk, kasę, płatność bank-demo lub Stripe oraz zamówienia.</p></div><div class="card"><h3>Infrastruktura</h3><p>WSL 2, Docker Engine, PostgreSQL, Redis, Flyway, Vault PROD, Prometheus, Grafana i Alertmanager.</p></div></div>
+      </section>
+      <section id="uruchomienie">
+        <h2>2. Pierwsze uruchomienie</h2>
+        <div class="note"><strong>Ważne:</strong> NovaBank i NovaTech Shop są demonstracją. Salda i płatności nie mają wartości finansowej. Nie używaj prawdziwych haseł, kart ani sekretów.</div>
+        <ol class="steps"><li>Uruchom WSL 2 i sprawdź wymagania w <code>NovaBank Control Center</code>.</li><li>W centrali wybierz <code>Pierwsze uruchomienie</code>. Utwórz pliki lokalne w <code>.novabank/env/</code>; nie dodawaj ich do Git.</li><li>Włącz PostgreSQL i Redis przez Docker Compose. Bank używa portów 5300 i 6379, sklep portu 5400.</li><li>W IntelliJ wybierz wspólną konfigurację <code>NovaBank DEV</code>. Uruchomi ona bank i sklep.</li><li>Otwórz linki z sekcji poniżej i wykonaj test logowania oraz testowy przelew.</li></ol>
+        <pre>bash scripts/control-center/control-center.sh
+docker compose up -d
+# następnie w IntelliJ: NovaBank DEV</pre>
+      </section>
+      <section id="praca">
+        <h2>3. Profile i sposób pracy</h2>
+        <div class="grid"><div class="card"><h3>DEV</h3><p>Codzienna praca. Używa <code>.novabank/env/dev.env</code>, lokalnych baz i zwykle HTTP. Monitoring może działać przez osobny Compose.</p></div><div class="card"><h3>TEST</h3><p>Testy jednostkowe i integracyjne. Testcontainers uruchamia izolowane PostgreSQL i Redis. Nie używa danych DEV.</p></div><div class="card"><h3>PROD</h3><p>Wymaga odpieczętowanego Vault, AppRole, TLS, truststore i keystore. Sekrety wpisuje się do plików lokalnych lub pobiera z Vault, nigdy do repozytorium.</p></div></div>
+        <p>Zmiana profilu odbywa się w konfiguracji IntelliJ. Dla DEV wybierz <code>Bank DEV</code>/<code>Shop DEV</code>, a dla PROD odpowiednie konfiguracje PROD. Po zmianie zatrzymaj i uruchom oba procesy ponownie.</p>
+      </section>
+      <section id="funkcje">
+        <h2>4. Co można przetestować?</h2>
+        <div class="grid"><div class="card"><h3>Bankowość</h3><p>Załóż użytkownika, zaloguj się, skonfiguruj PIN i Google Authenticator, wykonaj przelew, zmień kurs waluty, sprawdź historię i wygeneruj PDF/CSV.</p></div><div class="card"><h3>Sklep</h3><p>Przeglądaj katalog, otwórz szczegóły produktu, dodaj towary do koszyka, wybierz bank lub kartę, sprawdź zamówienia i wykonaj refundację.</p></div><div class="card"><h3>Administrator</h3><p>Wyszukuj rachunki, blokuj lub zamykaj konto bez usuwania danych, przeglądaj audyt, retencję, kursy oraz unieważniaj sesje.</p></div></div>
+        <div class="info"><strong>Stripe CLI:</strong> potrzebny wyłącznie, gdy <code>SHOP_PAYMENT_PROVIDER=stripe</code>. Przekazuje webhooki do shop-app i testuje API operatora. Nie pobiera środków z rachunków NovaBank. Dla <code>bank-demo</code> płatność kartą jest symulowana przez wewnętrzny formularz i może zmienić saldo rachunków demonstracyjnych.</div>
+      </section>
+      <section id="monitoring">
+        <h2>5. Monitoring</h2>
+        <p>Prometheus zbiera metryki, Grafana je wizualizuje, a Alertmanager obsługuje alerty. Aplikacje wystawiają metryki na osobnych portach administracyjnych.</p>
+        <pre>docker compose --env-file infra/monitoring/.env.monitoring \
+  -f docker-compose.monitoring.yaml up -d</pre>
+        <div class="links"><a href="http://localhost:9090">Prometheus</a><a href="http://localhost:3000">Grafana</a><a href="http://localhost:9093">Alertmanager</a><a href="http://localhost:8082/actuator/prometheus">Metryki banku</a><a href="http://localhost:8083/actuator/prometheus">Metryki sklepu</a></div>
+      </section>
+      <section id="bezpieczenstwo">
+        <h2>6. Bezpieczeństwo i sekrety</h2>
+        <p>Redis przechowuje sesje i krótkotrwałe wyzwania. CSRF chroni formularze, BCrypt chroni hasła, a idempotencja chroni płatności i refundacje przed podwójnym wykonaniem.</p>
+        <p>W DEV sekrety są lokalne. W PROD Vault przechowuje sekrety banku i sklepu, a aplikacje korzystają z AppRole. Do uruchomienia Vault potrzebne są trzy z pięciu kluczy unseal, ale nie root token. Klucze, token, Role ID, Secret ID, hasła GPG i truststore zapisz poza repozytorium.</p>
+        <div class="note"><strong>Nie kopiuj do repozytorium:</strong> pełnego QR 2FA, ręcznego sekretu TOTP, numerów kart, CVV, dat ważności, haseł, kluczy Vault i plików <code>.env</code>.</div>
+      </section>
+      <section id="utrzymanie">
+        <h2>7. Utrzymanie</h2>
+        <ul><li>Backup PostgreSQL: wybierz w centrali <code>Kopie zapasowe PostgreSQL</code>; skrypt tworzy katalog z datą, sumy SHA-256 i test odtworzenia.</li><li>Disaster Recovery: odtwórz najnowszą kopię w izolowanym środowisku i zachowaj raport.</li><li>Flyway: migracje są wersjonowane w <code>db/migration</code>; nie edytuj zastosowanej migracji, dodaj nową.</li><li>Control Center: używaj menu do monitoringu, Vault, testów, TLS, czyszczenia artefaktów i diagnostyki.</li></ul>
+          <p>Pełne procedury znajdują się w <a href="../../../docs/General_Instruction.md">General_Instruction.md (EN)</a> / <a href="../../../docs/General_Instruction.pl.md">General_Instruction.pl.md (PL)</a>. Ten przewodnik jest krótką mapą projektu, a główna instrukcja zawiera kompletne procedury operacyjne.</p>
+      </section>
+      <section id="screeny">
+        <h2>8. Jak wygląda aplikacja?</h2>
+        <p>Obrazy pokazują bezpieczne widoki demonstracyjne. Dane widoczne na screenach są przykładowe.</p>
+        <div class="gallery">
+          <figure><img src="guide-assets/bank-login.png" alt="Ekran logowania NovaBank"><figcaption>Logowanie do NovaBank</figcaption></figure>
+          <figure><img src="guide-assets/shop-home.png" alt="Strona główna NovaTech Shop"><figcaption>Strona główna sklepu</figcaption></figure>
+          <figure><img src="guide-assets/shop-user-menu.png" alt="Menu użytkownika sklepu"><figcaption>Panel użytkownika sklepu</figcaption></figure>
+          <figure><img src="guide-assets/bank-dashboard.png" alt="Dashboard banku"><figcaption>Dashboard i bezpieczeństwo konta</figcaption></figure>
+          <figure><img src="guide-assets/admin-overview.png" alt="Panel administratora"><figcaption>Panel administratora</figcaption></figure>
+          <figure><img src="guide-assets/admin-users.png" alt="Rachunki i użytkownicy"><figcaption>Rachunki, statusy i akcje</figcaption></figure>
+          <figure><img src="guide-assets/admin-audit.png" alt="Audyt działań administratora"><figcaption>Audyt i historia zmian</figcaption></figure>
+          <figure><img src="guide-assets/control-center.png" alt="NovaBank Control Center"><figcaption>NovaBank Control Center</figcaption></figure>
+          <figure><img src="guide-assets/grafana.png" alt="Dashboard Grafany"><figcaption>Dashboard Grafany</figcaption></figure>
+        </div>
+      </section>
+      <section id="linki">
+        <h2>9. Najważniejsze adresy</h2>
+        <div class="links"><a href="http://localhost:8080/login?logout">Bank: logowanie</a><a href="http://localhost:8081/novatech_shop.html">Sklep</a><a href="http://localhost:8080/about">O aplikacji</a><a href="http://localhost:8082/actuator/health">Health banku</a><a href="http://localhost:8083/actuator/health">Health sklepu</a><a href="http://localhost:8080/swagger-ui/index.html">Swagger banku</a><a href="http://localhost:8081/swagger-ui/index.html">Swagger sklepu</a></div>
+        <div class="info" style="margin-top:18px"><strong>Potrzebujesz szczegółów?</strong> Otwórz <a href="../../../docs/General_Instruction.md">General_Instruction.md (EN)</a> / <a href="../../../docs/General_Instruction.pl.md">General_Instruction.pl.md (PL)</a> albo wybierz menu <code>Instrukcje</code> w centrali. To jest główny podręcznik projektu.</div>
+      </section>
+    </main>
+  </div>
+  <dialog id="imageDialog"><img id="zoomedImage" alt="Powiększony zrzut"><button type="button" onclick="imageDialog.close()" style="position:absolute;right:12px;top:12px">Zamknij</button></dialog>
+  <script>
+    document.querySelectorAll('figure img').forEach(function (img) { img.addEventListener('click', function () { document.getElementById('zoomedImage').src = img.src; document.getElementById('imageDialog').showModal(); }); });
+    var links = Array.from(document.querySelectorAll('aside a')); var sections = links.map(function (link) { return document.querySelector(link.getAttribute('href')); });
+    var observer = new IntersectionObserver(function (entries) { entries.forEach(function (entry) { if (entry.isIntersecting) { links.forEach(function (link) { link.classList.toggle('active', link.getAttribute('href') === '#' + entry.target.id); }); } }); }, { rootMargin:'-20% 0px -65% 0px' });
+    sections.forEach(function (section) { if (section) observer.observe(section); });
+  </script>
+</body>
+</html>

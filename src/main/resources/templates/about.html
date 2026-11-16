@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Informacje o edukacyjnej aplikacji NovaBank">
+    <title>O aplikacji | NovaBank</title>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link th:href="@{/css/public.css}" rel="stylesheet">
+</head>
+<body class="public-body">
+<canvas id="starfield" aria-hidden="true"></canvas>
+<main class="public-page">
+    <header class="public-page-header">
+        <a class="brand brand-light" th:href="@{/login}">
+            <span class="brand-mark"><i class="bi bi-bank2"></i></span>
+            <span>NovaBank</span>
+            <small>DEMO</small>
+        </a>
+        <nav class="public-page-nav" aria-label="Nawigacja publiczna">
+            <a th:href="@{/login}">Logowanie</a>
+            <a th:href="@{/register}">Rejestracja</a>
+            <a th:href="@{/terms}" download="regulamin_novabank.pdf">Regulamin</a>
+        </nav>
+    </header>
+
+    <section class="public-page-main" aria-labelledby="about-title">
+        <span class="eyebrow"><i class="bi bi-info-circle"></i> O projekcie</span>
+        <h1 id="about-title">Bankowość internetowa do nauki i testów.</h1>
+        <p class="public-page-lead">
+            NovaBank to edukacyjna aplikacja demonstracyjna. Pozwala przećwiczyć obsługę konta,
+            przelewów i historii operacji bez używania prawdziwych pieniędzy.
+        </p>
+
+        <div class="public-page-grid">
+            <article class="public-info-card">
+                <i class="bi bi-wallet2" aria-hidden="true"></i>
+                <h2>Wirtualne konto</h2>
+                <p>Rejestracja tworzy konto demonstracyjne z numerem rachunku i saldem startowym wyłącznie do celów ćwiczeniowych.</p>
+            </article>
+            <article class="public-info-card">
+                <i class="bi bi-arrow-left-right" aria-hidden="true"></i>
+                <h2>Operacje bankowe</h2>
+                <p>Możesz wykonywać przelewy, zarządzać odbiorcami oraz przeglądać i eksportować historię operacji.</p>
+            </article>
+            <article class="public-info-card">
+                <i class="bi bi-shield-check" aria-hidden="true"></i>
+                <h2>Bezpieczeństwo</h2>
+                <p>Aplikacja wykorzystuje logowanie, ochronę CSRF, szyfrowanie haseł i sesje przechowywane w Redisie.</p>
+            </article>
+        </div>
+
+        <div class="public-page-actions">
+            <a class="primary-button" th:href="@{/register}">Utwórz konto <i class="bi bi-arrow-right"></i></a>
+            <a class="secondary-button" th:href="@{/login}">Wróć do logowania</a>
+        </div>
+    </section>
+
+    <footer class="public-page-footer">
+        NovaBank jest projektem edukacyjnym. Prezentowane środki nie mają wartości finansowej.
+    </footer>
+</main>
+<script th:src="@{/js/public.js}"></script>
+</body>
+</html>

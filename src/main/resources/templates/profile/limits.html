@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/app-layout :: layout('Limity operacji', 'profile', ~{::main})}">
+<main>
+    <div class="page-heading">
+        <div>
+            <span class="page-eyebrow">Bezpieczenstwo operacji</span>
+            <h1>Limity przelewow i platnosci</h1>
+            <p>Ustaw nizsze limity dla swojego konta. Limity bankowe pozostaja nadrzedne.</p>
+        </div>
+    </div>
+
+    <div class="profile-form-layout">
+        <section class="app-card profile-form-card password-form-card">
+            <div class="profile-alert admin-alert-error" role="alert" th:if="${not twoFactorEnabled}">
+                <i class="bi bi-shield-exclamation"></i>
+                <span>Zmiana limitow wymaga wlaczonego 2FA. <a th:href="@{/profile/2fa}">Wlacz Google Authenticator</a>.</span>
+            </div>
+            <form th:action="@{/profile/limits}" th:object="${userLimitsForm}" method="post" novalidate>
+                <div class="profile-form-grid">
+                    <div class="app-form-field">
+                        <label for="transferSingleLimit">Pojedynczy przelew (PLN)</label>
+                        <input id="transferSingleLimit" type="number" min="0.01" step="0.01" th:field="*{transferSingleLimit}"
+                               th:classappend="${#fields.hasErrors('transferSingleLimit')} ? 'is-invalid'">
+                        <small>Limit bankowy: <span th:text="${userLimits.bankSingleLimit}">50000.00</span> PLN</small>
+                        <p class="field-error" th:if="${#fields.hasErrors('transferSingleLimit')}" th:errors="*{transferSingleLimit}">Blad limitu</p>
+                    </div>
+                    <div class="app-form-field">
+                        <label for="transferDailyLimit">Dzienne przelewy (PLN)</label>
+                        <input id="transferDailyLimit" type="number" min="0.01" step="0.01" th:field="*{transferDailyLimit}"
+                               th:classappend="${#fields.hasErrors('transferDailyLimit')} ? 'is-invalid'">
+                        <small>Limit bankowy: <span th:text="${userLimits.bankDailyLimit}">100000.00</span> PLN</small>
+                        <p class="field-error" th:if="${#fields.hasErrors('transferDailyLimit')}" th:errors="*{transferDailyLimit}">Blad limitu</p>
+                    </div>
+                    <div class="app-form-field">
+                        <label for="paymentSingleLimit">Pojedyncza platnosc (PLN)</label>
+                        <input id="paymentSingleLimit" type="number" min="0.01" step="0.01" th:field="*{paymentSingleLimit}"
+                               th:classappend="${#fields.hasErrors('paymentSingleLimit')} ? 'is-invalid'">
+                        <small>Limit bankowy: <span th:text="${userLimits.bankSingleLimit}">50000.00</span> PLN</small>
+                        <p class="field-error" th:if="${#fields.hasErrors('paymentSingleLimit')}" th:errors="*{paymentSingleLimit}">Blad limitu</p>
+                    </div>
+                    <div class="app-form-field">
+                        <label for="paymentDailyLimit">Dzienne platnosci (PLN)</label>
+                        <input id="paymentDailyLimit" type="number" min="0.01" step="0.01" th:field="*{paymentDailyLimit}"
+                               th:classappend="${#fields.hasErrors('paymentDailyLimit')} ? 'is-invalid'">
+                        <small>Limit bankowy: <span th:text="${userLimits.bankDailyLimit}">100000.00</span> PLN</small>
+                        <p class="field-error" th:if="${#fields.hasErrors('paymentDailyLimit')}" th:errors="*{paymentDailyLimit}">Blad limitu</p>
+                    </div>
+                    <div class="app-form-field">
+                        <label for="cardDailyLimit">Dzienny limit karty (PLN)</label>
+                        <input id="cardDailyLimit" type="number" min="0.01" step="0.01" th:field="*{cardDailyLimit}"
+                               th:classappend="${#fields.hasErrors('cardDailyLimit')} ? 'is-invalid'">
+                        <small>Limit bankowy: <span th:text="${userLimits.bankDailyLimit}">100000.00</span> PLN. Wartość aktualizuje limit na karcie.</small>
+                        <small th:if="${not userLimits.cardAttached}">Podłącz kartę w zakładce Karta, aby zapisać ten limit.</small>
+                        <p class="field-error" th:if="${#fields.hasErrors('cardDailyLimit')}" th:errors="*{cardDailyLimit}">Blad limitu karty</p>
+                    </div>
+                    <div class="app-form-field">
+                        <label for="totpRequiredAbove">Próg Google Authenticator (PLN)</label>
+                        <input id="totpRequiredAbove" type="number" min="0.01" step="0.01" th:field="*{totpRequiredAbove}"
+                               th:classappend="${#fields.hasErrors('totpRequiredAbove')} ? 'is-invalid'">
+                        <small>Bank ustala maksymalny próg: <span th:text="${userLimits.bankTotpRequiredAbove}">5000.00</span> PLN. Możesz ustawić tylko tę wartość lub niższą.</small>
+                        <p class="field-error" th:if="${#fields.hasErrors('totpRequiredAbove')}" th:errors="*{totpRequiredAbove}">Blad progu TOTP</p>
+                    </div>
+                </div>
+
+                <div class="profile-form-grid">
+                    <div class="app-form-field">
+                        <label for="currentPassword">Haslo do konta</label>
+                        <input id="currentPassword" type="password" autocomplete="current-password" th:field="*{currentPassword}"
+                               th:classappend="${#fields.hasErrors('currentPassword')} ? 'is-invalid'">
+                        <p class="field-error" th:if="${#fields.hasErrors('currentPassword')}" th:errors="*{currentPassword}">Blad hasla</p>
+                    </div>
+                    <div class="app-form-field">
+                        <label for="totpCode">Kod Google Authenticator</label>
+                        <input id="totpCode" type="password" inputmode="numeric" autocomplete="one-time-code" maxlength="6"
+                               th:field="*{totpCode}" th:classappend="${#fields.hasErrors('totpCode')} ? 'is-invalid'">
+                        <p class="field-error" th:if="${#fields.hasErrors('totpCode')}" th:errors="*{totpCode}">Blad kodu TOTP</p>
+                    </div>
+                </div>
+                <div class="password-guidance">
+                    <i class="bi bi-shield-lock"></i>
+                    <div><strong>Zmiana wymaga podwojnego potwierdzenia</strong><span>Podaj haslo i aktualny kod TOTP. Zapis trafi do historii audytu.</span></div>
+                </div>
+                <div class="form-actions">
+                    <a class="btn app-btn-secondary" th:href="@{/profile}">Anuluj</a>
+                    <button class="btn app-btn-primary" type="submit" th:disabled="${not twoFactorEnabled}">Zapisz limity</button>
+                </div>
+            </form>
+        </section>
+    </div>
+</main>
+</html>

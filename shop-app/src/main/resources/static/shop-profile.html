@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profil | NovaTech Shop</title>
+  <link rel="stylesheet" href="/css/shop-account.css">
+</head>
+<body>
+<header class="account-topbar">
+  <a class="account-brand" href="/novatech_shop.html">NovaTech Shop</a>
+  <a href="/novatech_shop.html">Wróć do sklepu</a>
+</header>
+<main class="account-shell">
+  <div class="account-heading">
+    <p class="account-eyebrow">Konto sklepu</p>
+    <h1>Profil użytkownika</h1>
+    <p>Uzupełnij dane kontaktowe używane przy obsłudze zamówień.</p>
+  </div>
+  <div class="account-layout">
+    <nav class="account-nav" aria-label="Menu konta">
+      <a class="active" href="/shop-profile.html">Profil</a>
+      <a href="/shop-address.html">Adres dostawy</a>
+      <a href="/shop-orders.html">Moje zamówienia</a>
+      <a href="/novatech_shop.html?logout">Sklep</a>
+    </nav>
+    <section class="account-panel">
+      <h2>Dane profilu</h2>
+      <p class="account-panel-intro">E-mail i Customer-ID są powiązane z logowaniem i nie są zmieniane w tym formularzu.</p>
+      <form class="account-form" id="profileForm">
+        <div class="field-grid">
+          <div class="field">
+            <label for="email">E-mail</label>
+            <input id="email" type="email" readonly>
+          </div>
+          <div class="field">
+            <label for="customerId">Customer-ID</label>
+            <input id="customerId" type="text" readonly>
+          </div>
+          <div class="field">
+            <label for="firstName">Imię</label>
+            <input id="firstName" type="text" maxlength="100" autocomplete="given-name">
+          </div>
+          <div class="field">
+            <label for="lastName">Nazwisko</label>
+            <input id="lastName" type="text" maxlength="100" autocomplete="family-name">
+          </div>
+          <div class="field">
+            <label for="phone">Telefon</label>
+            <input id="phone" type="tel" maxlength="32" autocomplete="tel">
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="primary-action" id="saveProfile" type="submit">Zapisz zmiany</button>
+          <a class="secondary-action" href="/novatech_shop.html">Anuluj</a>
+        </div>
+        <div class="form-message" id="message" role="status" aria-live="polite"></div>
+      </form>
+    </section>
+  </div>
+</main>
+<script src="/js/shop-account.js"></script>
+<script>
+  const profileForm = document.getElementById('profileForm');
+  const profileMessage = document.getElementById('message');
+
+  async function loadProfile() {
+    const response = await shopAccountFetch('/api/account/profile');
+    if (response.status === 401) return shopAccountRequireLogin();
+    if (!response.ok) throw new Error(await shopAccountReadError(response));
+    const profile = await response.json();
+    document.getElementById('email').value = profile.email || '';
+    document.getElementById('customerId').value = profile.customerId || '';
+    document.getElementById('firstName').value = profile.firstName || '';
+    document.getElementById('lastName').value = profile.lastName || '';
+    document.getElementById('phone').value = profile.phone || '';
+  }
+
+  profileForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    const button = document.getElementById('saveProfile');
+    button.disabled = true;
+    shopAccountMessage(profileMessage, '', '');
+    try {
+      const response = await shopAccountFetch('/api/account/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: document.getElementById('firstName').value,
+          lastName: document.getElementById('lastName').value,
+          phone: document.getElementById('phone').value
+        })
+      });
+      if (response.status === 401) return shopAccountRequireLogin();
+      if (!response.ok) throw new Error(await shopAccountReadError(response));
+      shopAccountMessage(profileMessage, 'Dane profilu zostały zapisane.', 'success');
+    } catch (error) {
+      shopAccountMessage(profileMessage, error.message, 'error');
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  loadProfile().catch(error => shopAccountMessage(profileMessage, error.message, 'error'));
+</script>
+</body>
+</html>

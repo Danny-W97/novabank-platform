@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="Lokalne centrum operacyjne NovaBank i NovaTech Shop. DEV, TEST i jawne procedury PROD-like.">
+  <title>NovaBank · Control Center</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/bank-accounts.css">
+  <link rel="stylesheet" href="/operator-settings.css">
+  <link rel="stylesheet" href="/payment-cases.css">
+  <script src="/app.js" defer></script>
+  <script src="/production-ui.js" defer></script>
+  <script src="/guided-ui.js" defer></script>
+  <script src="/panel-language.js" defer></script>
+  <script src="/configuration-editor.js" defer></script>
+  <script src="/problem-ui.js" defer></script>
+  <script src="/bank-accounts.js" defer></script>
+  <script src="/shop-accounts.js" defer></script>
+  <script src="/payment-cases.js" defer></script>
+  <script src="/operator-settings.js" defer></script>
+  <script src="/notification-retention.js" defer></script>
+  <script src="/maintenance-ui.js" defer></script>
+  <script src="/totp-recovery-ui.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Przejdź do treści</a>
+  <aside class="sidebar" aria-label="Panel nawigacji">
+    <a class="brand" href="#dashboard" aria-label="NovaBank Control Center — pulpit"><span class="monogram">NB</span><span><strong>NovaBank</strong><small>CONTROL CENTER</small></span></a>
+    <p class="nav-label">TWOJE ŚRODOWISKO</p>
+    <nav aria-label="Główna nawigacja">
+      <button class="nav-item active" data-view="dashboard" aria-current="page"><span aria-hidden="true">⌂</span>Pulpit</button>
+      <button class="nav-item" data-view="operations"><span aria-hidden="true">◇</span>Operacje</button>
+      <button class="nav-item" data-view="accounts"><span aria-hidden="true">▣</span>Konta bankowe</button>
+      <button class="nav-item" data-view="shopAccounts"><span aria-hidden="true">▱</span>Konta sklepu</button>
+      <button class="nav-item" data-view="paymentCases"><span aria-hidden="true">◇</span>Uzgadnianie płatności</button>
+      <button class="nav-item" data-view="config"><span aria-hidden="true">⚙</span>Konfiguracja DEV</button>
+      <button class="nav-item" data-view="files"><span aria-hidden="true">▤</span>Pliki i sekrety</button>
+      <button class="nav-item" data-view="maintenance"><span aria-hidden="true">◷</span>Ustawienia operacji</button>
+      <button class="nav-item" data-view="tests"><span aria-hidden="true">☷</span>Testy i logi</button>
+      <button class="nav-item" data-view="docs"><span aria-hidden="true">▤</span>Dokumentacja</button>
+    </nav>
+    <div class="sidebar-bottom"><span class="local-dot" aria-hidden="true"></span><strong>Panel lokalny</strong><p>127.0.0.1 · bez hostingu</p><div class="safety-note">PROD<br><b>Ostrzeżenie + wpisanie PROD</b></div><small>NovaBank + NovaTech Shop</small></div>
+  </aside>
+  <div class="workspace">
+    <header class="topbar">
+      <div class="breadcrumb">CENTRUM OPERACYJNE <span>/</span> <b id="breadcrumb">Pulpit</b></div>
+      <div class="topbar-controls">
+        <div id="notifications-control" class="notifications-control">
+          <button id="notifications-toggle" class="button notifications-toggle" aria-expanded="false" aria-controls="notifications-panel"><svg class="notification-bell" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4M12 1v1"/></svg> Powiadomienia <span id="notifications-count" class="notification-count" aria-live="polite">0</span></button>
+          <section id="notifications-panel" class="notifications-panel hidden" aria-labelledby="notifications-title">
+            <div class="notifications-heading"><div><p class="eyebrow">DZIENNIK OPERATORA · DEV</p><h2 id="notifications-title">Powiadomienia</h2></div><button id="notifications-close" class="close-dialog" aria-label="Zamknij powiadomienia">×</button></div>
+            <div class="notification-tabs" role="tablist" aria-label="Widok powiadomień">
+              <button id="notification-tab-active" role="tab" aria-selected="true" aria-controls="notifications-list" data-notification-view="active">Aktywne <span id="notification-active-count">0</span></button>
+              <button id="notification-tab-archived" role="tab" aria-selected="false" aria-controls="notifications-list" tabindex="-1" data-notification-view="archived">Archiwum <span id="notification-archived-count">0</span></button>
+              <button id="notification-tab-deleted" role="tab" aria-selected="false" aria-controls="notifications-list" tabindex="-1" data-notification-view="deleted">Kosz <span id="notification-deleted-count">0</span></button>
+            </div>
+            <p id="notifications-status" class="notifications-status" role="status">Ładowanie ostrzeżeń i błędów…</p>
+            <div id="notifications-list" class="notifications-list" role="tabpanel" aria-labelledby="notification-tab-active" tabindex="0"></div>
+            <button id="notifications-more" class="button outline hidden">Pokaż starsze</button>
+            <button id="notifications-delete-all" class="button danger" disabled>Usuń wszystkie aktywne</button>
+            <button id="notification-retention-open" class="button outline">Retencja i eksport</button>
+            <p id="notifications-note" class="notifications-note"></p>
+          </section>
+        </div>
+        <label for="panel-language">PL/EN</label><select id="panel-language" aria-label="Język nawigacji / Navigation language"><option value="pl">PL</option><option value="en">EN</option></select><label for="profile">Widok</label><select id="profile"><option value="dev">DEV</option><option value="test">TEST</option><option value="prod">PROD · procedury</option></select><button id="refresh" class="button subtle"><span aria-hidden="true">↻</span> Odśwież</button>
+      </div>
+    </header>
+    <main id="main" tabindex="-1">
+      <div id="banner" class="banner hidden" role="alert"></div>
+      <section class="page-heading"><div><p class="eyebrow">NOVABANK / NARZĘDZIA OPERATORA</p><h1 id="page-title">Centrum operacyjne</h1><p id="page-description">Bank, sklep i infrastruktura. Wszystko w jednym miejscu.</p></div><span id="profile-badge" class="profile-badge">DEV</span></section>
+      <div id="scope-note" class="scope-note">Ładowanie panelu…</div><p id="panel-language-note" class="panel-language-note"></p>
+
+      <section id="view-dashboard" class="view" aria-label="Pulpit operacyjny">
+        <div class="summary-grid">
+          <article class="summary-card"><div class="summary-label"><span aria-hidden="true">⌂</span>Aplikacje · porty TCP</div><strong id="apps-count">—</strong><p>Bank i NovaTech Shop</p><span class="card-line"></span></article>
+          <article class="summary-card"><div class="summary-label"><span aria-hidden="true">▱</span>Infrastruktura · porty TCP</div><strong id="infra-count">—</strong><p>PostgreSQL × 2 i Redis</p><span class="card-line gold"></span></article>
+          <article class="summary-card"><div class="summary-label"><span aria-hidden="true">◷</span>Ostatnie zadanie</div><strong id="last-task-status" class="task-summary">Brak zadań</strong><p id="last-task-title">Gotowe do pracy</p><span class="card-line neutral"></span></article>
+        </div>
+        <div class="dashboard-grid">
+          <section class="card services-card"><div class="card-heading"><div><p class="eyebrow">DIAGNOSTYKA LOKALNA</p><h2>Status usług</h2></div><span id="checked-at" class="muted small">—</span></div><div class="table-scroll"><table><thead><tr><th>Usługa</th><th>Port</th><th>Stan TCP</th><th>Zakres</th></tr></thead><tbody id="services"></tbody></table></div><p id="status-note" class="card-footnote">Stan TCP nie potwierdza gotowości aplikacji.</p></section>
+          <section class="card quick-card">
+            <div class="card-heading"><div><p class="eyebrow">CODZIENNA PRACA</p><h2>Szybkie akcje</h2></div></div>
+            <div id="quick-actions" class="quick-actions"></div>
+            <div id="app-links" class="app-links"></div>
+            <details id="monitoring-links" class="monitoring-links hidden">
+              <summary class="app-link">
+                <span class="app-link-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M3 3v18h18M7 15l4-5 4 3 5-7"/></svg></span>
+                <span class="app-link-content"><strong>Monitoring</strong><small>Prometheus · Grafana · Alertmanager</small></span>
+                <span class="app-link-arrow" aria-hidden="true">⌄</span>
+              </summary>
+              <nav class="monitoring-options" aria-label="Panele monitoringu">
+                <a href="http://localhost:9090/" target="_blank" rel="noopener noreferrer" aria-label="Prometheus — nowa karta"><span>Prometheus<small>localhost:9090</small></span><span aria-hidden="true">↗</span></a>
+                <a href="http://localhost:3000/" target="_blank" rel="noopener noreferrer" aria-label="Grafana — nowa karta"><span>Grafana<small>localhost:3000</small></span><span aria-hidden="true">↗</span></a>
+                <a href="http://localhost:9093/" target="_blank" rel="noopener noreferrer" aria-label="Alertmanager — nowa karta"><span>Alertmanager<small>localhost:9093</small></span><span aria-hidden="true">↗</span></a>
+                <p class="monitoring-hint">Panele muszą być uruchomione. Linki otwierają nową kartę.</p>
+              </nav>
+            </details>
+          </section>
+        </div>
+        <section class="card recent-card"><div class="card-heading"><h2>Ostatnia aktywność</h2><button id="show-all-jobs" class="text-button">Wszystkie zadania <span aria-hidden="true">→</span></button></div><div id="recent-jobs" class="recent-jobs"></div></section>
+      </section>
+
+      <section id="view-operations" class="view hidden" aria-label="Operacje środowiska">
+        <div class="filter-row"><div id="categories" class="categories" aria-label="Kategorie operacji"></div><label class="search-box"><span aria-hidden="true">⌕</span><input id="action-search" type="search" placeholder="Szukaj operacji…" aria-label="Szukaj operacji"></label></div>
+        <div id="operation-grid" class="operation-grid"></div>
+      </section>
+
+      <section id="view-accounts" class="view hidden" aria-label="Konta bankowe DEV">
+        <article class="card bank-accounts-intro"><div class="bank-accounts-heading"><div><p class="eyebrow">RACHUNKI / LOKALNA BAZA BANKU</p><h2>Konta założone w aplikacji</h2></div><span class="bank-accounts-badge">DEV · TYLKO ODCZYT</span></div><p>Rachunki aktywne, zablokowane i zamknięte. Wyszukaj właściciela, e-mail, numer lub ID. Pełny numer i daty znajdziesz w szczegółach.</p><details><summary>Zakres danych i bezpieczeństwo</summary><p class="muted">Wyszukiwanie obsługuje ID rachunku/użytkownika i numer ze spacjami oraz prefiksem PL. Dane osobowe — nie udostępniaj zrzutów. Bez haseł, PIN-ów, sekretów 2FA i kodów odzyskiwania. Saldo dotyczy rachunku głównego, nie sumy portfela walutowego. Ten widok nie tworzy kont, nie zmienia statusów ani sald.</p></details></article>
+        <article id="bank-accounts-unavailable" class="card hidden"><h2>Podgląd dostępny tylko w DEV</h2><p>Wybierz widok DEV. TEST korzysta z tymczasowych baz Testcontainers; Control Center nie przegląda kont PROD.</p></article>
+        <section id="bank-accounts-data" class="card"><div class="bank-accounts-heading"><h2>Rachunki bankowe</h2><button id="bank-accounts-reload" type="button" class="button outline">Odśwież rachunki</button></div>
+          <form id="bank-account-filters" class="bank-account-filters"><label>Szukaj rachunku lub właściciela<input id="bank-account-query" type="search" maxlength="128" autocomplete="off" placeholder="Imię, e-mail, numer lub ID…"></label><label>Status rachunku<select id="bank-account-status"><option value="ALL">Wszystkie statusy</option><option value="ACTIVE">Aktywny</option><option value="BLOCKED">Zablokowany</option><option value="CLOSED">Zamknięty</option></select></label><label>Waluta<input id="bank-account-currency" type="text" maxlength="3" pattern="[A-Za-z]{3}" placeholder="Wszystkie" autocomplete="off" aria-label="Kod waluty, puste oznacza wszystkie"></label><button type="submit" class="button primary">Szukaj rachunków</button></form>
+          <p id="bank-accounts-status" class="bank-accounts-status" role="status">Otwórz zakładkę, aby pobrać rachunki DEV.</p>
+          <div class="table-scroll" tabindex="0" aria-label="Przewijana lista rachunków"><table class="bank-accounts-table" aria-label="Rachunki bankowe DEV"><thead><tr><th>Rachunek</th><th>Właściciel</th><th>Saldo</th><th>Status</th><th>Podgląd</th></tr></thead><tbody id="bank-accounts-rows"></tbody></table></div>
+          <div class="bank-accounts-pagination"><p id="bank-accounts-page"></p><div><button id="bank-accounts-prev" type="button" class="button outline" disabled>← Poprzednie</button><button id="bank-accounts-next" type="button" class="button outline" disabled>Następne →</button></div></div>
+        </section>
+      </section>
+
+      <section id="view-shopAccounts" class="view hidden" aria-label="Konta sklepu DEV">
+        <article class="card bank-accounts-intro"><div class="bank-accounts-heading"><div><p class="eyebrow">KLIENCI / LOKALNA BAZA SKLEPU</p><h2>Konta NovaTech Shop</h2></div><span class="bank-accounts-badge">DEV · TYLKO ODCZYT</span></div><p>Wyszukuj klientów i administratorów sklepu. Sprawdź profil, aktywność i daty bez ręcznych zapytań SQL.</p><details><summary>Zakres danych i bezpieczeństwo</summary><p class="muted">Konto sklepu jest niezależne od rachunku bankowego — ten sam e-mail nie potwierdza ich powiązania. Bez haseł, hashy, tokenów, treści telefonu i adresu, historii zamówień i danych płatności. Podgląd nie tworzy kont, nie zmienia ról ani aktywności. Dane osobowe DEV — nie udostępniaj zrzutów.</p></details></article>
+        <article id="shop-accounts-unavailable" class="card hidden"><h2>Podgląd kont sklepu tylko w DEV</h2><p>Wybierz widok DEV. TEST korzysta z tymczasowych baz; konta PROD pozostają poza podglądem.</p></article>
+        <section id="shop-accounts-data" class="card"><div class="bank-accounts-heading"><h2>Użytkownicy sklepu</h2><button id="shop-accounts-reload" type="button" class="button outline">Odśwież konta sklepu</button></div>
+          <form id="shop-account-filters" class="bank-account-filters"><label>Szukaj konta sklepu<input id="shop-account-query" type="search" maxlength="128" autocomplete="off" placeholder="Imię, e-mail, ID klienta lub konta…"></label><label>Aktywność konta<select id="shop-account-status"><option value="ALL">Wszystkie konta</option><option value="ACTIVE">Aktywne</option><option value="INACTIVE">Nieaktywne</option></select></label><label>Rola w sklepie<select id="shop-account-role"><option value="ALL">Wszystkie role</option><option value="CUSTOMER">Klient</option><option value="ADMIN">Administrator</option></select></label><button type="submit" class="button primary">Szukaj kont sklepu</button></form>
+          <p id="shop-accounts-status" class="bank-accounts-status" role="status">Otwórz zakładkę, aby pobrać konta sklepu DEV.</p>
+          <div class="table-scroll" tabindex="0" aria-label="Przewijana lista kont sklepu"><table class="bank-accounts-table" aria-label="Konta sklepu DEV"><thead><tr><th>Użytkownik</th><th>Identyfikator klienta</th><th>Rola</th><th>Aktywność</th><th>Podgląd</th></tr></thead><tbody id="shop-accounts-rows"></tbody></table></div>
+          <div class="bank-accounts-pagination"><p id="shop-accounts-page"></p><div><button id="shop-accounts-prev" type="button" class="button outline" disabled>← Poprzednie</button><button id="shop-accounts-next" type="button" class="button outline" disabled>Następne →</button></div></div>
+        </section>
+      </section>
+
+      <section id="view-paymentCases" class="view hidden" aria-label="Uzgadnianie płatności DEV">
+        <nav class="payment-case-tabs" aria-label="Obszary zakupów"><button id="payment-case-tab-current" class="button primary" aria-pressed="true">Bieżące zakupy</button><button id="payment-case-tab-review" class="button outline" aria-pressed="false">Do wyjaśnienia</button><button id="payment-case-tab-history" class="button outline" aria-pressed="false">Historia</button></nav><p class="payment-case-tab-note">Zamknięte sprawy trafiają od razu do Historii, także te z wynikiem UNKNOWN. Historia obejmuje również zakończone zakupy starsze niż 7 dni. Otwarte nierozstrzygnięcia pozostają w „Do wyjaśnienia”.</p>
+        <article id="payment-case-list" class="card payment-case-card"><header class="payment-case-intro"><p class="eyebrow">HISTORIA / DOWODY / DECYZJE OPERATORA</p><h2 id="payment-case-list-title" tabindex="-1">Sprawy płatności</h2><p>Wynik finansowy i obsługa sprawy są niezależne. Zamknięcie bez rozstrzygnięcia ani zgoda na nowy zakup nie zmieniają UNKNOWN na odmowę. Bez nowych obciążeń, usuwania zamówień lub zmian sald.</p></header><p class="payment-case-notice">Zgoda dotyczy tylko wskazanego starego zamówienia. Klient musi dodatkowo potwierdzić rozpoczęcie niezależnego zakupu z pustym koszykiem. Każdy kolejny nierozstrzygnięty zakup wymaga osobnego przeglądu. Aktor audytu „local-cc-dev” oznacza lokalny panel, nie zweryfikowaną tożsamość osoby.</p>
+          <form id="payment-case-filters" class="bank-account-filters"><label>Szukaj ID zamówienia, numeru lub ID klienta<input id="payment-case-query" type="search" maxlength="128" autocomplete="off" placeholder="ID zamówienia, numer lub ID klienta…"></label><label>Widok<select id="payment-case-view"><option value="UNRESOLVED">Nierozstrzygnięte</option><option value="ALL">Wszystkie zamówienia</option><option value="REFUNDS">Zwroty</option><option value="CONFLICT">Konflikty</option><option value="ESCALATED">Eskalowane</option><option value="CLOSED_UNRESOLVED">Zamknięte bez rozstrzygnięcia</option><option value="RESOLVED">Rozliczone sprawy</option></select></label><button class="button primary">Szukaj / odśwież</button></form>
+          <p id="payment-case-status" role="status">Otwórz zakładkę w profilu DEV.</p>
+          <div id="payment-case-table-scroll" class="table-scroll" tabindex="0" aria-label="Przewijana lista spraw płatności"><table><thead><tr><th scope="col">Zamówienie / klient</th><th scope="col">Kwota</th><th scope="col">Stan lokalny</th><th scope="col">Wynik finansowy</th><th scope="col">Sprawa</th><th scope="col">Nowy zakup</th><th scope="col">Podgląd</th></tr></thead><tbody id="payment-case-rows"></tbody></table></div>
+          <footer class="payment-case-pagination"><p id="payment-case-page" role="status">Strona 1 · do 25 spraw na stronie</p><nav aria-label="Strony spraw płatności"><button id="payment-case-previous" class="button outline" disabled>← Poprzednie</button><button id="payment-case-more" class="button outline" disabled>Następne →</button></nav></footer>
+        </article>
+        <article id="payment-case-detail" class="card payment-case-card hidden" aria-labelledby="payment-case-title"><nav class="payment-case-toolbar" aria-label="Nawigacja sprawy"><button id="payment-case-back" class="button outline">← Wróć do listy</button><button id="payment-case-reload" class="button outline">Odśwież sprawę</button></nav><header class="payment-case-intro"><p class="eyebrow">SZCZEGÓŁY / UZGADNIANIE PŁATNOŚCI</p><h2 id="payment-case-title" tabindex="-1"></h2><p id="payment-case-order" class="payment-case-identity"></p></header><p id="payment-case-feedback" role="status"></p><div id="payment-case-summary" class="payment-case-metrics"></div><section class="payment-case-section payment-case-decisions" aria-labelledby="payment-case-actions-title"><h3 id="payment-case-actions-title">Działania operatora</h3><p>Każde działanie wymaga uzasadnienia i potwierdzenia. CANCELLED wymaga potwierdzonego braku obciążenia; zamknięcie bez rozstrzygnięcia zachowuje UNKNOWN.</p><p id="payment-case-action-note" role="status"></p><div id="payment-case-actions"></div></section><div class="payment-case-detail-grid"><section class="payment-case-section" aria-labelledby="payment-case-evidence-title"><div class="payment-case-section-heading"><h3 id="payment-case-evidence-title">Plan i dowody</h3><span id="payment-case-plan-state" class="payment-case-badge"></span></div><div id="payment-case-evidence-view"></div><details class="payment-case-technical"><summary>Dane techniczne planu (JSON)</summary><pre id="payment-case-evidence"></pre></details></section><section class="payment-case-section" aria-labelledby="payment-case-payments-title"><h3 id="payment-case-payments-title">Próby i zwroty</h3><div id="payment-case-payments-view"></div><details class="payment-case-technical"><summary>Dane techniczne prób i zwrotów (JSON)</summary><pre id="payment-case-payments"></pre></details></section></div><section class="payment-case-section" aria-labelledby="payment-case-events-title"><div class="payment-case-section-heading"><h3 id="payment-case-events-title">Historia decyzji</h3><span id="payment-case-event-count" class="payment-case-badge"></span></div><div id="payment-case-events"></div></section></article>
+      </section>
+      <section id="view-config" class="view hidden" aria-label="Konfiguracja DEV">
+        <article class="card configuration-intro"><p class="eyebrow">PIERWSZE URUCHOMIENIE / LOKALNE PLIKI</p><h2>Przygotuj środowisko z panelu</h2><p>Control Center utworzy brakujące <code>.novabank/env/project.env</code> i <code>dev.env</code>. Uzupełnij dane tutaj, zapisz, a potem uruchom kolejne kroki poniżej.</p><p class="dialog-warning">Zapis nie uruchamia baz ani aplikacji. Istniejące prawidłowe hasła baz i klucz szyfrowania 2FA są chronione przed rotacją. Puste pole sekretu zachowuje jego wartość; brakujące hasła i klucze zostaną wygenerowane. Jeżeli baza była już inicjalizowana, a utracono plik z hasłem, odtwórz poprzednie poświadczenia — nowy sekret w pliku nie resetuje hasła w bazie. Zmiany wymagają późniejszego restartu aplikacji.</p><p>Wymagane są wcześniej przygotowane narzędzia WSL: Python 3, JDK 25 i Docker Engine. Panel nie instaluje ich i nie wykonuje <code>sudo</code>.</p></article>
+        <div id="configuration-unavailable" class="card configuration-intro hidden"><h2>Kreator podstawowego DEV</h2><p>Ustawienia TEST zmienisz w „Pliki i sekrety”, a test.env utworzysz w Operacje. PROD, Vault i certyfikaty pozostają poza edytorem.</p><button id="configuration-dev-view" class="button primary">Przejdź do widoku DEV</button></div>
+        <p><a class="button outline configuration-jump" href="#configuration-next-actions">Kolejne kroki: bazy, buildy i start DEV ↓</a></p>
+        <form id="configuration-form" class="card configuration-form">
+          <div class="card-heading"><div><p class="eyebrow">USTAWIENIA DEV</p><h2>Pliki i dane środowiska</h2></div><button id="configuration-reload" type="button" class="button outline">Wczytaj ponownie</button></div>
+          <p id="configuration-status" class="configuration-status" role="status">Otwórz zakładkę, aby odczytać stan plików.</p>
+          <div id="configuration-files" class="configuration-files"></div><div id="configuration-warnings" class="configuration-warnings" role="alert"></div>
+          <div id="configuration-fields" class="configuration-groups"></div>
+          <div class="configuration-save"><p id="configuration-note" class="muted small"></p><label class="confirmation-check"><input id="configuration-confirm" type="checkbox">Potwierdzam zapis lokalnych plików DEV i późniejszy restart zależnych aplikacji. Nie zmienia to haseł już zainicjalizowanych baz.</label><div class="dialog-buttons"><button id="configuration-save" type="submit" class="button primary" disabled>Utwórz pliki i zapisz dane</button></div></div>
+        </form>
+        <section class="card configuration-next"><h2>Kolejne kroki — bez terminala</h2><p>Każdy krok jest osobną operacją wymagającą potwierdzenia. Nie uruchamia się automatycznie po zapisie.</p><div id="configuration-next-actions" class="configuration-next-actions"></div><p class="muted small">Rachunek sklepu trzeba wcześniej utworzyć w banku. Jego numer można później uzupełnić w tym formularzu. Konfiguracja nie zakłada kont klientów ani nie księguje środków. Ustawienia Stripe i inne zaawansowane właściwości zachowujemy, ale nie edytujemy ich tutaj.</p></section>
+      </section>
+
+      <section id="view-maintenance" class="view hidden" aria-label="Ustawienia operacji i migracja CLI">
+        <article class="card operator-intro"><p class="eyebrow">UTRZYMANIE / JAWNE ZMIANY</p><h2>Harmonogramy, retencje i historia CLI</h2><p>Zmiana ustawień nie wykonuje backupu, nie przenosi kopii ani nie przełącza timerów. Zapisane godziny, katalog i retencja są używane przy kolejnej instalacji harmonogramu — istniejący timer zachowuje wcześniejsze ustawienia do aktualizacji.</p><p class="dialog-warning">Migracja ma osobny plan i potwierdzenie. Nie przerywa aktywnego backupu/DR. Nowy timer Persistent może uruchomić zaległe zadanie. Przed operacją upewnij się, że inne narzędzie nie zmienia tych samych jednostek.</p></article>
+        <p id="operator-status" class="scope-note" role="status">Otwórz zakładkę, aby wczytać ustawienia.</p>
+        <article id="operator-prod" class="card operator-intro hidden"><h2>PROD — wyłącznie diagnostyka Vault/CA</h2><p>Retencje i migracja CLI dotyczą DEV/TEST. Nie edytujemy danych biznesowych Vault, CA, kluczy prywatnych ani usług systemowych.</p><div id="operator-vault-action"></div></article>
+        <form id="operator-form" class="card operator-form"><div class="card-heading"><div><p class="eyebrow">LOKALNE USTAWIENIA</p><h2 id="operator-title">Parametry operacji</h2></div><button id="operator-reload" type="button" class="button outline">Wczytaj ponownie</button></div><div id="operator-fields" class="operator-fields"></div><p class="muted small">W projekcie: podkatalog .novabank/backups. Poza projektem: dedykowany, pusty katalog novabank-dev-backups[-nazwa], np. /mnt/e/novabank-dev-backups. Panel nie przejmuje istniejącego niepustego katalogu bez swojego znacznika. Przed retencją potwierdza przypisanie katalogu do projektu.</p><label class="confirmation-check"><input id="operator-confirm" type="checkbox">Potwierdzam zapis ustawień. Katalog kopii nie jest automatycznie przenoszony, a istniejące timery trzeba osobno zaktualizować.</label><div class="dialog-buttons"><button id="operator-save" class="button primary" type="submit" disabled>Zapisz ustawienia</button></div></form>
+        <section id="operator-next" class="card operator-intro"><h2>Wykonaj osobno po zapisie</h2><p>Każda operacja wymaga własnego potwierdzenia. Aktywny harmonogram CLI blokuje instalację drugiego timera; użyj planu poniżej.</p><div id="operator-actions" class="operator-actions"></div></section>
+        <section id="operator-legacy" class="card operator-intro"><div class="card-heading"><div><p class="eyebrow">SYSTEMD / KONFIGURACJA I WYKONANIE</p><h2>Harmonogramy i status wykonania</h2></div><button id="operator-legacy-reload" class="button outline" type="button">Sprawdź timery i historię</button></div><p id="operator-legacy-note" class="muted small" role="status">Odczyt nie zmienia harmonogramów.</p><h3>Harmonogramy WWW</h3><p>Instalacja, weryfikacja konfiguracji i ostatnie wykonanie to trzy różne wyniki. Daty według WSL. Włączenie timera nie jest testem backupu/DR.</p><div id="operator-managed" class="operator-timers" aria-live="polite"></div><section id="operator-cli-section" class="hidden" aria-labelledby="operator-cli-title"><h3 id="operator-cli-title">Stare harmonogramy CLI</h3><p id="operator-cli-state" class="dialog-warning hidden" role="status"></p><div id="operator-timers" class="operator-timers"></div></section></section>
+        <section id="operator-history" class="card operator-intro"><div class="card-heading"><div><p class="eyebrow">OSOBNY DZIENNIK / BEZ WYKONYWANIA WPISÓW</p><h2>Historia terminalowej Centrali</h2></div><button id="operator-history-import" class="button outline" type="button">Importuj historię CLI</button></div><p id="operator-history-note" class="muted small">Do 500 maskowanych wpisów. Profil nieznany; źródłowy activity.log pozostaje bez zmian.</p><div class="operator-history-scroll" tabindex="0" aria-label="Historia operacji CLI"><table><thead><tr><th>Czas</th><th>Wynik</th><th>Operacja zapisana w CLI</th></tr></thead><tbody id="operator-history-rows"></tbody></table></div></section>
+      </section>
+
+      <section id="view-tests" class="view hidden" aria-label="Testy i logi">
+        <div id="test-actions" class="operation-grid tests-grid"></div>
+        <section class="card jobs-card"><div class="jobs-layout"><div class="jobs-list-panel"><div class="card-heading"><h2 id="job-list-title">Zadania</h2><span id="job-count" class="muted small">0</span></div><div id="job-list" role="region" aria-labelledby="job-list-title" tabindex="0"></div></div><div class="log-panel"><div class="card-heading"><div><h2 id="log-title">Dziennik zadania</h2><p id="log-meta" class="muted small">Wybierz zadanie z listy.</p></div><div class="log-actions"><button id="copy-log" class="button subtle">Kopiuj</button><button id="cancel-job" class="button danger hidden">Przerwij</button></div></div><pre id="log-output" tabindex="0" aria-label="Wynik zadania">Wyniki pojawią się po uruchomieniu operacji. Panel nie symuluje sukcesu.</pre><p class="card-footnote">Logi są maskowane. Przerwanie procesu nie cofa już wykonanych operacji.</p></div></div></section>
+      </section>
+
+      <section id="view-files" class="view hidden" aria-label="Pliki i sekrety DEV i TEST">
+        <article class="card configuration-intro"><p class="eyebrow">LOKALNE USTAWIENIA / DEV I TEST</p><h2>Konfiguracja bez szukania plików</h2><p>Wybierz plik po lewej. Możesz zmieniać ustawienia, dodawać pola, usuwać je oraz jawnie podejrzeć sekret na 45 sekund. Sekrety są domyślnie ukryte; puste pole sekretu zachowuje wartość.</p><p class="dialog-warning">Zapis zmienia pliki, nie hasła w istniejącym PostgreSQL ani działające procesy. Nowy klucz TOTP bez migracji uniemożliwia odszyfrowanie wcześniej zapisanych sekretów 2FA. Klucz API musi być zgodny w banku i sklepie. Zmiany wymagają restartu zależnych usług. Plików nie edytuj równocześnie w IDE/CLI. Nigdy nie wpisuj tutaj sekretów PROD.</p><p>TEST przekazuje wyłącznie pola TEST_* do testów Maven. Testcontainers może nadpisać adresy baz. Monitoring i backupy DEV nie są uruchamiane w widoku TEST.</p></article>
+        <p id="file-editor-status" class="scope-note" role="status">Otwórz zakładkę, aby odczytać listę plików.</p>
+        <div class="file-editor-layout">
+          <aside class="card file-selector"><div class="card-heading"><h2>Pliki</h2><button id="files-reload" class="button subtle" type="button">Odśwież</button></div><div id="file-list"></div><p class="muted small">Wyłącznie wskazane pliki DEV/TEST. Bez edycji kodu, certyfikatów, Vault i PROD. Komentarze i pozostałe linie zostają zachowane.</p></aside>
+          <form id="file-editor-form" class="card file-editor-form hidden">
+            <header class="file-editor-header"><p class="eyebrow">EDYTOR USTAWIEŃ</p><h2 id="file-editor-title">Wybierz plik</h2><p id="file-editor-meta" class="muted small"></p></header>
+            <p class="file-editor-hint">Każdy kafelek to jedno ustawienie: nazwa, wartość i jego własne akcje. Sekrety oznaczono złotym akcentem. Puste pole sekretu zachowuje obecną wartość; „Usuń pole” zadziała dopiero po potwierdzeniu zapisu.</p>
+            <div class="file-filter-bar" role="group" aria-label="Filtruj kafelki według typu">
+              <button id="file-filter-all" class="file-filter-button selected" type="button" aria-pressed="true" aria-controls="file-entries">Pokaż wszystko <span id="file-count-all" class="file-filter-count">0</span></button>
+              <button id="file-filter-secret" class="file-filter-button" type="button" aria-pressed="false" aria-controls="file-entries">Sekrety <span id="file-count-secret" class="file-filter-count">0</span></button>
+              <button id="file-filter-setting" class="file-filter-button" type="button" aria-pressed="false" aria-controls="file-entries">Ustawienia <span id="file-count-setting" class="file-filter-count">0</span></button>
+            </div>
+            <p id="file-filter-summary" class="file-filter-summary" role="status"></p>
+            <p id="file-filter-empty" class="file-filter-empty hidden"></p>
+            <div id="file-entries" class="file-entries"></div>
+            <fieldset class="file-add"><legend>Dodaj ustawienie</legend><label>Nazwa pola<input id="file-new-key" placeholder="Np. SHOP_PAYMENT_PROVIDER" maxlength="96" autocomplete="off" list="file-key-suggestions"></label><datalist id="file-key-suggestions"></datalist><label>Wartość<input id="file-new-value" type="password" maxlength="2048" autocomplete="new-password" placeholder="Wartość nowego ustawienia"></label><button id="file-add-entry" class="button outline" type="button">Dodaj do formularza</button></fieldset>
+            <label class="confirmation-check"><input id="file-risk-check" type="checkbox">Rozumiem skutki zmiany haseł/kluczy: zgodność z bazą, restart usług i ewentualna migracja danych 2FA. Zapis pliku nie wykonuje tych czynności.</label>
+            <label class="confirmation-check"><input id="file-save-check" type="checkbox">Potwierdzam utworzenie lub zmianę tego pliku lokalnego.</label>
+            <div class="dialog-buttons"><button id="file-save" class="button primary" type="submit" disabled>Zapisz plik</button></div>
+          </form>
+        </div>
+      </section>
+
+      <section id="view-guide" class="view hidden" aria-label="Interaktywny przewodnik"><article class="card configuration-intro"><p class="eyebrow">PIERWSZY START / KROK PO KROKU</p><h2>Przewodnik uruchomienia</h2><p>Przewodnik dostosowuje się do wybranego widoku DEV/TEST/PROD. Kolejność jest wskazówką, nie automatycznym wykonaniem. Każdy przycisk otwiera własne potwierdzenie i dziennik zadania. Po wykonaniu kroku możesz wrócić do przewodnika z Operacji.</p><button id="guide-back" class="button outline" type="button">Wróć do Operacji</button></article><div id="guide-steps" class="operation-grid"></div></section>
+      <section id="view-docs" class="view hidden" aria-label="Dokumentacja">
+        <p class="docs-section-label">KONTRAKTY HTTP / API</p>
+        <div class="operation-grid api-docs-cards">
+          <article class="card documentation-card"><span class="operation-icon" aria-hidden="true">⌂</span><h2>Swagger banku</h2><p>Endpointy NovaBank, modele żądań i odpowiedzi. Lokalna aplikacja musi być uruchomiona.</p><div id="bank-api-links" class="documentation-links"></div></article>
+          <article class="card documentation-card"><span class="operation-icon" aria-hidden="true">▱</span><h2>Swagger sklepu</h2><p>Endpointy NovaTech Shop. To osobne API, niezależne od banku i Control Center.</p><div id="shop-api-links" class="documentation-links"></div></article>
+          <article class="card documentation-card"><span class="operation-icon" aria-hidden="true">◇</span><h2>API Control Center</h2><p>Zadania, diagnostyka, konta DEV i powiadomienia. Osobny kontrakt OpenAPI, bez tokenów i danych runtime.</p><a class="button primary" href="/docs/api" target="_blank" rel="noopener">Przeglądaj API panelu ↗</a><a class="text-button" href="/api/openapi.json" target="_blank" rel="noopener">OpenAPI JSON ↗</a></article>
+        </div>
+        <p id="api-links-note" class="scope-note">Ładowanie lokalnych adresów API…</p>
+        <p class="docs-section-label">INSTRUKCJE / BEZPIECZNA PRACA</p>
+        <div class="operation-grid"><article class="card documentation-card"><span class="operation-icon" aria-hidden="true">▤</span><h2>Instrukcja projektu</h2><p>Środowiska, IntelliJ, Docker, monitoring, Vault, płatności i backupy.</p><a class="button outline" href="/docs/guide" target="_blank" rel="noopener">Otwórz General_Instruction.md ↗</a></article><article class="card documentation-card"><span class="operation-icon" aria-hidden="true">◇</span><h2>Obsługa panelu</h2><p>Uruchamianie, zakres DEV/TEST/PROD i zasady bezpiecznych operacji.</p><a class="button outline" href="/docs/panel" target="_blank" rel="noopener">Otwórz instrukcję panelu ↗</a></article></div>
+        <article class="card documentation-notes"><h2>Zanim rozpoczniesz</h2><ol><li>Sprawdź narzędzia WSL w Operacje → Narzędzia.</li><li><button id="docs-open-configuration" class="text-button">Otwórz Konfiguracja DEV →</button> Utwórz podstawowe pliki. Zaawansowane ustawienia i sekrety zmienisz w „Pliki i sekrety”.</li><li>Uruchom bazy, wykonaj buildy i uruchom aplikacje. Nie zajmuj tych samych portów dwoma procesami.</li><li>TEST uruchamia testy Maven z test.env; integracyjne korzystają z Testcontainers. Nie przełącza baz DEV na TEST.</li><li>Monitoring, Stripe TEST, backupy i DR baz DEV mają osobne kategorie Operacji.</li><li>PROD ma osobne jawne procedury Vault/AppRole, bootstrap/TLS i buildy. Każde zadanie wymaga wpisania PROD. Inicjalizacja Vault, token operatora i dane KV wymagają administracyjnego przygotowania poza panelem.</li></ol><p>CLI nadal działa: <code>bash scripts/start.sh --cli</code>. Instalacje wymagające interaktywnego hasła administratora muszą być zatwierdzone w systemie, nie w formularzu WWW.</p></article>
+      </section>
+      <footer class="page-footer"><span><span class="local-dot" aria-hidden="true"></span> Jedno zadanie na raz</span><span id="connection-state" role="status">Łączenie z panelem…</span><span>NovaBank Control Center · lokalny operator DEV/TEST/PROD-like</span></footer>
+    </main>
+  </div>
+  <dialog id="file-secret-dialog" aria-labelledby="file-secret-title"><form method="dialog"><div class="dialog-heading"><p class="eyebrow">DANE WRAŻLIWE · PODGLĄD LOKALNY</p><button class="close-dialog" value="cancel" aria-label="Zamknij podgląd sekretu">×</button></div><h2 id="file-secret-title">Pokaż sekret?</h2><p id="file-secret-description"></p><p class="dialog-warning">Wartość będzie widoczna przez maksymalnie 45 sekund. Upewnij się, że nikt nie podgląda ekranu. Nie udostępniaj jej ani nie zapisuj w logach.</p><div class="dialog-buttons"><button class="button outline" value="cancel">Anuluj</button><button class="button primary" value="reveal">Pokaż sekret</button></div></form></dialog>
+  <dialog id="bank-account-dialog" class="bank-account-dialog" aria-labelledby="bank-account-title"><div class="dialog-heading"><p class="eyebrow">DEV / TYLKO ODCZYT</p><button id="bank-account-close" type="button" class="close-dialog" aria-label="Zamknij dane rachunku">×</button></div><h2 id="bank-account-title">Szczegóły rachunku</h2><p class="dialog-warning">Dane osobowe lokalnego środowiska. Bez operacji finansowych i zmiany statusu konta.</p><p id="bank-account-feedback" class="muted small" role="status"></p><dl id="bank-account-fields" class="bank-account-fields"></dl></dialog>
+  <dialog id="shop-account-dialog" class="bank-account-dialog" aria-labelledby="shop-account-title"><div class="dialog-heading"><p class="eyebrow">SKLEP / DEV / TYLKO ODCZYT</p><button id="shop-account-close" type="button" class="close-dialog" aria-label="Zamknij dane konta sklepu">×</button></div><h2 id="shop-account-title">Szczegóły konta sklepu</h2><p class="dialog-warning">Dane osobowe lokalnego środowiska. Bez zmiany ról, aktywności, hasła i danych płatności.</p><p id="shop-account-feedback" class="muted small" role="status"></p><button id="shop-account-purchases" class="button outline" disabled>Zakupy tego klienta</button><dl id="shop-account-fields" class="bank-account-fields"></dl></dialog>
+  <dialog id="operator-migration-dialog" class="bank-account-dialog" aria-labelledby="operator-migration-title"><div class="dialog-heading"><p class="eyebrow">DEV / ZMIANA HARMONOGRAMU</p><button id="operator-migration-close" type="button" class="close-dialog" aria-label="Zamknij plan migracji">×</button></div><h2 id="operator-migration-title">Plan migracji CLI</h2><div id="operator-migration-plan"></div><p class="dialog-warning">Powstanie kopia starych jednostek. Stary timer zostanie wyłączony, a nowy zainstalowany i włączony. Nie przenosi to kopii baz. Zaległe zadanie Persistent może rozpocząć się po instalacji. Gdy rollback nie zostanie potwierdzony, sprawdź oba timery ręcznie i nie ponawiaj automatycznie.</p><label class="confirmation-check"><input id="operator-migration-confirm" type="checkbox">Potwierdzam wskazany plan DEV, zmianę timerów i możliwość uruchomienia zaległego zadania.</label><div class="dialog-buttons"><button id="operator-migration-run" type="button" class="button primary" disabled>Wykonaj zatwierdzoną migrację</button></div></dialog>
+  <dialog id="confirm-dialog" aria-labelledby="confirm-title"><form method="dialog">
+    <div class="dialog-heading">
+    <p class="eyebrow">POTWIERDZENIE OPERACJI</p><button class="close-dialog" value="cancel" formnovalidate aria-label="Zamknij">×</button></div><span class="operation-icon" aria-hidden="true">◇</span><h2 id="confirm-title">Potwierdź operację</h2>
+    <p id="confirm-description"></p>
+    <p class="dialog-warning">Operacja może zmienić lokalne pliki, procesy lub kontenery. Zamknięcie karty nie przerywa zadania.</p>
+    <p id="production-warning" class="production-warning hidden" role="alert"><strong>UWAGA — URUCHAMIASZ OPERACJĘ PROD.</strong> Może zmienić Vault, dostęp aplikacji, pliki bootstrap lub certyfikaty. Upewnij się, że wybrano właściwe środowisko. Zmiany nie są automatycznie cofane; procedury Vault/TLS trzeba doprowadzić do wyniku i sprawdzić przed ponowieniem.</p>
+    <div id="production-fields"></div>
+    <p id="production-fields-note" class="muted small hidden">Pola są ukryte i używane tylko w tym zadaniu. Nie trafiają do historii, logów, URL ani localStorage. Nie wpisuj tokenu root. Panel obsługuje lokalny HTTPS Vault 127.0.0.1:8200 z CA projektu; nie zdalną produkcję.</p>
+    <label id="production-restart-label" class="confirmation-check hidden"><input id="production-restarted" type="checkbox">Zrestartowano wskazane aplikacje PROD i potwierdzono ich poprawne działanie z nowym Secret ID. Rozumiem, że finalizacja odbierze dostęp staremu ID.</label>
+    <label id="production-confirmation" class="production-field hidden" for="production-word">Wpisz PROD, aby potwierdzić środowisko<input id="production-word" autocomplete="off" maxlength="4" placeholder="PROD"></label>
+    <label id="artifact-delete-confirmation" class="production-field hidden" for="artifact-delete-word">Trwałe usunięcie: wpisz USUN. Plików nie będzie można odzyskać z panelu.<input id="artifact-delete-word" autocomplete="off" maxlength="4" placeholder="USUN"></label>
+    <label class="confirmation-check"><input id="confirm-check" type="checkbox">Rozumiem zakres operacji w wybranym środowisku.</label>
+    <div class="dialog-buttons"><button class="button outline" value="cancel" formnovalidate>Anuluj</button><button id="confirm-run" class="button primary" value="run" disabled>Uruchom</button></div></form></dialog>
+  <dialog id="cash-dialog" aria-labelledby="cash-title">
+    <form id="cash-form">
+      <div class="dialog-heading"><p class="eyebrow">TESTOWE ŚRODKI · TYLKO DEV</p><button type="button" id="cash-close" class="close-dialog" aria-label="Zamknij korektę salda">×</button></div>
+      <span class="operation-icon" aria-hidden="true">±</span><h2 id="cash-title">Korekta salda PLN</h2>
+      <p class="dialog-warning">To korekta testowych pieniędzy, nie przelew ani wpłata klienta. Operacja zmienia saldo i zapisuje osobny audyt. Po uruchomieniu nie można jej anulować.</p>
+      <div class="cash-field"><label for="cash-account">Konto PLN</label><select id="cash-account" required><option value="">Ładowanie kont…</option></select></div>
+      <div class="cash-field"><label for="cash-amount">Kwota PLN</label><input id="cash-amount" type="text" inputmode="decimal" autocomplete="off" required placeholder="np. 100,00" maxlength="12"></div>
+      <p id="cash-summary" class="cash-summary">Wybierz konto i podaj kwotę.</p>
+      <p id="cash-error" class="banner hidden" role="alert"></p>
+      <label class="confirmation-check"><input id="cash-check" type="checkbox">Potwierdzam korektę wskazanego salda w lokalnej bazie DEV.</label>
+      <p id="cash-request" class="cash-request"></p>
+      <div class="dialog-buttons"><button type="button" id="cash-cancel" class="button outline">Anuluj</button><button type="submit" id="cash-run" class="button primary" disabled>Wykonaj korektę</button></div>
+    </form>
+  </dialog>
+  <dialog id="notification-drawer" class="notification-drawer" aria-labelledby="notification-drawer-title">
+    <div class="notification-drawer-heading"><div><p class="eyebrow">DZIENNIK OPERATORA</p><h2 id="notification-drawer-title">Szczegóły powiadomienia</h2></div><button id="notification-drawer-close" type="button" class="close-dialog" aria-label="Zamknij szczegóły powiadomienia">×</button></div>
+    <div class="notification-drawer-body"><div id="notification-drawer-meta" class="notification-meta"></div><p id="notification-drawer-state" class="notification-state"></p><pre id="notification-drawer-message" tabindex="0" aria-label="Pełna treść powiadomienia"></pre><p id="notification-drawer-feedback" class="notification-feedback" role="status"></p><p id="notification-drawer-error" class="banner hidden" role="alert"></p>
+      <section class="problem-support" aria-labelledby="problem-title">
+        <p class="eyebrow">POMOC I KONTROLOWANE ROZWIĄZANIE</p><h3 id="problem-title">Instrukcja i diagnostyka</h3>
+        <p id="problem-code" class="muted small"></p><p id="problem-impact"></p><p id="problem-diagnosis"></p>
+        <p id="problem-outcome" class="scope-note"></p><p id="problem-profile-note" class="muted small"></p>
+        <details class="problem-instructions"><summary>Pokaż instrukcję krok po kroku</summary><p id="problem-doc-location" class="muted small"></p><ol id="problem-steps"></ol></details>
+        <div id="problem-actions" class="problem-buttons"></div>
+        <div class="problem-buttons"><button id="problem-check" type="button" class="button outline">Sprawdź ponownie</button><button id="problem-logs" type="button" class="button outline hidden">Otwórz log zadania</button></div>
+        <div id="problem-plan" class="problem-plan hidden"><h4 id="problem-plan-title"></h4><p id="problem-plan-source"></p><p>Planowane zapisy:</p><ul id="problem-plan-writes"></ul><p id="problem-plan-effects"></p>
+          <label class="confirmation-check"><input id="problem-confirm" type="checkbox">Potwierdzam ten zakres naprawy DEV, kopię plików i konieczność sprawdzenia przeładowania usług.</label>
+          <button id="problem-run" type="button" class="button primary" disabled>Wykonaj zatwierdzoną naprawę DEV</button>
+          <button id="problem-new-attempt" type="button" class="button outline hidden">Nowa próba po sprawdzeniu logu</button>
+        </div><p id="problem-feedback" role="status" class="muted small"></p>
+      </section>
+    </div>
+    <div class="notification-drawer-actions"><button id="notification-archive" class="button primary">Archiwizuj</button><button id="notification-restore" class="button outline hidden">Przywróć</button><button id="notification-delete" class="button danger">Usuń powiadomienie</button></div>
+    <p class="notification-drawer-footnote">Archiwum i kosz dotyczą tylko tego wpisu. Nie usuwają logów i nie naprawiają przyczyny alertu.</p>
+  </dialog>
+  <dialog id="notification-delete-dialog" aria-labelledby="notification-delete-title"><form method="dialog"><div class="dialog-heading"><p class="eyebrow">POTWIERDZENIE USUNIĘCIA</p><button class="close-dialog" value="cancel" aria-label="Zamknij potwierdzenie usunięcia">×</button></div><h2 id="notification-delete-title">Przenieść do kosza?</h2><p id="notification-delete-description"></p><p class="dialog-warning">Wpisy trafią do kosza i będzie można je przywrócić. Pliki logów i dane banku pozostaną bez zmian.</p><div class="dialog-buttons"><button class="button outline" value="cancel">Anuluj</button><button class="button primary" value="delete">Przenieś do kosza</button></div></form></dialog>
+  <noscript>Do obsługi Control Center wymagany jest JavaScript.</noscript>
+</body>
+</html>

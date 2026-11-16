@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/app-layout :: layout('Uwierzytelnianie 2FA', 'profile', ~{::main})}">
+<main>
+    <div class="page-heading">
+        <div>
+            <span class="page-eyebrow">Bezpieczeństwo</span>
+            <h1>Uwierzytelnianie 2FA</h1>
+            <p>Dodaj kod z Google Authenticator do logowania w NovaBank.</p>
+        </div>
+    </div>
+
+    <div class="profile-alert admin-alert-error" role="alert" th:if="${twoFactorError}">
+        <i class="bi bi-exclamation-circle-fill"></i>
+        <span th:text="${twoFactorError}">Nie udało się zmienić ustawień 2FA.</span>
+    </div>
+
+    <section class="app-card profile-form-card" th:if="${not twoFactorEnabled}">
+        <div class="card-heading">
+            <div>
+                <h2>Połącz z Google Authenticator</h2>
+                <p>Zeskanuj kod QR w aplikacji, a następnie potwierdź pierwszy kod.</p>
+            </div>
+            <span class="section-icon green"><i class="bi bi-qr-code-scan"></i></span>
+        </div>
+        <div class="text-center my-4">
+            <img class="border rounded p-2 bg-white" style="max-width: 240px" th:src="${setup.qrDataUri}" alt="Kod QR do konfiguracji 2FA">
+        </div>
+        <p><strong>Klucz ręczny:</strong> <code th:text="${setup.manualKey}">SEKRET</code></p>
+        <form th:action="@{/profile/2fa/enable}" method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+            <div class="form-field">
+                <label for="code">Kod z Google Authenticator</label>
+                <input id="code" name="code" class="form-control" inputmode="numeric"
+                       autocomplete="one-time-code" maxlength="6" required>
+            </div>
+            <button class="btn app-btn-primary" type="submit">
+                <i class="bi bi-shield-check"></i> Włącz 2FA
+            </button>
+        </form>
+    </section>
+
+    <section class="app-card profile-form-card" th:if="${twoFactorEnabled}">
+        <div class="card-heading">
+            <div>
+                <h2>2FA jest aktywne</h2>
+                <p>Przy każdym logowaniu wymagany będzie kod z aplikacji Google Authenticator.</p>
+            </div>
+            <span class="verified-badge"><i class="bi bi-check-circle-fill"></i> Aktywne</span>
+        </div>
+        <form th:action="@{/profile/2fa/disable}" method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+            <div class="form-field">
+                <label for="currentPassword">Aktualne hasło</label>
+                <input id="currentPassword" name="currentPassword" class="form-control" type="password" required autocomplete="current-password">
+            </div>
+            <div class="form-field">
+                <label for="disableCode">Aktualny kod 2FA</label>
+                <input id="disableCode" name="code" class="form-control" inputmode="numeric" maxlength="6" required autocomplete="one-time-code">
+            </div>
+            <button class="btn btn-outline-danger" type="submit">
+                <i class="bi bi-shield-x"></i> Wyłącz 2FA
+            </button>
+        </form>
+    </section>
+</main>
+</html>

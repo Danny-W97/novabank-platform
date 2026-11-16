@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/app-layout :: layout('PIN transakcyjny', 'profile', ~{::main})}">
+<main>
+    <div class="page-heading">
+        <div>
+            <span class="page-eyebrow">Bezpieczeństwo operacji</span>
+            <h1>PIN transakcyjny</h1>
+            <p>Opcjonalny PIN będzie wymagany przy zatwierdzaniu każdego przelewu.</p>
+        </div>
+    </div>
+    <div class="profile-form-layout">
+        <section class="app-card profile-form-card password-form-card">
+            <div class="profile-alert" th:if="${pinError}">
+                <i class="bi bi-exclamation-circle"></i><span th:text="${pinError}">Błąd PIN-u</span>
+            </div>
+            <form th:action="@{/profile/pin}" th:object="${transactionPinForm}" method="post" novalidate>
+                <div class="app-form-field">
+                    <label for="currentPassword">Hasło do konta</label>
+                    <input id="currentPassword" type="password" th:field="*{currentPassword}"
+                           autocomplete="current-password"
+                           th:classappend="${#fields.hasErrors('currentPassword')} ? 'is-invalid'">
+                    <p class="field-error" th:if="${#fields.hasErrors('currentPassword')}"
+                       th:errors="*{currentPassword}">Błąd hasła</p>
+                </div>
+                <div class="profile-form-grid">
+                    <div class="app-form-field">
+                        <label for="pin">Nowy PIN</label>
+                        <input id="pin" type="password" inputmode="numeric" th:field="*{pin}"
+                               minlength="4" maxlength="6" autocomplete="new-password"
+                               th:classappend="${#fields.hasErrors('pin')} ? 'is-invalid'">
+                        <p class="field-error" th:if="${#fields.hasErrors('pin')}" th:errors="*{pin}">Błąd PIN-u</p>
+                    </div>
+                    <div class="app-form-field">
+                        <label for="pinConfirmation">Powtórz PIN</label>
+                        <input id="pinConfirmation" type="password" inputmode="numeric"
+                               th:field="*{pinConfirmation}" minlength="4" maxlength="6"
+                               autocomplete="new-password"
+                               th:classappend="${#fields.hasErrors('pinConfirmation')} ? 'is-invalid'">
+                        <p class="field-error" th:if="${#fields.hasErrors('pinConfirmation')}"
+                           th:errors="*{pinConfirmation}">PIN-y nie są zgodne</p>
+                    </div>
+                </div>
+                <div class="password-guidance">
+                    <i class="bi bi-shield-lock"></i>
+                    <div><strong>PIN jest haszowany</strong><span>W bazie zapisywany jest wyłącznie hash BCrypt, nigdy jawny PIN.</span></div>
+                </div>
+                <div class="form-actions">
+                    <a class="btn app-btn-secondary" th:href="@{/profile}">Anuluj</a>
+                    <button class="btn app-btn-primary" type="submit"
+                            th:text="${pinConfigured ? 'Zmień PIN' : 'Włącz PIN'}">Włącz PIN</button>
+                </div>
+            </form>
+            <form class="pin-remove-form" th:if="${pinConfigured}"
+                  th:action="@{/profile/pin/remove}" method="post">
+                <div class="app-form-field">
+                    <label for="removePassword">Hasło wymagane do wyłączenia PIN-u</label>
+                    <input id="removePassword" name="currentPassword" type="password"
+                           autocomplete="current-password" required>
+                </div>
+                <button class="btn extension-danger" type="submit">Wyłącz PIN</button>
+            </form>
+        </section>
+    </div>
+</main>
+</html>

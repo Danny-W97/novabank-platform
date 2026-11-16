@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<body>
+<div class="global-flash-region" th:fragment="flash-messages" aria-live="polite">
+    <div class="alert alert-success alert-dismissible fade show global-flash"
+         th:if="${successMessage != null}" role="status">
+        <i class="bi bi-check-circle-fill me-2" aria-hidden="true"></i>
+        <span th:text="${successMessage}">Operacja zakończona powodzeniem.</span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Zamknij"></button>
+    </div>
+    <div class="alert alert-danger alert-dismissible fade show global-flash"
+         th:if="${errorMessage != null}" role="alert">
+        <i class="bi bi-exclamation-circle-fill me-2" aria-hidden="true"></i>
+        <span th:text="${errorMessage}">Wystąpił błąd.</span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Zamknij"></button>
+    </div>
+
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="copyToast" class="toast align-items-center border-0" role="status" aria-live="polite" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body"><i class="bi bi-check-circle-fill me-2" aria-hidden="true"></i>Numer rachunku skopiowany.</div>
+                <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Zamknij"></button>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/app-layout :: layout('Retencja danych', 'admin', ~{::main})}">
+<main>
+    <div class="page-heading">
+        <div>
+            <span class="page-eyebrow">Audyt i monitoring</span>
+            <h1>Retencja danych</h1>
+            <p>Kontrola czyszczenia danych technicznych bez modyfikowania danych kartowych i finansowych.</p>
+        </div>
+        <a class="btn app-btn-secondary" th:href="@{/admin}"><i class="bi bi-arrow-left"></i> Panel administratora</a>
+    </div>
+
+    <div class="profile-alert" th:if="${adminSuccess}" role="status">
+        <i class="bi bi-check-circle-fill"></i><span th:text="${adminSuccess}">Operacja wykonana.</span>
+    </div>
+    <div class="profile-alert admin-alert-error" th:if="${adminError}" role="alert">
+        <i class="bi bi-exclamation-circle-fill"></i><span th:text="${adminError}">Operacja odrzucona.</span>
+    </div>
+
+    <section class="admin-stats">
+        <article class="stat-card"><div class="stat-label">Automatyczna retencja</div><strong th:text="${retentionEnabled ? 'Włączona' : 'Wyłączona'}">Wyłączona</strong></article>
+        <article class="stat-card"><div class="stat-label">Tryb domyślny</div><strong th:text="${retentionDryRun ? 'Dry-run' : 'Usuwanie'}">Dry-run</strong></article>
+        <article class="stat-card"><div class="stat-label">Harmonogram</div><strong th:text="${retentionSchedule}">0 0 3 * * *</strong></article>
+        <article class="stat-card"><div class="stat-label">Partia</div><strong th:text="${retentionBatchSize}">500</strong></article>
+    </section>
+
+    <section class="app-card extension-card">
+        <div class="card-heading">
+            <div>
+                <h2>Operacje kontrolne</h2>
+                <p>Najpierw użyj podglądu. Ręczne wykonanie wymaga włączenia RETENTION_ENABLED.</p>
+            </div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <form th:action="@{/admin/data-retention/dry-run}" method="post">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <button class="btn app-btn-secondary" type="submit"><i class="bi bi-search"></i> Uruchom podgląd</button>
+            </form>
+            <form th:action="@{/admin/data-retention/run}" method="post"
+                  data-confirm="Czy na pewno uruchomić czyszczenie danych technicznych? Operacja zostanie zapisana w audycie.">
+                <button class="btn app-btn-primary" type="submit" th:disabled="${not retentionEnabled}"><i class="bi bi-trash3"></i> Uruchom czyszczenie</button>
+            </form>
+        </div>
+    </section>
+
+    <section class="app-card extension-card">
+        <div class="card-heading"><div><h2>Zakres polityki</h2><p>Wartości pochodzą z konfiguracji aktywnego profilu.</p></div></div>
+        <div class="audit-table-wrap">
+            <table class="audit-table">
+                <thead><tr><th>Obszar</th><th>Retencja</th></tr></thead>
+                <tbody>
+                <tr><td>Historia logowań</td><td th:text="${retentionLoginHistoryDays + ' dni'}">30 dni</td></tr>
+                <tr><td>Powiadomienia</td><td th:text="${retentionNotificationDays + ' dni'}">30 dni</td></tr>
+                <tr><td>Audyt operacji</td><td th:text="${retentionOperationAuditDays + ' dni'}">90 dni</td></tr>
+                <tr><td>Audyt administratora</td><td th:text="${retentionAdminAuditDays + ' dni'}">365 dni</td></tr>
+                <tr><td>Wyłączone z automatycznego czyszczenia</td><td th:text="${retentionExcludedData}">karty i transakcje</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="app-card extension-card">
+        <div class="card-heading"><div><h2>Historia uruchomień</h2><p>Wyniki RetentionJob i ręcznych operacji administratora.</p></div></div>
+        <div class="audit-table-wrap" th:if="${not #lists.isEmpty(retentionRuns)}">
+            <table class="audit-table">
+                <thead><tr><th>Start</th><th>Status</th><th>Tryb</th><th>Usunięto</th><th>Błędy</th><th>Szczegóły</th></tr></thead>
+                <tbody>
+                <tr th:each="run : ${retentionRuns}">
+                    <td th:text="${run.startedAt}">Data</td>
+                    <td><span class="admin-status" th:classappend="${run.status == 'SUCCESS'} ? ' admin-status-active' : ' admin-status-blocked'" th:text="${run.status}">SUCCESS</span></td>
+                    <td th:text="${run.dryRun ? 'DRY-RUN' : 'USUWANIE'}">DRY-RUN</td>
+                    <td th:text="${run.deletedCount}">0</td>
+                    <td th:text="${run.errorCount}">0</td>
+                    <td th:text="${run.details ?: '-'}">-</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="empty-state" th:if="${#lists.isEmpty(retentionRuns)}"><span><i class="bi bi-clock-history"></i></span><strong>Brak uruchomień</strong></div>
+    </section>
+</main>
+</html>

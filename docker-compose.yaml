@@ -1,0 +1,83 @@
+name: bank-demo
+
+services:
+  postgres:
+    image: postgres:18
+    container_name: bank-postgres
+    environment:
+      POSTGRES_DB: "${POSTGRES_DB:-bankdb}"
+      POSTGRES_USER: "${POSTGRES_USER:-bankuser}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Ustaw POSTGRES_PASSWORD w .novabank/env/dev.env i wczytaj oba pliki env}"
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5300}:5432"
+    volumes:
+      - bank_pgdata:/var/lib/postgresql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  shop-postgres:
+    image: postgres:18
+    container_name: shop-postgres
+    environment:
+      POSTGRES_DB: "${SHOP_POSTGRES_DB:-shopdb}"
+      POSTGRES_USER: "${SHOP_POSTGRES_USER:-shopuser}"
+      POSTGRES_PASSWORD: "${SHOP_POSTGRES_PASSWORD:?Ustaw SHOP_POSTGRES_PASSWORD w .novabank/env/dev.env i wczytaj oba pliki env}"
+    ports:
+      - "127.0.0.1:${SHOP_POSTGRES_PORT:-5400}:5432"
+    volumes:
+      - shop_pgdata:/var/lib/postgresql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: bank-redis
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    volumes:
+      - bank_redis_data:/data
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  mailpit:
+    image: axllent/mailpit:v1.22
+    container_name: bank-mailpit
+    environment:
+      MP_DATABASE: /data/mailpit.db
+      MP_MAX_MESSAGES: 5000
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+    ports:
+      - "127.0.0.1:${MAILPIT_SMTP_PORT:-11026}:1025"
+      - "127.0.0.1:${MAILPIT_HTTP_PORT:-18026}:8025"
+    volumes:
+      - bank_mailpit_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+volumes:
+  bank_pgdata:
+  bank_redis_data:
+  bank_mailpit_data:
+  shop_pgdata:

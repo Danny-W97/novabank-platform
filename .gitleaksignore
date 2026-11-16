@@ -1,0 +1,2 @@
+# No historical gitleaks exceptions required after history cleanup.
+# Keep file/path-wide exceptions disallowed; synthetic fixtures generate or encode keys at runtime.

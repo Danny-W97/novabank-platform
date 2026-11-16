@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Moje zamówienia | NovaTech Shop</title>
+  <link rel="stylesheet" href="/css/shop-account.css">
+</head>
+<body>
+<header class="account-topbar">
+  <a class="account-brand" href="/novatech_shop.html">NovaTech Shop</a>
+  <a href="/novatech_shop.html">Wróć do sklepu</a>
+</header>
+<main class="account-shell">
+  <div class="account-heading">
+    <p class="account-eyebrow">Konto sklepu</p>
+    <h1>Moje zamówienia</h1>
+    <p>Podgląd zamówień utworzonych na zalogowanym koncie sklepu.</p>
+  </div>
+  <div class="account-layout">
+    <nav class="account-nav" aria-label="Menu konta">
+      <a href="/shop-profile.html">Profil</a>
+      <a href="/shop-address.html">Adres dostawy</a>
+      <a class="active" href="/shop-orders.html">Moje zamówienia</a>
+      <a href="/novatech_shop.html?logout">Sklep</a>
+    </nav>
+    <section class="account-panel">
+      <h2>Historia zamówień</h2>
+      <p class="account-panel-intro">Status płatności jest pobierany bezpośrednio z `shop-app`.</p>
+      <p class="orders-summary" id="ordersSummary" aria-live="polite"></p>
+      <div class="orders-list" id="ordersList" aria-live="polite"></div>
+      <div class="form-message" id="message" role="status" aria-live="polite"></div>
+    </section>
+  </div>
+</main>
+<script src="/js/shop-account.js"></script>
+<script>
+  const ordersList = document.getElementById('ordersList');
+  const ordersSummary = document.getElementById('ordersSummary');
+  const ordersMessage = document.getElementById('message');
+  const MAX_VISIBLE_ORDERS = 15;
+
+  function statusLabel(status) {
+    return ({ PENDING: 'Oczekuje na płatność', PAID: 'Opłacone', FAILED: 'Odrzucone', CANCELLED:'Zrezygnowano z zakupu', UNKNOWN: 'Wynik niepotwierdzony — trwa uzgadnianie' })[status] || status;
+  }
+
+  function renderOrders(orders) {
+    ordersList.replaceChildren();
+    const allOrders = Array.isArray(orders) ? orders : [];
+    const visibleOrders = allOrders.slice(0, MAX_VISIBLE_ORDERS);
+
+    if (!allOrders.length) {
+      ordersSummary.textContent = '';
+      const empty = document.createElement('div');
+      empty.className = 'empty-orders';
+      empty.textContent = 'Nie masz jeszcze żadnych zamówień.';
+      ordersList.appendChild(empty);
+      return;
+    }
+
+    ordersSummary.textContent = allOrders.length > MAX_VISIBLE_ORDERS
+      ? `Wyświetlono ${visibleOrders.length} z ${allOrders.length} zamówień. Widok pokazuje najnowsze zamówienia.`
+      : `Liczba zamówień: ${allOrders.length}. Kliknij zamówienie, aby rozwinąć szczegóły.`;
+
+    visibleOrders.forEach((order, index) => {
+      const row = document.createElement('details');
+      row.className = 'order-row';
+      row.open = index === 0;
+
+      const summary = document.createElement('summary');
+      summary.className = 'order-summary';
+      const summaryMain = document.createElement('div');
+      const number = document.createElement('div');
+      number.className = 'order-number';
+      number.textContent = 'Zamówienie ' + order.orderNumber;
+      const status = document.createElement('div');
+      status.className = 'order-status ' + String(order.status || '').toLowerCase();
+      status.textContent = statusLabel(order.status);
+      summaryMain.append(number, status);
+      const total = document.createElement('div');
+      total.className = 'order-total';
+      total.textContent = shopAccountPrice(order.total, order.currency);
+      summary.append(summaryMain, total);
+
+      const details = document.createElement('div');
+      details.className = 'order-content';
+      const items = document.createElement('div');
+      items.className = 'order-items';
+      items.textContent = (order.items || [])
+        .map(item => `${item.productName || item.name || item.sku || 'Produkt'} × ${item.quantity}`)
+        .join(', ') || 'Brak pozycji';
+      details.appendChild(items);
+      if (order.failureReason) {
+        const reason = document.createElement('div');
+        reason.className = 'order-meta';
+        reason.textContent = 'Powód: ' + order.failureReason;
+        details.appendChild(reason);
+      }
+      row.append(summary, details);
+      if(!['PAID','CANCELLED'].includes(order.status)){
+        const cancel=document.createElement('button');cancel.type='button';cancel.textContent='Zrezygnuj z zakupu';
+        const requestId=crypto.randomUUID();
+        cancel.addEventListener('click',async()=>{
+          if(!window.confirm('Zrezygnować z zakupu? Nie wymusza to anulowania płatności o nieznanym wyniku. Produkty bieżącego koszyka zostaną zachowane.'))return;
+          cancel.disabled=true;
+          try{const response=await shopAccountFetch('/api/orders/'+encodeURIComponent(order.id)+'/cancel-purchase',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requestId,confirmed:true})});
+            if(!response.ok)throw new Error(await shopAccountReadError(response));const result=await response.json();ordersMessage.textContent=result.message;await loadOrders();
+          }catch(error){ordersMessage.textContent=error.message;}finally{cancel.disabled=false;}
+        });details.appendChild(cancel);
+      }
+      ordersList.appendChild(row);
+    });
+  }
+
+  async function loadOrders() {
+    const response = await shopAccountFetch('/api/orders');
+    if (response.status === 401) return shopAccountRequireLogin();
+    if (!response.ok) throw new Error(await shopAccountReadError(response));
+    renderOrders(await response.json());
+  }
+
+  loadOrders().catch(error => shopAccountMessage(ordersMessage, error.message, 'error'));
+</script>
+</body>
+</html>

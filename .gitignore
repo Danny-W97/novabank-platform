@@ -1,0 +1,82 @@
+HELP.md
+target/
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+.idea.backup-*/
+.run/
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
+### Local environment and secrets ###
+.env
+.env.*
+!.env.example
+# Public placeholder-only template; real monitoring credentials stay ignored.
+!/infra/monitoring/.env.monitoring.example
+/${env.USERPROFILE}/
+
+### NovaBank Control Center local runtime files ###
+.novabank/
+.novabank/**
+.novabank/.keep
+
+### Local Vault data and TLS material ###
+infra/vault/data/
+infra/vault/recovery/
+infra/vault/tls/
+infra/vault/.approle-secret-id-rotation.env
+infra/prod/tls/
+
+### Local database backups ###
+/backups/
+
+### Legacy local runtime locations (migrated to .novabank/) ###
+scripts/.env.dev
+scripts/.env.prod.bank
+scripts/.env.prod.shop
+infra/monitoring/.env.monitoring
+infra/monitoring/prometheus/prometheus.yml
+.venv-pdf/
+/tmp/control-center/
+
+### Generated logs and JVM crash reports ###
+*.log
+hs_err_pid*
+replay_pid*
+
+### Control Center Python bytecode ###
+/scripts/control-center/web/__pycache__/
+
+### Isolated CI tool dependencies ###
+**/node_modules/
+
+### Prompt notes ###
+Prompt*.md
+

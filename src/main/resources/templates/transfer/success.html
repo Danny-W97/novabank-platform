@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/app-layout :: layout('Przelew wykonany', 'transfer', ~{::main})}">
+<main>
+    <section class="app-card transfer-success-card">
+        <div class="success-mark"><i class="bi bi-check-lg"></i></div>
+        <span class="page-eyebrow">Operacja zakończona</span>
+        <h1>Przelew został wykonany</h1>
+        <p>Saldo obu rachunków oraz historia operacji zostały zaktualizowane.</p>
+
+        <dl class="confirmation-list success-details">
+            <div>
+                <dt>Numer referencyjny</dt>
+                <dd><code th:text="${transfer.referenceNumber}">TRX-0000000000000000000000000000</code></dd>
+            </div>
+            <div>
+                <dt>Odbiorca</dt>
+                <dd th:text="${transfer.recipientName}">Anna Nowak</dd>
+            </div>
+            <div>
+                <dt>Numer rachunku</dt>
+                <dd><code th:text="${transfer.destinationAccountNumber}">61 1090 1014 0000 0712 1981 2874</code></dd>
+            </div>
+            <div>
+                <dt>Tytuł</dt>
+                <dd th:text="${transfer.title}">Zwrot środków</dd>
+            </div>
+            <div>
+                <dt>Data realizacji</dt>
+                <dd th:text="${transfer.completedAt}">25 lipca 2026, 12:00</dd>
+            </div>
+            <div class="confirmation-amount">
+                <dt>Kwota</dt>
+                <dd th:text="${transfer.amount}">100,00 zł</dd>
+            </div>
+        </dl>
+
+        <div class="success-actions">
+            <a class="btn app-btn-secondary" th:href="@{/history}">
+                <i class="bi bi-clock-history"></i> Zobacz historię
+            </a>
+            <a class="btn app-btn-primary" th:href="@{/dashboard}">
+                Wróć do dashboardu <i class="bi bi-arrow-right"></i>
+            </a>
+        </div>
+    </section>
+</main>
+</html>

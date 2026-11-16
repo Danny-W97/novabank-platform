@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/app-layout :: layout('Kantor walutowy', 'exchange', ~{::main})}">
+<main>
+    <div class="page-heading">
+        <div>
+            <span class="page-eyebrow">Wymiana 24/7</span>
+            <h1>Kantor walutowy</h1>
+            <p>Wymieniaj środki między subkontami po kursie ustalonym przez NovaBank.</p>
+        </div>
+    </div>
+
+    <div class="form-alert form-alert-success" th:if="${param.success}">
+        <i class="bi bi-check-circle"></i> Wymiana została wykonana.
+    </div>
+    <div class="form-alert form-alert-error" th:if="${param.error}">
+        <i class="bi bi-exclamation-circle"></i> Wycena wygasła. Wprowadź dane ponownie.
+    </div>
+    <div class="form-alert form-alert-error" th:if="${exchangeError}">
+        <i class="bi bi-exclamation-circle"></i><span th:text="${exchangeError}">Nie udało się wykonać wyceny.</span>
+    </div>
+
+    <section class="currency-balance-grid">
+        <article class="app-card currency-balance-card" th:each="balance : ${balances}">
+            <span class="currency-code" th:text="${balance.currency}">EUR</span>
+            <span class="currency-label" th:text="${balance.currency.symbol}">€</span>
+            <strong th:text="${#numbers.formatDecimal(balance.amount, 1, 2)}">0,00</strong>
+        </article>
+    </section>
+
+    <div class="exchange-layout">
+        <section class="app-card extension-card">
+            <div class="card-heading">
+                <div><h2>Nowa wymiana</h2><p>Kurs i kwota zostaną pokazane przed zatwierdzeniem.</p></div>
+            </div>
+            <form th:action="@{/exchange/quote}" th:object="${exchangeForm}" method="post">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <input type="hidden" th:field="*{idempotencyKey}">
+                <div class="exchange-form-grid">
+                    <div class="app-form-field">
+                        <label for="sourceCurrency">Wymieniam</label>
+                        <select id="sourceCurrency" th:field="*{sourceCurrency}">
+                            <option th:each="currency : ${currencies}" th:value="${currency}" th:text="${currency}">PLN</option>
+                        </select>
+                    </div>
+                    <div class="app-form-field">
+                        <label for="targetCurrency">Na walutę</label>
+                        <select id="targetCurrency" th:field="*{targetCurrency}">
+                            <option th:each="currency : ${currencies}" th:value="${currency}" th:text="${currency}">EUR</option>
+                        </select>
+                    </div>
+                    <div class="app-form-field exchange-amount-field">
+                        <label for="amount">Kwota</label>
+                        <input id="amount" type="text" inputmode="decimal" th:field="*{amount}"
+                               placeholder="0,00" autocomplete="off" required>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button class="btn app-btn-primary" type="submit">
+                        Sprawdź kurs <i class="bi bi-arrow-right"></i>
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <aside class="app-card extension-card">
+            <div class="card-heading"><div><h2>Kursy banku</h2><p>1 jednostka waluty w przeliczeniu na PLN.</p></div></div>
+            <div class="rate-list">
+                <div class="rate-row" th:each="rate : ${rates}">
+                    <strong th:text="${rate.currency}">EUR</strong>
+                    <span th:text="${#numbers.formatDecimal(rate.rateToPln, 1, 4)}">4,3500 PLN</span>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <section class="app-card extension-card exchange-history-card">
+        <div class="card-heading"><div><h2>Historia wymian</h2><p>Ostatnie 30 operacji kantoru.</p></div></div>
+        <div class="audit-table-wrap" th:if="${not #lists.isEmpty(history)}">
+            <table class="audit-table">
+                <thead><tr><th>Data</th><th>Wymiana</th><th>Otrzymano</th><th>Kurs</th><th>Status</th></tr></thead>
+                <tbody>
+                <tr th:each="item : ${history}">
+                    <td th:text="${item.createdAt}">Data</td>
+                    <td th:text="|${item.sourceAmount} ${item.sourceCurrency}|">100 PLN</td>
+                    <td th:text="|${item.targetAmount} ${item.targetCurrency}|">22,99 EUR</td>
+                    <td th:text="${item.appliedRate}">0,2299</td>
+                    <td th:text="${item.status}">COMPLETED</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="empty-state" th:if="${#lists.isEmpty(history)}">
+            <span><i class="bi bi-arrow-left-right"></i></span><strong>Brak wymian</strong>
+        </div>
+    </section>
+</main>
+</html>

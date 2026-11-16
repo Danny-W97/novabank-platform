@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/app-layout :: layout('Kody odzyskiwania', 'profile', ~{::main})}">
+<main>
+    <div class="page-heading">
+        <div>
+            <span class="page-eyebrow">Bezpieczeństwo</span>
+            <h1>Zapisz kody odzyskiwania</h1>
+            <p>Każdy kod można wykorzystać tylko raz. Po opuszczeniu tej strony nie zostaną ponownie wyświetlone.</p>
+        </div>
+    </div>
+    <section class="app-card profile-form-card">
+        <div class="profile-alert" role="status">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            Zachowaj kody w bezpiecznym miejscu. Służą do odzyskania dostępu po utracie telefonu.
+        </div>
+        <div class="row row-cols-1 row-cols-md-2 g-2 my-4">
+            <div class="col" th:each="code : ${recoveryCodes}">
+                <code class="d-block p-2 bg-light rounded text-center" th:text="${code}">abcd-efgh-ijkl-mnop</code>
+            </div>
+        </div>
+        <a class="btn app-btn-primary" th:href="@{/profile}">
+            <i class="bi bi-check2"></i> Zapisałem kody
+        </a>
+    </section>
+</main>
+</html>

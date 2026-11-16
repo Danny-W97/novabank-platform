@@ -1,0 +1,169 @@
+spring:
+  application:
+    name: Bank-demo
+  cloud:
+    vault:
+      enabled: false
+  datasource:
+    hikari:
+      # PostgreSQL lock hints with positive JPA timeouts are not sufficient on every dialect.
+      connection-init-sql: "SET lock_timeout = '${DB_LOCK_TIMEOUT:3s}'"
+    url: "jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5300}/${POSTGRES_DB:bankdb}"
+    username: "${POSTGRES_USER:bankuser}"
+    password: "${POSTGRES_PASSWORD:}"
+
+  data:
+    redis:
+      host: "${REDIS_HOST:localhost}"
+      port: "${REDIS_PORT:6379}"
+      repositories:
+        enabled: false
+
+  session:
+    data:
+      redis:
+        repository-type: indexed
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+
+  flyway:
+    enabled: true
+
+  mail:
+    host: "${MAIL_HOST:localhost}"
+    port: "${MAIL_PORT:11026}"
+    username: "${MAIL_USERNAME:}"
+    password: "${MAIL_PASSWORD:}"
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: "${MAIL_SMTP_AUTH:false}"
+          starttls:
+            enable: "${MAIL_SMTP_STARTTLS:false}"
+            required: "${MAIL_SMTP_STARTTLS_REQUIRED:false}"
+          connectiontimeout: "${MAIL_SMTP_CONNECTION_TIMEOUT:5000}"
+          timeout: "${MAIL_SMTP_TIMEOUT:5000}"
+          writetimeout: "${MAIL_SMTP_WRITE_TIMEOUT:5000}"
+
+app:
+  history:
+    export-max-rows: "${HISTORY_EXPORT_MAX_ROWS:1000}"
+  database:
+    transaction-timeout-seconds: "${DB_TRANSACTION_TIMEOUT_SECONDS:15}"
+  email:
+    mode: "${EMAIL_MODE:smtp}"
+    from: "${EMAIL_FROM:no-reply@novabank.local}"
+    base-url: "${APP_PUBLIC_BASE_URL:http://localhost:8080}"
+    mailpit-url: "${MAILPIT_UI_URL:http://localhost:18026}"
+  security:
+    totp-encryption-keys: "${TOTP_ENCRYPTION_KEYS:}"
+    totp-encryption-active-id: "${TOTP_ENCRYPTION_ACTIVE_ID:current}"
+    totp-encryption-key: "${TOTP_ENCRYPTION_KEY:}"
+  metrics-access:
+    username: "${METRICS_USERNAME:}"
+    password: "${METRICS_PASSWORD:}"
+  payment-api:
+    key-merchants: "${BANK_API_KEY_MERCHANTS:}"
+    merchants: "${BANK_PAYMENT_MERCHANTS:}"
+    api-key: "${BANK_API_KEY:}"
+    api-keys: "${BANK_API_KEYS:}"
+    rate-limit-per-minute: "${BANK_API_RATE_LIMIT_PER_MINUTE:60}"
+  payment-authorization:
+    shop-callback-url: "${SHOP_PAYMENT_CALLBACK_URL:http://localhost:8081/payment/callback}"
+    bank-base-url: "${BANK_API_URL:http://localhost:8080}"
+    expiry-minutes: "${PAYMENT_AUTHORIZATION_EXPIRY_MINUTES:10}"
+  registration:
+    initial-balance: "${INITIAL_BALANCE:10000.00}"
+  transfer:
+    single-limit: "${TRANSFER_SINGLE_LIMIT:50000.00}"
+    daily-limit: "${TRANSFER_DAILY_LIMIT:100000.00}"
+    rate-limit-per-minute: "${TRANSFER_RATE_LIMIT_PER_MINUTE:10}"
+    totp-required-above: "${TRANSFER_TOTP_REQUIRED_ABOVE:5000.00}"
+    scheduler-delay-ms: "${TRANSFER_SCHEDULER_DELAY_MS:60000}"
+    scheduler-batch-size: "${TRANSFER_SCHEDULER_BATCH_SIZE:100}"
+  rate-limit:
+    login-window-seconds: "${LOGIN_RATE_LIMIT_WINDOW_SECONDS:900}"
+    login-ip-per-window: "${LOGIN_RATE_LIMIT_IP_PER_WINDOW:20}"
+    login-account-per-window: "${LOGIN_RATE_LIMIT_ACCOUNT_PER_WINDOW:5}"
+    auth-action-window-seconds: "${AUTH_ACTION_RATE_LIMIT_WINDOW_SECONDS:60}"
+    auth-action-ip-per-window: "${AUTH_ACTION_RATE_LIMIT_IP_PER_WINDOW:10}"
+    transfer-ip-per-window: "${TRANSFER_RATE_LIMIT_IP_PER_WINDOW:20}"
+    transfer-user-per-window: "${TRANSFER_RATE_LIMIT_USER_PER_WINDOW:10}"
+  retention:
+    enabled: "${RETENTION_ENABLED:false}"
+    dry-run: "${RETENTION_DRY_RUN:true}"
+    schedule: "${RETENTION_SCHEDULE:0 0 3 * * *}"
+    batch-size: "${RETENTION_BATCH_SIZE:500}"
+    grace-period-days: "${RETENTION_GRACE_PERIOD_DAYS:7}"
+    login-history-days: "${RETENTION_LOGIN_HISTORY_DAYS:30}"
+    notification-days: "${RETENTION_NOTIFICATION_DAYS:30}"
+    operation-audit-days: "${RETENTION_OPERATION_AUDIT_DAYS:90}"
+    admin-audit-days: "${RETENTION_ADMIN_AUDIT_DAYS:365}"
+    retention-run-days: "${RETENTION_RUN_DAYS:365}"
+  certificate-monitor:
+    enabled: false
+    schedule: "${CERTIFICATE_MONITOR_SCHEDULE:0 0 3 * * *}"
+    vault-certificate-path: "${VAULT_TLS_CERTIFICATE_PATH:}"
+    truststore-path: "${VAULT_SSL_TRUST_STORE:}"
+    truststore-password: "${VAULT_SSL_TRUST_STORE_PASSWORD:}"
+    truststore-type: "${VAULT_SSL_TRUST_STORE_TYPE:PKCS12}"
+    keystore-path: "${SERVER_SSL_KEY_STORE:}"
+    keystore-password: "${SERVER_SSL_KEY_STORE_PASSWORD:}"
+    keystore-type: "${SERVER_SSL_KEY_STORE_TYPE:PKCS12}"
+  admin:
+    email: "${ADMIN_EMAIL:}"
+  terms:
+    file: "${TERMS_FILE:regulamin/regulamin_novabank.pdf}"
+
+server:
+  port: "${BANK_APP_PORT:8080}"
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+    session:
+      timeout: 30m
+      cookie:
+        name: BANK_SESSION
+        http-only: true
+        same-site: lax
+        secure: "${SESSION_COOKIE_SECURE:false}"
+
+management:
+  server:
+    port: "${BANK_MANAGEMENT_PORT:8082}"
+    address: "${MANAGEMENT_SERVER_ADDRESS:127.0.0.1}"
+  info:
+    env:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: "health,info,metrics,prometheus"
+  endpoint:
+    health:
+      show-details: when_authorized
+      probes:
+        enabled: true
+  health:
+    mail:
+      enabled: "${MANAGEMENT_HEALTH_MAIL_ENABLED:false}"
+  metrics:
+    tags:
+      application: "${spring.application.name}"
+      environment: "${APP_ENVIRONMENT:default}"
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+info:
+  app:
+    name: "${spring.application.name}"
+    description: "NovaBank - edukacyjna aplikacja bankowa"
+    version: "0.0.1-SNAPSHOT"

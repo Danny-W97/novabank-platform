@@ -1,0 +1,59 @@
+{
+  "annotations": {"list": []},
+  "editable": false,
+  "graphTooltip": 0,
+  "panels": [
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "short"}, "overrides": []},
+      "gridPos": {"h": 6, "w": 8, "x": 0, "y": 0},
+      "id": 1,
+      "title": "Dostępność usług",
+      "type": "stat",
+      "targets": [{"expr": "min(up{job=~\"bank-demo|shop-app\",instance=~\"localhost:808[23]\"})", "legendFormat": "up", "refId": "A"}]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "reqps"}, "overrides": []},
+      "gridPos": {"h": 6, "w": 8, "x": 8, "y": 0},
+      "id": 2,
+      "title": "Żądania HTTP",
+      "type": "timeseries",
+      "targets": [{"expr": "sum by (job) (rate(http_server_requests_seconds_count{instance=~\"localhost:808[23]\"}[5m]))", "legendFormat": "{{job}}", "refId": "A"}]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "percentunit"}, "overrides": []},
+      "gridPos": {"h": 6, "w": 8, "x": 16, "y": 0},
+      "id": 3,
+      "title": "Błędy HTTP 5xx",
+      "type": "timeseries",
+      "targets": [{"expr": "sum by (job) (rate(http_server_requests_seconds_count{status=~\"5..\",instance=~\"localhost:808[23]\"}[5m])) / sum by (job) (rate(http_server_requests_seconds_count{instance=~\"localhost:808[23]\"}[5m]))", "legendFormat": "{{job}}", "refId": "A"}]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "bytes"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 6},
+      "id": 4,
+      "title": "Pamięć JVM",
+      "type": "timeseries",
+      "targets": [{"expr": "jvm_memory_used_bytes{area=\"heap\",instance=~\"localhost:808[23]\"}", "legendFormat": "{{application}} użyta", "refId": "A"}, {"expr": "jvm_memory_max_bytes{area=\"heap\",instance=~\"localhost:808[23]\"}", "legendFormat": "{{application}} maksymalna", "refId": "B"}]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "s"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 6},
+      "id": 5,
+      "title": "Czas odpowiedzi HTTP p95",
+      "type": "timeseries",
+      "targets": [{"expr": "histogram_quantile(0.95, sum by (job, le) (rate(http_server_requests_seconds_bucket{instance=~\"localhost:808[23]\"}[5m])))", "legendFormat": "{{job}}", "refId": "A"}]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["novabank", "shop-app"],
+  "templating": {"list": []},
+  "time": {"from": "now-1h", "to": "now"},
+  "title": "NovaBank - przegląd usług",
+  "uid": "novabank-overview",
+  "version": 1
+}

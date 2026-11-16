@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "csrfPolicy": {"sessionMutations":"required","scopedApiKeys":"scope-and-merchant-required","stripeWebhook":"signature-required"},
+  "scope": "Bank and shop HTTP application authorization; CC network boundary is K5/K6.",
+  "bank": [
+    {"access":"public","owner":"public-or-single-use-token","source":"mvc","endpoints":["GET /","GET /about","GET /terms","GET /login","GET /login/2fa","POST /login/2fa","GET /register","POST /register","GET /verify-email/sent","GET /verify-email","POST /verify-email/resend","GET /password/forgot","POST /password/forgot","GET /password/reset","POST /password/reset"]},
+    {"access":"client","owner":"principal","source":"mvc","endpoints":["GET /dashboard","GET /profile","GET /profile/edit","POST /profile/edit","GET /profile/password","POST /profile/password","GET /profile/pin","POST /profile/pin","POST /profile/pin/remove","GET /profile/limits","POST /profile/limits","GET /profile/2fa","POST /profile/2fa/enable","GET /profile/2fa/recovery","POST /profile/2fa/disable","GET /profile/login-history","GET /card","POST /card/attach","POST /card/pay","POST /card/block","POST /card/activate","POST /card/block-temporary","GET /transfer","POST /transfer/confirm","POST /transfer/edit","POST /transfer/execute","GET /exchange","POST /exchange/quote","POST /exchange/execute","GET /history","GET /history/export.csv","GET /history/export.pdf","GET /recipients","GET /recipients/new","POST /recipients","GET /notifications","GET /scheduled-transfers","GET /scheduled-transfers/new","POST /scheduled-transfers"]},
+    {"access":"client","owner":"transaction-owner","source":"mvc","endpoints":["GET /history/{transactionId}","POST /history/{transactionId}/retry","GET /history/{transactionId}/confirmation.pdf","GET /transfer/success/{referenceNumber}"]},
+    {"access":"client","owner":"recipient-owner","source":"mvc","endpoints":["GET /recipients/{id}/edit","POST /recipients/{id}","POST /recipients/{id}/delete"]},
+    {"access":"client","owner":"notification-owner","source":"mvc","endpoints":["POST /notifications/{id}/read"]},
+    {"access":"client","owner":"schedule-owner","source":"mvc","endpoints":["POST /scheduled-transfers/{id}/cancel"]},
+    {"access":"client","owner":"authorization-bearer-and-payer-consent","source":"mvc","endpoints":["GET /shop/authorize/{authorizationId}","POST /shop/authorize/{authorizationId}/approve","POST /shop/authorize/{authorizationId}/reject"]},
+    {"access":"admin","owner":"dedicated-audited-admin-action","source":"mvc","endpoints":["GET /admin","POST /admin/rates/{currency}","POST /admin/accounts/{accountId}/block","POST /admin/accounts/{accountId}/activate","POST /admin/accounts/{accountId}/close","POST /admin/accounts/{accountId}/logout-sessions","GET /admin/data-retention","POST /admin/data-retention/dry-run","POST /admin/data-retention/run"]},
+    {"access":"deny","owner":"disabled-legacy-api","source":"mvc","endpoints":["POST /api/payments"]},
+    {"access":"key","scope":"payments:authorize","owner":"key-merchant","source":"mvc","endpoints":["POST /api/payment-authorizations","POST /api/payment-authorizations/{authorizationId}/redeem","POST /api/payment-authorizations/by-key/{key}/cancel"]},
+    {"access":"key","scope":"payments:status","owner":"key-merchant","source":"mvc","endpoints":["GET /api/payment-authorizations/{authorizationId}/status","GET /api/payment-authorizations/by-key/{key}/status"]},
+    {"access":"key","scope":"payments:card","owner":"key-merchant","source":"mvc","endpoints":["POST /api/card-payments","POST /api/card-payments/quote","GET /api/card-payments/status/{idempotencyKey}"]},
+    {"access":"key","scope":"payments:refund","owner":"original-payment-merchant","source":"mvc","endpoints":["POST /api/payments/refunds"]},
+    {"access":"public","owner":"public-health-or-static","source":"framework","endpoints":["GET /actuator/health","GET /css/app.css","GET /favicon.svg"]},
+    {"access":"docs","owner":"public-dev-test-admin-prod","source":"framework","endpoints":["GET /v3/api-docs","GET /swagger-ui/index.html"]},
+    {"access":"metrics","owner":"technical-metrics-credentials","source":"framework","endpoints":["GET /actuator/prometheus"]},
+    {"access":"admin","owner":"management","source":"framework","endpoints":["GET /actuator/info"]},
+    {"access":"login","owner":"credential-owner","source":"filter","endpoints":["POST /login"]},
+    {"access":"logout","owner":"session","source":"filter","endpoints":["POST /logout"]}
+  ],
+  "shop": [
+    {"access":"public","owner":"public-catalog-or-registration","source":"mvc","endpoints":["GET /api/auth/csrf","POST /api/auth/register","GET /api/products","GET /api/products/{id}","GET /api/products/catalog.pdf"]},
+    {"access":"client","owner":"principal","source":"mvc","endpoints":["GET /api/auth/me","GET /api/account/profile","PUT /api/account/profile","GET /api/account/address","PUT /api/account/address","GET /api/cart","POST /api/cart/items","PUT /api/cart/items/{productId}","DELETE /api/cart/items/{productId}","GET /api/cart/purchase","POST /api/cart/independent-purchase","POST /api/orders","GET /api/orders","GET /api/checkout/card-provider","POST /api/checkout/quote","POST /api/checkout/card-session-from-cart","GET /api/checkout/card-session"]},
+    {"access":"client","owner":"order-owner","source":"mvc","endpoints":["GET /api/orders/{orderId}","POST /api/orders/{orderId}/pay","POST /api/orders/{orderId}/refund","POST /api/orders/{orderId}/cancel-purchase","POST /api/orders/{orderId}/refresh-payment","POST /api/orders/{orderId}/card-pay","POST /api/orders/{orderId}/card-checkout","POST /api/checkout/card-session"]},
+    {"access":"callback","owner":"attempt-correlation-and-provider-evidence","source":"mvc","endpoints":["GET /payment/callback","GET /api/payments/stripe/success","GET /api/payments/stripe/cancel"]},
+    {"access":"webhook","owner":"stripe-signature-and-attempt-metadata","source":"mvc","endpoints":["POST /api/payments/stripe/webhook"]},
+    {"access":"public","owner":"public-health-or-static","source":"framework","endpoints":["GET /","GET /novatech_shop.html","GET /shop-login.html","GET /shop-register.html","GET /product.html","GET /card-provider.html","GET /actuator/health","GET /favicon.svg"]},
+    {"access":"client","owner":"session","source":"framework","endpoints":["GET /checkout.html","GET /shop-orders.html","GET /shop-profile.html","GET /shop-address.html"]},
+    {"access":"docs","owner":"public-dev-test-admin-prod","source":"framework","endpoints":["GET /v3/api-docs","GET /swagger-ui/index.html"]},
+    {"access":"metrics","owner":"technical-metrics-credentials","source":"framework","endpoints":["GET /actuator/prometheus"]},
+    {"access":"admin","owner":"management","source":"framework","endpoints":["GET /actuator/info"]},
+    {"access":"login","owner":"credential-owner","source":"filter","endpoints":["POST /login"]},
+    {"access":"logout","owner":"session","source":"filter","endpoints":["POST /logout"]}
+  ]
+}

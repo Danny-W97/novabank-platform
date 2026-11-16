@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/app-layout :: layout('Profil', 'profile', ~{::main})}">
+<main>
+    <div class="page-heading">
+        <div>
+            <span class="page-eyebrow">Ustawienia konta</span>
+            <h1>Twój profil</h1>
+            <p>Zarządzaj danymi osobowymi i bezpieczeństwem konta.</p>
+        </div>
+        <a class="btn app-btn-primary" th:href="@{/profile/edit}">
+            <i class="bi bi-pencil"></i> Edytuj dane
+        </a>
+    </div>
+
+    <div class="profile-alert" role="status" th:if="${profileSuccess}">
+        <i class="bi bi-check-circle-fill"></i>
+        <span th:text="${profileSuccess}">Dane profilu zostały zaktualizowane.</span>
+    </div>
+
+    <div class="profile-grid">
+        <section class="app-card profile-card">
+            <div class="profile-hero">
+                <div class="avatar avatar-xl" th:text="${initials}">JK</div>
+                <div>
+                    <h2 th:text="${fullName}">Jan Kowalski</h2>
+                    <p>Klient edukacyjnego NovaBank</p>
+                    <span class="verified-badge"><i class="bi bi-patch-check-fill"></i> Konto aktywne</span>
+                </div>
+            </div>
+            <div class="profile-details">
+                <div><span>Adres e-mail</span><strong th:text="${profile.email}">email@example.pl</strong></div>
+                <div><span>Numer telefonu</span><strong th:text="${profile.phone}">Nie podano</strong></div>
+                <div><span>Data urodzenia</span><strong th:text="${profile.birthDate}">Nie podano</strong></div>
+                <div><span>Identyfikator klienta</span><strong th:text="${customerNumber}">NB-000001</strong></div>
+                <div><span>Typ klienta</span><strong>Użytkownik demonstracyjny</strong></div>
+            </div>
+        </section>
+
+        <div class="profile-side">
+            <section class="app-card profile-account-card">
+                <div class="card-heading">
+                    <div><h2>Twój rachunek</h2><p>Konto osobiste w PLN</p></div>
+                    <span class="account-status"><i></i> <span th:text="${accountStatus}">Aktywne</span></span>
+                </div>
+                <span>Numer rachunku</span>
+                <code id="profileAccountNumber" th:text="${accountNumber}">48 1234 5678 9012 3456 7890 1234</code>
+                <button class="copy-link" type="button" data-copy-target="profileAccountNumber">
+                    <i class="bi bi-copy"></i> Kopiuj numer
+                </button>
+            </section>
+
+            <section class="app-card security-card">
+                <div class="card-heading">
+                    <div>
+                        <h2>Bezpieczeństwo</h2>
+                        <p>Hasło zmieniono: <span th:text="${profile.passwordChangedAt}">1 stycznia 2026, 12:00</span></p>
+                    </div>
+                    <span class="section-icon green"><i class="bi bi-shield-check"></i></span>
+                </div>
+                <a class="settings-row" th:href="@{/profile/password}">
+                    <span><i class="bi bi-key"></i><span><strong>Zmień hasło</strong><small>Ustaw nowe hasło do konta</small></span></span>
+                    <i class="bi bi-chevron-right"></i>
+                 </a>                <a class="settings-row" th:href="@{/profile/pin}">
+                    <span><i class="bi bi-shield-lock"></i><span><strong>PIN transakcyjny</strong><small>Dodatkowe potwierdzenie przelewów</small></span></span>
+                     <i class="bi bi-chevron-right"></i>
+                 </a>
+                <a class="settings-row" th:href="@{/profile/limits}">
+                    <span><i class="bi bi-sliders"></i><span><strong>Limity przelewow i platnosci</strong><small>Ustaw wlasne limity bez przekraczania limitow banku</small></span></span>
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+                <a class="settings-row" th:href="@{/profile/2fa}">
+                    <span><i class="bi bi-phone"></i><span><strong>Uwierzytelnianie 2FA</strong><small th:text="${twoFactorEnabled} ? 'Google Authenticator jest aktywny' : 'Włącz dodatkowe zabezpieczenie logowania'">Włącz dodatkowe zabezpieczenie logowania</small></span></span>
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+                <a class="settings-row" th:href="@{/profile/login-history}">
+                    <span><i class="bi bi-clock-history"></i><span><strong>Historia logowań</strong><small>Sprawdź adresy IP i urządzenia</small></span></span>
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+                <div class="security-session-note">
+                    <i class="bi bi-clock-history"></i>
+                    <span>Sesja wygasa po 30 minutach bezczynności.</span>
+                </div>
+                <form th:action="@{/logout}" method="post">
+                    <button type="submit" class="settings-row logout-row">
+                        <span><i class="bi bi-box-arrow-right"></i><span><strong>Wyloguj się</strong><small>Zakończ bieżącą sesję</small></span></span>
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
+                </form>
+            </section>
+        </div>
+    </div>
+</main>
+</html>

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/app-layout :: layout(${formTitle}, 'recipients', ~{::main})}">
+<main>
+    <div class="page-heading">
+        <div>
+            <span class="page-eyebrow">Zapisani odbiorcy</span>
+            <h1 th:text="${formTitle}">Nowy odbiorca</h1>
+            <p>W aplikacji demonstracyjnej możesz zapisać istniejący rachunek NovaBank.</p>
+        </div>
+    </div>
+    <section class="app-card profile-form-card extension-form-card">
+        <form th:action="${formAction}" th:object="${recipientForm}" method="post"
+              novalidate data-client-validation>
+            <div class="history-filter-errors" th:if="${#fields.hasGlobalErrors()}">
+                <i class="bi bi-exclamation-circle"></i>
+                <span th:each="error : ${#fields.globalErrors()}" th:text="${error}">Błąd formularza</span>
+            </div>
+            <div class="app-form-field">
+                <label for="alias">Alias</label>
+                <input id="alias" type="text" th:field="*{alias}" maxlength="100"
+                       th:classappend="${#fields.hasErrors('alias')} ? 'is-invalid'"
+                       placeholder="Np. Czynsz, Anna, Oszczędności" required>
+                <p class="field-error" th:if="${#fields.hasErrors('alias')}" th:errors="*{alias}">Błąd aliasu</p>
+            </div>
+            <div class="app-form-field">
+                <label for="recipientName">Nazwa odbiorcy</label>
+                <input id="recipientName" type="text" th:field="*{recipientName}" maxlength="201"
+                       th:classappend="${#fields.hasErrors('recipientName')} ? 'is-invalid'" required>
+                <p class="field-error" th:if="${#fields.hasErrors('recipientName')}"
+                   th:errors="*{recipientName}">Błąd nazwy</p>
+            </div>
+            <div class="app-form-field">
+                <label for="accountNumber">Numer rachunku</label>
+                <input id="accountNumber" type="text" th:field="*{accountNumber}" inputmode="numeric"
+                       th:classappend="${#fields.hasErrors('accountNumber')} ? 'is-invalid'"
+                       placeholder="00 0000 0000 0000 0000 0000 0000" required>
+                <p class="field-error" th:if="${#fields.hasErrors('accountNumber')}"
+                   th:errors="*{accountNumber}">Błąd rachunku</p>
+            </div>
+            <div class="form-actions">
+                <a class="btn app-btn-secondary" th:href="@{/recipients}">Anuluj</a>
+                <button class="btn app-btn-primary" type="submit"><i class="bi bi-check2"></i> Zapisz</button>
+            </div>
+        </form>
+    </section>
+</main>
+</html>

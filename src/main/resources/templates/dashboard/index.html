@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/app-layout :: layout('Dashboard', 'dashboard', ~{::main})}">
+<main class="dashboard-page" data-dashboard>
+    <div class="dashboard-skeleton" data-dashboard-skeleton aria-hidden="true">
+        <span class="dashboard-skeleton-line dashboard-skeleton-line-wide"></span>
+        <div class="dashboard-skeleton-grid">
+            <span class="dashboard-skeleton-panel"></span>
+            <span class="dashboard-skeleton-panel"></span>
+            <span class="dashboard-skeleton-panel"></span>
+        </div>
+        <span class="dashboard-skeleton-panel dashboard-skeleton-panel-large"></span>
+    </div>
+    <div class="page-heading">
+        <div>
+            <span class="page-eyebrow">Podsumowanie rachunku</span>
+            <h1>Twój dashboard</h1>
+        </div>
+        <a class="btn app-btn-primary" th:href="@{/transfer}">
+            <i class="bi bi-send"></i> Nowy przelew
+        </a>
+    </div>
+
+    <section class="stats-grid" aria-label="Podsumowanie finansów">
+        <article class="stat-card balance-card">
+            <div class="stat-label"><i class="bi bi-wallet2"></i> Saldo dostępne</div>
+            <strong th:text="${balance}">12 430,50 zł</strong>
+            <span th:text="${lastActivity}">Brak operacji</span>
+            <div class="balance-orb balance-orb-one"></div>
+            <div class="balance-orb balance-orb-two"></div>
+        </article>
+        <article class="stat-card">
+            <div class="stat-icon stat-icon-red"><i class="bi bi-arrow-up-right"></i></div>
+            <div>
+                <div class="stat-label">Wydatki — <span th:text="${monthName}">miesiąc</span></div>
+                <strong class="text-expense" th:text="${expenses}">−0,00 zł</strong>
+                <span><strong th:text="${expenseCount}">0</strong> operacji wychodzących</span>
+            </div>
+        </article>
+        <article class="stat-card">
+            <div class="stat-icon stat-icon-green"><i class="bi bi-arrow-down-left"></i></div>
+            <div>
+                <div class="stat-label">Przychody — <span th:text="${monthName}">miesiąc</span></div>
+                <strong class="text-income" th:text="${income}">+0,00 zł</strong>
+                <span><strong th:text="${incomeCount}">0</strong> operacji przychodzących</span>
+            </div>
+        </article>
+    </section>
+
+    <section class="account-card app-card">
+        <div class="account-card-header">
+            <div>
+                <span class="section-icon"><i class="bi bi-credit-card-2-front"></i></span>
+                <div>
+                    <h2>Numer rachunku</h2>
+                    <p>Konto osobiste w PLN</p>
+                </div>
+            </div>
+            <span class="account-status"><i></i> <span th:text="${accountStatus}">Aktywne</span></span>
+        </div>
+        <div class="account-number-row">
+            <code id="accountNumber" th:text="${accountNumber}">48 1234 5678 9012 3456 7890 1234</code>
+            <button type="button" class="copy-button" data-copy-target="accountNumber">
+                <i class="bi bi-copy"></i><span>Kopiuj</span>
+            </button>
+        </div>
+    </section>
+
+    <section class="app-card dashboard-security-card" aria-labelledby="dashboard-security-title">
+        <div class="card-heading">
+            <div>
+                <h2 id="dashboard-security-title"><i class="bi bi-shield-check me-2"></i>Bezpiecze&#324;stwo konta</h2>
+                <p>Najwa&#380;niejsze informacje o dost&#281;pie do konta</p>
+            </div>
+            <a th:href="@{/profile}">Otw&#243;rz profil <i class="bi bi-arrow-right"></i></a>
+        </div>
+        <div class="dashboard-security-grid">
+            <div class="dashboard-security-item">
+                <span class="security-item-icon"><i class="bi bi-clock-history"></i></span>
+                <div>
+                    <small>Ostatnie logowanie</small>
+                    <strong th:text="${security.lastLogin}">Brak danych</strong>
+                </div>
+            </div>
+            <div class="dashboard-security-item">
+                <span class="security-item-icon"><i class="bi bi-phone"></i></span>
+                <div>
+                    <small>Google Authenticator</small>
+                    <strong th:text="${security.twoFactorEnabled ? 'Aktywne' : 'Nieaktywne'}"
+                            th:classappend="${security.twoFactorEnabled ? 'security-status is-enabled' : 'security-status is-disabled'}">
+                        Nieaktywne
+                    </strong>
+                </div>
+            </div>
+            <div class="dashboard-security-item">
+                <span class="security-item-icon"><i class="bi bi-key"></i></span>
+                <div>
+                    <small>PIN transakcyjny</small>
+                    <strong th:text="${security.transactionPinConfigured ? 'Skonfigurowany' : 'Nieustawiony'}"
+                            th:classappend="${security.transactionPinConfigured ? 'security-status is-enabled' : 'security-status is-disabled'}">
+                        Nieustawiony
+                    </strong>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="dashboard-grid">
+        <section class="app-card transactions-card">
+            <div class="card-heading">
+                <div>
+                    <h2>Ostatnie transakcje</h2>
+                    <p>Najnowsza aktywność na rachunku</p>
+                </div>
+                <a th:href="@{/history}">Zobacz wszystkie <i class="bi bi-arrow-right"></i></a>
+            </div>
+            <div class="transaction-list" th:if="${not #lists.isEmpty(transactions)}">
+                <article class="transaction-item" th:each="transaction : ${transactions}">
+                    <span class="transaction-icon" th:classappend="${transaction.color}">
+                        <i class="bi" th:classappend="${transaction.icon}"></i>
+                    </span>
+                    <div class="transaction-copy">
+                        <strong th:text="${transaction.name}">Nazwa transakcji</strong>
+                        <span th:text="${transaction.date}">Data</span>
+                    </div>
+                    <strong class="transaction-amount" th:classappend="${transaction.direction}"
+                            th:text="${transaction.amount}">−100,00 zł</strong>
+                </article>
+            </div>
+            <div class="empty-state" th:if="${#lists.isEmpty(transactions)}">
+                <span><i class="bi bi-receipt"></i></span>
+                <strong>Brak transakcji</strong>
+                <p>Operacje na rachunku pojawią się tutaj.</p>
+            </div>
+        </section>
+
+        <section class="app-card quick-transfer-card">
+            <div class="card-heading">
+                <div>
+                    <h2><i class="bi bi-send me-2"></i>Szybki przelew</h2>
+                    <p>Wyślij środki w kilku krokach</p>
+                </div>
+            </div>
+            <form>
+                <div class="app-form-field">
+                    <label for="recipientAccount">Numer rachunku odbiorcy</label>
+                    <input id="recipientAccount" type="text" inputmode="numeric"
+                           placeholder="PL 00 0000 0000 0000 0000 0000 0000">
+                </div>
+                <div class="app-form-field">
+                    <label for="amount">Kwota</label>
+                    <div class="amount-input">
+                        <input id="amount" type="text" inputmode="decimal" placeholder="0,00">
+                        <span>PLN</span>
+                    </div>
+                </div>
+                <div class="app-form-field">
+                    <label for="title">Tytuł przelewu</label>
+                    <input id="title" type="text" placeholder="Np. Zwrot za obiad">
+                </div>
+                <a class="btn app-btn-primary w-100" th:href="@{/transfer}">
+                    Przejdź do przelewu <i class="bi bi-arrow-right"></i>
+                </a>
+                <p class="transfer-note"><i class="bi bi-shield-check"></i> Przelew potwierdzisz na kolejnym ekranie</p>
+            </form>
+        </section>
+    </div>
+    <section class="app-card expense-chart">
+        <div class="expense-chart-toolbar">
+            <label class="visually-hidden" for="expensePeriod">Okres wykresu</label>
+            <select id="expensePeriod" class="chart-period-select" th:attr="data-current-period=${expensePeriod}">
+                <option value="3" th:selected="${expensePeriod == 3}">3 miesi&#261;ce</option>
+                <option value="6" th:selected="${expensePeriod == 6}">6 miesi&#261;cy</option>
+                <option value="12" th:selected="${expensePeriod == 12}">12 miesi&#261;cy</option>
+            </select>
+        </div>
+        <div class="card-heading">
+            <div><h2>Wydatki z 6 miesięcy</h2><p>Porównanie przelewów wychodzących</p></div>
+            <span class="section-icon"><i class="bi bi-bar-chart"></i></span>
+        </div>
+        <div class="expense-bars" th:attr="data-period=${expensePeriod}">
+            <div class="expense-bar" th:each="point : ${expenseChart}">
+                <strong th:text="${point.amount + ' PLN'}">0.00 PLN</strong>
+                <progress max="100" th:value="${point.percent}"
+                          th:attr="aria-label=${point.month + ': ' + point.amount + ' PLN'}">0</progress>
+                <span th:text="${point.month}">Lip</span>
+            </div>
+        </div>
+    </section></main>
+</html>

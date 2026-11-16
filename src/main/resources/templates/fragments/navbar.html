@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<body>
+<header class="topbar" th:fragment="navbar(firstName, currentDate, initials)">
+    <div class="d-flex align-items-center gap-3">
+        <button class="mobile-menu-btn d-lg-none" type="button" data-bs-toggle="offcanvas"
+                data-bs-target="#appSidebar" aria-controls="appSidebar" aria-label="Otwórz menu">
+            <i class="bi bi-list" aria-hidden="true"></i>
+        </button>
+        <div>
+            <p class="topbar-title">Dzień dobry, <span th:text="${firstName}">Jan</span> <span aria-hidden="true">👋</span></p>
+            <p class="topbar-date" th:text="${currentDate}">Bieżąca data</p>
+        </div>
+    </div>
+    <div class="topbar-actions">
+        <a class="icon-button" th:href="@{/notifications}" aria-label="Powiadomienia">
+            <i class="bi bi-bell" aria-hidden="true"></i>
+        </a>
+        <div class="avatar" th:text="${initials}" aria-label="Profil użytkownika">JK</div>
+    </div>
+</header>
+</body>
+</html>

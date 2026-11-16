@@ -1,0 +1,58 @@
+<th:block xmlns:th="http://www.thymeleaf.org" th:fragment="preloader">
+    <div class="nb-preloader" id="nbPreloader" role="status" aria-live="polite" aria-label="Ładowanie NovaBank">
+        <div class="nb-preloader__brand" id="nbPreloaderBrand">
+            <svg class="nb-preloader__laurels" viewBox="0 0 700 300" aria-hidden="true">
+                <defs>
+                    <path id="nbPreloaderLeaf" d="M0 0 C-14 -20 -31 -26 -50 -15 C-43 4 -23 13 0 0Z"/>
+                </defs>
+                <g class="nb-preloader__laurel nb-preloader__laurel--left" transform="translate(-52 0)">
+                    <path class="nb-preloader__laurel-branch" pathLength="1"
+                          d="M170 283 C137 245 120 202 123 160 C126 111 148 62 190 24"/>
+                    <g class="nb-preloader__laurel-leaves">
+                        <use class="nb-preloader__laurel-leaf" href="#nbPreloaderLeaf" transform="translate(157 270) rotate(28) scale(1.08)"/>
+                        <use class="nb-preloader__laurel-leaf" href="#nbPreloaderLeaf" transform="translate(144 248) scale(-1 1) rotate(28) scale(1)"/>
+                        <use class="nb-preloader__laurel-leaf" href="#nbPreloaderLeaf" transform="translate(133 225) rotate(25) scale(1.02)"/>
+                        <use class="nb-preloader__laurel-leaf" href="#nbPreloaderLeaf" transform="translate(124 203) scale(-1 1) rotate(25) scale(.94)"/>
+                        <use class="nb-preloader__laurel-leaf" href="#nbPreloaderLeaf" transform="translate(123 180) rotate(22) scale(1)"/>
+                        <use class="nb-preloader__laurel-leaf" href="#nbPreloaderLeaf" transform="translate(123 158) scale(-1 1) rotate(22) scale(.92)"/>
+                        <use class="nb-preloader__laurel-leaf" href="#nbPreloaderLeaf" transform="translate(128 135) rotate(19) scale(.94)"/>
+                        <use class="nb-preloader__laurel-leaf" href="#nbPreloaderLeaf" transform="translate(132 114) scale(-1 1) rotate(19) scale(.88)"/>
+                        <use class="nb-preloader__laurel-leaf" href="#nbPreloaderLeaf" transform="translate(145 93) rotate(16) scale(.88)"/>
+                        <use class="nb-preloader__laurel-leaf" href="#nbPreloaderLeaf" transform="translate(154 73) scale(-1 1) rotate(16) scale(.82)"/>
+                        <use class="nb-preloader__laurel-leaf" href="#nbPreloaderLeaf" transform="translate(164 53) rotate(12) scale(.82)"/>
+                        <use class="nb-preloader__laurel-leaf" href="#nbPreloaderLeaf" transform="translate(180 34) scale(-1 1) rotate(12) scale(.72)"/>
+                    </g>
+                </g>
+                <g class="nb-preloader__laurel nb-preloader__laurel--right" transform="translate(752 0) scale(-1 1)">
+                    <path class="nb-preloader__laurel-branch" pathLength="1"
+                          d="M170 283 C137 245 120 202 123 160 C126 111 148 62 190 24"/>
+                    <g class="nb-preloader__laurel-leaves">
+                        <use class="nb-preloader__laurel-leaf" href="#nbPreloaderLeaf" transform="translate(157 270) rotate(28) scale(1.08)"/>
+                        <use class="nb-preloader__laurel-leaf" href="#nbPreloaderLeaf" transform="translate(144 248) scale(-1 1) rotate(28) scale(1)"/>
+                        <use class="nb-preloader__laurel-leaf" href="#nbPreloaderLeaf" transform="translate(133 225) rotate(25) scale(1.02)"/>
+                        <use class="nb-preloader__laurel-leaf" href="#nbPreloaderLeaf" transform="translate(124 203) scale(-1 1) rotate(25) scale(.94)"/>
+                        <use class="nb-preloader__laurel-leaf" href="#nbPreloaderLeaf" transform="translate(123 180) rotate(22) scale(1)"/>
+                        <use class="nb-preloader__laurel-leaf" href="#nbPreloaderLeaf" transform="translate(123 158) scale(-1 1) rotate(22) scale(.92)"/>
+                        <use class="nb-preloader__laurel-leaf" href="#nbPreloaderLeaf" transform="translate(128 135) rotate(19) scale(.94)"/>
+                        <use class="nb-preloader__laurel-leaf" href="#nbPreloaderLeaf" transform="translate(132 114) scale(-1 1) rotate(19) scale(.88)"/>
+                        <use class="nb-preloader__laurel-leaf" href="#nbPreloaderLeaf" transform="translate(145 93) rotate(16) scale(.88)"/>
+                        <use class="nb-preloader__laurel-leaf" href="#nbPreloaderLeaf" transform="translate(154 73) scale(-1 1) rotate(16) scale(.82)"/>
+                        <use class="nb-preloader__laurel-leaf" href="#nbPreloaderLeaf" transform="translate(164 53) rotate(12) scale(.82)"/>
+                        <use class="nb-preloader__laurel-leaf" href="#nbPreloaderLeaf" transform="translate(180 34) scale(-1 1) rotate(12) scale(.72)"/>
+                    </g>
+                </g>
+            </svg>
+            <svg class="nb-preloader__emblem" viewBox="0 0 100 100" aria-hidden="true">
+                <path class="nb-preloader__shield" pathLength="1"
+                      d="M50 6 L88 20 L88 52 C88 74 72 90 50 96 C28 90 12 74 12 52 L12 20 Z"/>
+                <path class="nb-preloader__tick" pathLength="1" d="M32 58 L44 46 L54 55 L70 33"/>
+            </svg>
+            <h1 class="nb-preloader__wordmark" aria-label="NovaBank">
+                <span class="nb-preloader__wordmark-base">NovaBank</span>
+                <span class="nb-preloader__wordmark-gold" aria-hidden="true">NovaBank</span>
+            </h1>
+            <p class="nb-preloader__tagline">Twoje finanse, pod kontrolą.</p>
+        </div>
+        <button class="nb-preloader__skip" id="nbPreloaderSkip" type="button">Pomiń animację</button>
+    </div>
+</th:block>

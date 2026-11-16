@@ -1,0 +1,73 @@
+spring:
+  config:
+    import: "vault://"
+  cloud:
+    vault:
+      enabled: true
+      uri: "${VAULT_ADDR}"
+      authentication: APPROLE
+      app-role:
+        role-id: "${VAULT_ROLE_ID}"
+        secret-id: "${VAULT_SECRET_ID}"
+        role: "${VAULT_ROLE}"
+        app-role-path: "${VAULT_APPROLE_PATH:approle}"
+      ssl:
+        trust-store: "${VAULT_SSL_TRUST_STORE}"
+        trust-store-password: "${VAULT_SSL_TRUST_STORE_PASSWORD}"
+        trust-store-type: "${VAULT_SSL_TRUST_STORE_TYPE:PKCS12}"
+  datasource:
+    url: "jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"
+    username: "${POSTGRES_USER}"
+    password: "${POSTGRES_PASSWORD}"
+  data:
+    redis:
+      host: "${REDIS_HOST}"
+      port: "${REDIS_PORT}"
+  mail:
+    host: "${MAIL_HOST}"
+    port: "${MAIL_PORT:587}"
+    username: "${MAIL_USERNAME:}"
+    password: "${MAIL_PASSWORD:}"
+    properties:
+      mail:
+        smtp:
+          auth: "${MAIL_SMTP_AUTH:true}"
+          starttls:
+            enable: "${MAIL_SMTP_STARTTLS:true}"
+            required: "${MAIL_SMTP_STARTTLS_REQUIRED:true}"
+
+server:
+  port: "${BANK_APP_PORT:8080}"
+  forward-headers-strategy: framework
+  ssl:
+    enabled: "${SERVER_SSL_ENABLED:false}"
+    key-store: "${SERVER_SSL_KEY_STORE:}"
+    key-store-password: "${SERVER_SSL_KEY_STORE_PASSWORD:}"
+    key-store-type: "${SERVER_SSL_KEY_STORE_TYPE:PKCS12}"
+    key-alias: "${SERVER_SSL_KEY_ALIAS:}"
+  servlet:
+    session:
+      cookie:
+        secure: true
+        http-only: true
+        same-site: lax
+
+management:
+  metrics:
+    tags:
+      environment: prod
+
+app:
+  email:
+    mode: smtp
+    from: "${EMAIL_FROM:no-reply@novabank.pl}"
+    base-url: "${APP_PUBLIC_BASE_URL:${BANK_API_URL}}"
+    mailpit-url: ""
+  certificate-monitor:
+    enabled: true
+    schedule: "0 0 3 * * *"
+  payment-authorization:
+    bank-base-url: "${BANK_API_URL}"
+    shop-callback-url: "${SHOP_PAYMENT_CALLBACK_URL}"
+  admin:
+    email: "${ADMIN_EMAIL}"
